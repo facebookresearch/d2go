@@ -39,11 +39,7 @@ def _register_d2_datasets():
 @_record_times(REGISTER_TIME)
 def _register():
     from d2go.modeling.backbone import (  # NOQA
-        fbnet,
         fbnet_v2,
-        fbnet_v2_hr,
-        xraymobile_v1,
-        fbnet_bifpn
     )
     from d2go.data import dataset_mappers # NOQA
     from d2go.data.datasets import (
@@ -51,8 +47,8 @@ def _register():
         register_builtin_datasets,
     )
 
-    register_json_datasets()
-    register_builtin_datasets()
+    #register_json_datasets()
+    #register_builtin_datasets()
 
 
 def initialize_all():

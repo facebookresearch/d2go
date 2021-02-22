@@ -15,12 +15,12 @@ from d2go.config import (
 )
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
 from d2go.runner import GeneralizedRCNNRunner, create_runner
-from detectron2.fb import get_launch_environment
+from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info
 from detectron2.utils.logger import setup_logger
 from detectron2.utils.serialize import PicklableWrapper
 from fvcore.common.file_io import PathManager
-from libfb.py.decorators import run_once
+from d2go.utils.helper import run_once
 from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem_if_fail
 
 

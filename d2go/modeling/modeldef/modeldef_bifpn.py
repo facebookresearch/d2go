@@ -12,7 +12,7 @@ from .modeldef_retinanet_eff import (
     IRF_CFG,
 )
 
-from mobile_cv.arch.fbnet_v2.modeldef_registry import FBNetV2ModelArch
+from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from mobile_cv.arch.fbnet_v2.modeldef_utils import e1, e6
 
 

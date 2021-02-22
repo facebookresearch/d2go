@@ -14,7 +14,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from d2go.config import CfgNode, temp_defrost
-from detectron2.fb.env import get_launch_environment
+from d2go.utils.launch_environment import get_launch_environment
 
 
 logger = logging.getLogger(__name__)

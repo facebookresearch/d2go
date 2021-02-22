@@ -66,7 +66,7 @@ def reroute_config_path(path: str) -> str:
     """
 
     import pkg_resources
-    from libfb.py.parutil import get_dir_path
+    from d2go.utils.helper import get_dir_path
 
     if path.startswith("d2go://"):
         rel_path = path[len("d2go://") :]

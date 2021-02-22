@@ -17,7 +17,7 @@ from detectron2.modeling.backbone.fpn import FPN, LastLevelMaxPool, LastLevelP6P
 from detectron2.modeling.roi_heads import box_head, keypoint_head, mask_head
 from detectron2.utils.logger import log_first_n
 from mobile_cv.arch.fbnet_v2 import fbnet_builder as mbuilder
-from mobile_cv.arch.fbnet_v2.modeldef_registry import FBNetV2ModelArch
+from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from mobile_cv.arch.utils.helper import format_dict_expanding_list_values
 
 from .modules import (

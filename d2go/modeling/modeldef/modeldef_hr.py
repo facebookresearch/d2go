@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from mobile_cv.arch.fbnet_v2.modeldef_registry import FBNetV2ModelArch
+from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from mobile_cv.arch.fbnet_v2.modeldef_utils import e1p, e6, e12
 
 

@@ -10,7 +10,6 @@ from detectron2.modeling.meta_arch.build import META_ARCH_REGISTRY
 from detectron2.utils.registry import Registry
 from mobile_cv.arch.utils.quantize_utils import wrap_quant_subclass
 from mobile_cv.predictor.api import FuncInfo
-from mobile_cv.torch.utils_toffee.alias import alias
 from torch import nn
 from torch.quantization import DeQuantStub
 from torch.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
@@ -372,6 +371,14 @@ class DeQuantHead(nn.Module):
             return self.dequant_stubs[0](outputs)
         else:
             raise NotImplementedError("Only support dict or tensor output")
+
+
+# copy util function for oss
+def alias(x, name, is_backward=False):
+    if not torch.onnx.is_in_onnx_export():
+        return x
+    assert isinstance(x, torch.Tensor)
+    return torch.ops._caffe2.AliasWithName(x, name, is_backward=is_backward)
 
 
 class DeployableModel(nn.Module):

@@ -10,7 +10,7 @@ from detectron2.data.transforms.augmentation import (
     AugInput,
     AugmentationList,
 )
-from libfb.py.decorators import retryable
+from d2go.utils.helper import retryable
 
 from .build import D2GO_DATA_MAPPER_REGISTRY
 

@@ -4,7 +4,7 @@ import logging
 
 import detectron2.utils.comm as comm
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
-from libfb.py.decorators import run_once
+from d2go.utils.helper import run_once
 
 
 logger = logging.getLogger(__name__)

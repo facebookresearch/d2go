@@ -6,7 +6,7 @@ import logging
 import os
 
 from detectron2.data import DatasetCatalog, MetadataCatalog
-from libfb.py.parutil import get_dir_path
+from d2go.utils.helper import get_dir_path
 
 from .extended_coco import coco_text_load, extended_coco_load
 from .extended_lvis import extended_lvis_load

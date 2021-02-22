@@ -166,11 +166,11 @@ def add_d2_quant_mapping(mappings):
     """ HACK: Add d2 specific module mapping for eager model quantization
     """
     import torch.quantization.quantization_mappings as qm
-    for k, v in mappings.items():
-        if k not in qm.get_default_static_quant_module_mappings():
-            qm.DEFAULT_STATIC_QUANT_MODULE_MAPPINGS[k] = v
-        if k not in qm.get_default_qat_module_mappings():
-            qm.DEFAULT_QAT_MODULE_MAPPINGS[k] = v
+    #for k, v in mappings.items():
+    #    if k not in qm.get_default_static_quant_module_mappings():
+    #        qm.DEFAULT_STATIC_QUANT_MODULE_MAPPINGS[k] = v
+    #    if k not in qm.get_default_qat_module_mappings():
+    #        qm.DEFAULT_QAT_MODULE_MAPPINGS[k] = v
 
 # The `mock_quantization_type` decorate may not be needed anymore to unify
 # detectron2.layers modules and torch.nn modules since Pytorch 1.5. See comments on D23790034.
