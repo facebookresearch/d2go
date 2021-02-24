@@ -4,7 +4,7 @@ import torch
 from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, ImageList, Instances
 
-from .data_loader_helper import create_local_dataset
+from d2go.tests.data_loader_helper import create_local_dataset
 
 
 @META_ARCH_REGISTRY.register()

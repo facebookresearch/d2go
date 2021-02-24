@@ -204,12 +204,11 @@ def default_export_predictor(
 # TODO: determine if registry is needed (probably not since we only need to support
 # a few known formats) as libarary code.
 def standard_model_export(model, model_type, save_path, input_args, **kwargs):
-    from d2go.export.caffe2 import export_caffe2
-    from d2go.export.torchscript import trace_and_save_torchscript
-
     if model_type.startswith("torchscript"):
+        from d2go.export.torchscript import trace_and_save_torchscript
         trace_and_save_torchscript(model, input_args, save_path, **kwargs)
     elif model_type == "caffe2":
+        from d2go.export.caffe2 import export_caffe2
         # TODO: export_caffe2 depends on D2, need to make a copy of the implemetation
         # TODO: support specifying optimization pass via kwargs
         export_caffe2(model, input_args[0], save_path, **kwargs)

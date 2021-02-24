@@ -33,7 +33,6 @@ from d2go.modeling.backbone.fbnet_cfg import (
     add_fbnet_default_configs,
     add_fbnet_v2_default_configs,
 )
-from d2go.modeling.backbone.xraymobile_v1 import add_xraymobile_v1_default_configs
 from d2go.modeling.model_freezing_utils import (
     add_model_freezing_configs,
     set_requires_grad,
@@ -66,13 +65,12 @@ from detectron2.evaluation import (
 )
 from detectron2.export.caffe2_inference import ProtobufDetectionModel
 from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
-from detectron2.fb import FBTensorboardXWriter
+from d2go.utils.helper import TensorboardXWriter, D2Trainer
 from detectron2.modeling import GeneralizedRCNNWithTTA, build_model
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
     build_optimizer as d2_build_optimizer,
 )
-from detectron2.tools.train_net import Trainer as D2Trainer
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 
@@ -95,7 +93,7 @@ ALL_TB_WRITERS = []
 
 @lru_cache()
 def _get_tbx_writer(log_dir):
-    ret = FBTensorboardXWriter(log_dir)
+    ret = TensorboardXWriter(log_dir)
     ALL_TB_WRITERS.append(ret)
     return ret
 
@@ -254,8 +252,6 @@ class Detectron2GoRunner(BaseRunner):
         add_fbnet_v2_default_configs(_C)
         # _C.MODEL.BIFEPN...
         add_bifpn_default_configs(_C)
-        # _C.MODEL.XRAYMOBILE_V1
-        add_xraymobile_v1_default_configs(_C)
         # _C.MODEL.FROZEN_LAYER_REG_EXP
         add_model_freezing_configs(_C)
         # _C.MODEL other models

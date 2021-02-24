@@ -19,7 +19,6 @@ from mobile_cv.arch.utils.quantize_utils import (
     QuantWrapper,
 )
 from mobile_cv.predictor.api import FuncInfo
-from d2go.runner.xray_detection_beta.export.xray_accelerated_meta_arch import XRayAcceleratedGeneralizedRCNN
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +131,6 @@ def d2_meta_arch_prepare_for_export(self, cfg, inputs, export_scheme):
         )
 
         preprocess_func = preprocess_info.instantiate()
-
-        if export_scheme.endswith("_accelerator"):
-            logger.info("Transforming to accelerator meta-arch.")
-            c2_compatible_model = XRayAcceleratedGeneralizedRCNN(cfg, c2_compatible_model)
 
         return PredictorExportConfig(
             model=c2_compatible_model,

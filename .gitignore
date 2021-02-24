@@ -133,6 +133,8 @@ version.py
 TARGETS
 
 # internal
-*/fb/*
-*_fb.py
+*/**/fb/*
+*/**/*_fb.py
 defs.bzl
+datasets/
+output/

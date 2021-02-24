@@ -5,6 +5,7 @@ import mobile_cv.arch.utils.fuse_utils as fuse_utils
 import torch
 from d2go.config import CfgNode as CN
 from d2go.export.api import PredictorExportConfig
+from d2go.utils.helper import alias
 from detectron2.modeling.backbone import build_backbone
 from detectron2.modeling.meta_arch.build import META_ARCH_REGISTRY
 from detectron2.utils.registry import Registry
@@ -371,14 +372,6 @@ class DeQuantHead(nn.Module):
             return self.dequant_stubs[0](outputs)
         else:
             raise NotImplementedError("Only support dict or tensor output")
-
-
-# copy util function for oss
-def alias(x, name, is_backward=False):
-    if not torch.onnx.is_in_onnx_export():
-        return x
-    assert isinstance(x, torch.Tensor)
-    return torch.ops._caffe2.AliasWithName(x, name, is_backward=is_backward)
 
 
 class DeployableModel(nn.Module):

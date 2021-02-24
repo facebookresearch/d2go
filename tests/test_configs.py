@@ -29,7 +29,8 @@ class TestConfigs(unittest.TestCase):
         """ Test arch def str-to-dict conversion compatible with merging """
         default_cfg = GeneralizedRCNNRunner().get_default_cfg()
         cfg = default_cfg.clone()
-        cfg.merge_from_file("d2go://tests/resources/arch_def_merging.yaml")
+        cfg.merge_from_file(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                         "resources/arch_def_merging.yaml"))
 
         with make_temp_directory("detectron2go_tmp") as tmp_dir:
             # Dump out config with arch def

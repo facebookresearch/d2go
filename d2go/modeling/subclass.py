@@ -12,7 +12,7 @@ from d2go.data.dataset_mappers import (
     D2GO_DATA_MAPPER_REGISTRY,
     D2GoDatasetMapper,
 )
-from mobile_cv.torch.utils_toffee.alias import alias
+from d2go.utils.helper import alias
 
 
 def add_subclass_configs(cfg):

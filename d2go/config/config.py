@@ -70,20 +70,20 @@ def reroute_config_path(path: str) -> str:
 
     if path.startswith("d2go://"):
         rel_path = path[len("d2go://") :]
-        import d2go
-
-        package_path = get_dir_path(d2go.__name__)
-        return os.path.join(package_path, rel_path)
+        config_in_resource = pkg_resources.resource_filename(
+            "d2go.model_zoo", os.path.join("configs", rel_path)
+        )
+        return config_in_resource
     elif path.startswith("detectron2go://"):
         rel_path = path[len("detectron2go://") :]
-        import d2go
-
-        package_path = get_dir_path(os.path.join(d2go.__name__, "configs"))
-        return os.path.join(package_path, rel_path)
+        config_in_resource = pkg_resources.resource_filename(
+            "d2go.model_zoo", os.path.join("configs", rel_path)
+        )
+        return config_in_resource
     elif path.startswith("detectron2://"):
         rel_path = path[len("detectron2://") :]
         config_in_resource = pkg_resources.resource_filename(
-            "detectron2.tools.train_net", "configs/{}".format(rel_path)
+            "detectron2.model_zoo", os.path.join("configs", rel_path)
         )
         return config_in_resource
     elif path.startswith("mv_experimental://"):

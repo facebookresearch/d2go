@@ -15,8 +15,8 @@ from mobile_cv.arch.quantization.qconfig import (
 )
 from torch.nn.parallel import DistributedDataParallel
 
-from . import helper
-from .data_loader_helper import create_local_dataset
+from d2go.tests import helper
+from d2go.tests.data_loader_helper import create_local_dataset
 
 
 @META_ARCH_REGISTRY.register()

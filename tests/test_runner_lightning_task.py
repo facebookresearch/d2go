@@ -15,7 +15,7 @@ from detectron2.utils.events import EventStorage
 from stl.lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch import Tensor
 
-from . import meta_arch_helper as mah
+from d2go.tests import meta_arch_helper as mah
 
 
 class TestLightningTask(unittest.TestCase):

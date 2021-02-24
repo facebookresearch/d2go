@@ -8,7 +8,7 @@ import torch
 from d2go.modeling import model_ema
 import d2go.runner.default_runner as default_runner
 
-from . import helper
+from d2go.tests import helper
 
 
 class TestArch(torch.nn.Module):

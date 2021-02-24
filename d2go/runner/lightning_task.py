@@ -19,7 +19,48 @@ from detectron2.solver import (
 )
 from pytorch_lightning.utilities import rank_zero_info
 from stl.lightning.utilities.ema_state import EMAState
-from torch import nn
+
+_STATE_DICT_KEY = "state_dict"
+_OLD_STATE_DICT_KEY = "model"
+
+
+def _is_lightning_checkpoint(checkpoint: Dict[str, Any]) -> bool:
+    """ Returns true if we believe this checkpoint to be a Lightning checkpoint. """
+    return _STATE_DICT_KEY in checkpoint
+
+
+def _is_d2go_checkpoint(checkpoint: Dict[str, Any]) -> bool:
+    """ Returns true if we believe this to be a D2Go checkpoint. """
+    d2_go_keys = [_OLD_STATE_DICT_KEY, "optimizer", "scheduler", "iteration"]
+    for key in d2_go_keys:
+        if key not in checkpoint:
+            return False
+    return True
+
+
+def _convert_to_lightning(d2_checkpoint: Dict[str, Any]) -> None:
+    """ Converst a D2Go Checkpoint to Lightning in-place by renaming keys."""
+    prefix = "model"  # based on DefaultTask.model.
+    old_keys = list(d2_checkpoint[_OLD_STATE_DICT_KEY])
+    for key in old_keys:
+        d2_checkpoint[_OLD_STATE_DICT_KEY][f"{prefix}.{key}"] = d2_checkpoint[
+            _OLD_STATE_DICT_KEY
+        ][key]
+        del d2_checkpoint[_OLD_STATE_DICT_KEY][key]
+
+    for old, new in zip(
+        [_OLD_STATE_DICT_KEY, "iteration"], [_STATE_DICT_KEY, "global_step"]
+    ):
+        d2_checkpoint[new] = d2_checkpoint[old]
+        del d2_checkpoint[old]
+
+    for old, new in zip(
+        ["optimizer", "scheduler"], ["optimizer_states", "lr_schedulers"]
+    ):
+        d2_checkpoint[new] = [d2_checkpoint[old]]
+        del d2_checkpoint[old]
+
+    d2_checkpoint["epoch"] = 0
 
 
 class ModelTag(str, Enum):
@@ -186,6 +227,24 @@ class DefaultTask(pl.LightningModule):
             checkpoint["model_ema"] = self.ema_state.state_dict()
 
     def on_load_checkpoint(self, checkpointed_state: Dict[str, Any]) -> None:
+        """
+        Called before model state is restored. Explicitly handles old model
+        states so we can resume training from D2Go checkpoints transparently.
+
+        Args:
+            checkpointed_state: The raw checkpoint state as returned by torch.load
+                or equivalent.
+        """
+        # If this is a non-Lightning checkpoint, we need to convert it.
+        if not _is_lightning_checkpoint(checkpointed_state) and not _is_d2go_checkpoint(
+            checkpointed_state
+        ):
+            raise ValueError(
+                f"Invalid checkpoint state with keys: {checkpointed_state.keys()}"
+            )
+        if not _is_lightning_checkpoint(checkpointed_state):
+            _convert_to_lightning(checkpointed_state)
+
         if self.ema_state:
             if "model_ema" not in checkpointed_state:
                 rank_zero_info(

@@ -16,7 +16,7 @@ from d2go.runner import GeneralizedRCNNRunner
 from mobile_cv.common.misc.file_utils import make_temp_directory
 from torch.utils.data.sampler import BatchSampler, Sampler
 
-from .data_loader_helper import LocalImageGenerator, register_toy_dataset
+from d2go.tests.data_loader_helper import LocalImageGenerator, register_toy_dataset
 
 
 class IntervalSampler(Sampler):
