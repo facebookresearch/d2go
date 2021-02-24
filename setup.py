@@ -21,8 +21,19 @@ except Exception:
     pass
 
 requirements = [
+    'atexit',
+    'importlib',
+    'contextlib',
+    'json',
+    'numpy',
+    'Pillow',
+    'traceback',
+    'logging',
+    'shutil',
+    'zipfile',
+    'tempfile',
+    'mock',
     'torch',
-    #'imaug',
     'pytorch_lightning',
     'opencv-python',
 ]
