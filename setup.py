@@ -22,7 +22,7 @@ except Exception:
 
 requirements = [
     'torch',
-    'imaug',
+    #'imaug',
     'pytorch_lightning',
     'opencv-python',
 ]
