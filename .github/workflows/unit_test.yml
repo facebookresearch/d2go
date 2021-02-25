@@ -1,0 +1,31 @@
+name: Unit Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Set up Python
+        uses: s-weigand/setup-conda@v1
+        with:
+          python-version: 3.7
+
+      - name: Install Dependencies
+        run: |
+          conda install pytorch torchvision -c pytorch-nightly
+          python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
+          pip install git+https://github.com/facebookresearch/mobile-vision
+          pip install scikit-learn
+          pip install pytest
+          pip install -e .
+            
+      - name: Run pytest
+        run: |
+          python -m unittest discover tests 
+

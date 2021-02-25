@@ -1,0 +1,20 @@
+MODEL:
+  FBNET_V2:
+    ARCH: ""
+    ARCH_DEF: [{
+      "trunk": [
+          [["conv_k3", 8, 2, 1], ["conv_k3", 8, 1, 1, {"expansion": 1}]],
+          [["conv_k3", 10, 2, 1, {"expansion": 4}]],
+          [["conv_k3", 24, 2, 2, {"expansion": 6}]],
+          [["conv_k3", 40, 2, 2, {"expansion": 6}], ["conv_k3", 64, 1, 2, {"expansion": 6}]]
+      ],
+      "kpts": [
+          [["conv_k3", 112, 2, 3, {"expansion": 6}], ["conv_k3", 160, 1, 1, {"expansion": 4}]]
+      ],
+      "bbox": [
+          [["conv_k3", 112, 2, 3, {"expansion": 6}], ["conv_k3", 160, 1, 1, {"expansion": 4}]]
+      ],
+      "rpn": [
+          [["conv_k3", 64, 1, 1, {"expansion": 6}]]
+      ]
+    }]
