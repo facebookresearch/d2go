@@ -21,6 +21,7 @@ jobs:
           conda install pytorch torchvision -c pytorch-nightly
           python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
           pip install git+https://github.com/facebookresearch/mobile-vision
+          pip install scikit-learn
           pip install pytest
           pip install -e .
             
