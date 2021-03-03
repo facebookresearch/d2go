@@ -62,7 +62,6 @@ from d2go.utils.helper import TensorboardXWriter, D2Trainer
 from detectron2.modeling import GeneralizedRCNNWithTTA, build_model
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
-    build_optimizer as d2_build_optimizer,
 )
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
