@@ -1,6 +1,8 @@
 # Getting Started with D2Go
 
-This document provides a brief intro of the usage of builtin command-line tools in d2go.
+This document provides a brief intro of the usage of builtin command-line tools in d2go. 
+
+For a tutorial that involves coding with the API, see our [Jupyter Notebook](./d2go_beginner.ipynb) which covers 1). how to run inference with an existing model, 2). how to train a builtin model on a custom dataset, and 3). how to apply quantization to the model for int8 deployment.
 
 ## Inference Demo with Pre-trained Models
 
