@@ -10,19 +10,16 @@ from typing import Any, Dict, List, Optional, Type
 import pytorch_lightning as pl  # type: ignore
 from d2go.config import CfgNode, temp_defrost
 from d2go.runner import get_class
+from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.setup import basic_argument_parser
 from d2go.utils.misc import dump_trained_model_configs
 from detectron2.utils.events import EventStorage
+from detectron2.utils.file_io import PathManager
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from stl.lightning.callbacks.model_checkpoint import ModelCheckpoint
-from stl.lightning.callbacks.quantization import QuantizationAwareTraining
-from stl.lightning.io.filesystem import get_filesystem
-from stl.lightning.loggers import ManifoldTensorBoardLogger
-from stl.lightning.utilities.manifold import manifold_uri_to_bucket_and_path
 from torch.distributed import get_rank
 
 
@@ -40,15 +37,8 @@ class TrainOutput:
     model_configs: Optional[Dict[str, str]] = None
 
 
-def get_tb_logger(output_dir: str) -> TensorBoardLogger:
-    """Stores tensorboard outputs in output_dir."""
-    if output_dir.startswith("manifold://"):
-        bucket, path = manifold_uri_to_bucket_and_path(output_dir)
-        return ManifoldTensorBoardLogger(manifold_bucket=bucket, manifold_path=path)
-    return TensorBoardLogger(save_dir=output_dir)
-
-
 def maybe_override_output_dir(cfg: CfgNode, output_dir: Optional[str]) -> None:
+    """Overrides the output directory if `output_dir` is not None. """
     if output_dir is not None and output_dir != cfg.OUTPUT_DIR:
         cfg.OUTPUT_DIR = output_dir
         logger.warning(
@@ -69,12 +59,7 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
     callbacks: List[Callback] = [
         LearningRateMonitor(logging_interval="step"),
         ModelCheckpoint(
-            directory=cfg.OUTPUT_DIR,
-            has_user_data=False,
-            save_top_k=-1,
-            every_n_epochs=-1,
-            every_n_steps=cfg.SOLVER.CHECKPOINT_PERIOD,
-            file_name_template="{step}",
+            dirpath=cfg.OUTPUT_DIR,
             save_last=True,
         ),
     ]
@@ -93,6 +78,67 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
             )
         )
     return callbacks
+
+
+def build_task(
+    cfg: CfgNode, task_cls: Type[GeneralizedRCNNTask]
+) -> GeneralizedRCNNTask:
+    """Builds instance of Lightning module based on the config and task class
+       name. To build a pre-trained model, specify the `MODEL.WEIGHTS` in the
+       config.
+
+    Args:
+        cfg: The normalized ConfigNode for this D2Go Task.
+        task_cls: Lightning module class name.
+
+    Returns:
+        A instance of the given Lightning module.
+    """
+    if cfg.MODEL.WEIGHTS:
+        # only load model weights from checkpoint
+        logger.info(f"Load model weights from checkpoint: {cfg.MODEL.WEIGHTS}.")
+        return task_cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg)
+    return task_cls(cfg)
+
+
+def do_train(cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask) -> Dict[str, str]:
+    """Runs the training loop with given trainer and task.
+
+    Args:
+        cfg: The normalized ConfigNode for this D2Go Task.
+        trainer: PyTorch Lightning trainer.
+        task: Lightning module instance.
+
+    Returns:
+        A map of model name to trained model config path.
+    """
+    with EventStorage() as storage:
+        task.storage = storage
+        trainer.fit(task)
+        final_ckpt = os.path.join(cfg.OUTPUT_DIR, FINAL_MODEL_CKPT)
+        trainer.save_checkpoint(final_ckpt)  # for validation monitor
+
+        trained_cfg = cfg.clone()
+        with temp_defrost(trained_cfg):
+            trained_cfg.MODEL.WEIGHTS = final_ckpt
+        model_configs = dump_trained_model_configs(
+            cfg.OUTPUT_DIR, {"model_final": trained_cfg}
+        )
+    return model_configs
+
+
+def do_test(trainer: pl.Trainer, task: GeneralizedRCNNTask):
+    """Runs the evaluation with a pre-trained model.
+
+    Args:
+        cfg: The normalized ConfigNode for this D2Go Task.
+        trainer: PyTorch Lightning trainer.
+        task: Lightning module instance.
+
+    """
+    with EventStorage() as storage:
+        task.storage = storage
+        trainer.test(task)
 
 
 def main(
@@ -123,14 +169,8 @@ def main(
 
     maybe_override_output_dir(cfg, output_dir)
 
-    if cfg.MODEL.WEIGHTS:
-        # only load model weights from checkpoint
-        task = task_cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg)
-        logger.info(f"Load model weights from checkpoint: {cfg.MODEL.WEIGHTS}.")
-    else:
-        task = task_cls(cfg)
-
-    tb_logger = get_tb_logger(cfg.OUTPUT_DIR)
+    task = build_task(cfg, task_cls)
+    tb_logger = TensorBoardLogger(save_dir=cfg.OUTPUT_DIR)
     trainer_params = {
         # training loop is bounded by max steps, use a large max_epochs to make
         # sure max_steps is met first
@@ -150,43 +190,23 @@ def main(
     }
 
     last_checkpoint = os.path.join(cfg.OUTPUT_DIR, "last.ckpt")
-    if get_filesystem(cfg.OUTPUT_DIR).exists(last_checkpoint):
+    if PathManager.exists(last_checkpoint):
         # resume training from checkpoint
         trainer_params["resume_from_checkpoint"] = last_checkpoint
         logger.info(f"Resuming training from checkpoint: {last_checkpoint}.")
 
-    # pyre-fixme[16]: Module `pl` has no attribute `Trainer`.
     trainer = pl.Trainer(**trainer_params)
-    # TODO: find a better place for event storage
-    with EventStorage() as storage:
-        task.storage = storage
-        model_configs = None
-        if eval_only:
-            logger.info(
-                f"start to evaluate with {num_machines} nodes and {num_gpus} GPUs"
-            )
-            trainer.test(task)
-        else:
-            logger.info(f"start to train with {num_machines} nodes and {num_gpus} GPUs")
-            trainer.fit(task)
-            final_ckpt = os.path.join(cfg.OUTPUT_DIR, FINAL_MODEL_CKPT)
-            trainer.save_checkpoint(final_ckpt) # for validation monitor
+    model_configs = None
+    if eval_only:
+        do_test(trainer, task)
+    else:
+        model_configs = do_train(cfg, trainer, task)
 
-            trained_cfg = cfg.clone()
-            with temp_defrost(trained_cfg):
-                trained_cfg.MODEL.WEIGHTS = final_ckpt
-            model_configs = dump_trained_model_configs(cfg.OUTPUT_DIR, {"model_final": trained_cfg})
-
-    tb_log_dir = (
-        tb_logger.output_dir
-        if isinstance(tb_logger, ManifoldTensorBoardLogger)
-        else tb_logger.log_dir
-    )
     return TrainOutput(
         output_dir=cfg.OUTPUT_DIR,
-        tensorboard_log_dir=tb_log_dir,
+        tensorboard_log_dir=tb_logger.log_dir,
         accuracy=task.eval_res,
-        model_configs=model_configs
+        model_configs=model_configs,
     )
 
 
