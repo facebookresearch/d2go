@@ -38,7 +38,7 @@ cd d2go & python -m pip install .
 
 ## Get Started
 
-- Getting Started tutorial Coming soon.
+- [Getting Started with D2Go](./demo).
 
 - See our [model zoo](./MODEL_ZOO.md) for example configs and pretrained models.
 
