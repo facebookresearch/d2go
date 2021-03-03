@@ -65,3 +65,4 @@ MODEL.WEIGHTS https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121
 ```
 
 Please see the [config file](./configs/qat_faster_rcnn_fbnetv3a_C4.yaml) for relevant hyper-params.
+
