@@ -1,0 +1,77 @@
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  KEYPOINT_ON: True
+  MASK_ON: False
+  # WEIGHTS: manifold://xiaoliangdai_model/tree/xiaoliangdai/20210126/faster_rcnn.ULfbyCBZtx/e2e_train/model_0179999.pth
+  FBNET_V2:
+    ARCH: "FBNetV3_A_dsmask"
+    NORM: "naiveSyncBN"
+    WIDTH_DIVISOR: 8
+    SCALE_FACTOR: 0.75
+  BACKBONE:
+    NAME: FBNetV2C4Backbone
+  ANCHOR_GENERATOR:
+    # SIZES: [[32, 64, 128, 256, 512]]  # NOTE: for smaller resolution (320 < 512)
+    SIZES: [[32, 64, 96, 128, 160]]  # NOTE: for smaller resolution (320 < 512)
+  RPN:
+    HEAD_NAME: FBNetV2RpnHead
+    IN_FEATURES: ["trunk3"]
+    # Default values are 12000/2000 for train and 6000/1000 for test. In FBNet
+    # we use smaller numbers.  TODO: reduce proposals for test in .yaml directly.
+    POST_NMS_TOPK_TEST: 30
+    POST_NMS_TOPK_TRAIN: 1000
+    PRE_NMS_TOPK_TEST: 6000
+    PRE_NMS_TOPK_TRAIN: 4000
+  ROI_HEADS:
+    NUM_CLASSES: 1
+    IN_FEATURES: ["trunk3"]
+    NAME: StandardROIHeads
+  ROI_BOX_HEAD:
+    SMOOTH_L1_BETA: 0.5  # 1.0? Keypoint AP degrades (though box AP improves) when using plain L1 loss
+    NAME: FBNetV2RoIBoxHead
+    POOLER_RESOLUTION: 6
+    NORM: "naiveSyncBN"
+  ROI_MASK_HEAD:
+    NAME: "FBNetV2RoIMaskHead"
+    NUM_CONV: 0
+    POOLER_RESOLUTION: 6
+  ROI_KEYPOINT_HEAD:
+    NAME: FBNetV2RoIKeypointHeadKPRCNNIRFPredictorNoUpscale
+    POOLER_RESOLUTION: 6
+    POOLER_SAMPLING_RATIO: 0
+    POOLER_TYPE: ROIAlignV2
+    # NUM_KEYPOINTS: 100
+  PIXEL_MEAN: [103.53, 116.28, 123.675]
+  PIXEL_STD: [57.375, 57.12, 58.395]
+MODEL_EMA:
+  ENABLED: True
+  DECAY: 0.9998
+DATASETS:
+  TRAIN: ("keypoints_coco_2017_train",)
+  TEST: ("keypoints_coco_2017_val",)
+  # TRAIN: ("02-11-2020_999tasks", "17-11-2020_545tasks", "06-11-2020_623tasks", "30-10-2020_602tasks")
+  # TEST: ("11-11-2020_387tasks",)
+#DATALOADER:
+  #NUM_WORKERS: 0
+SOLVER:
+  IMS_PER_BATCH: 32
+  BASE_LR: 0.16
+  STEPS: (60000, 80000)
+  MAX_ITER: 450000
+  LR_SCHEDULER_NAME: WarmupCosineLR
+TEST:
+  EVAL_PERIOD: 5000
+  # KEYPOINT_OKS_SIGMAS: [0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025, 0.025]
+INPUT:
+  MAX_SIZE_TEST: 448
+  MAX_SIZE_TRAIN: 448
+  MIN_SIZE_TEST: 224
+  MIN_SIZE_TRAIN: (224,)
+VERSION: 2
+EXPORT_CAFFE2:
+  USE_HEATMAP_MAX_KEYPOINT: True
+#MODEL_EMA:
+#  DECAY: 0.9998
+#  DEVICE:
+#  ENABLED: True
+#  USE_EMA_WEIGHTS_FOR_EVAL_ONLY: True
