@@ -6,8 +6,17 @@ This page holds a reference for example configs, pretrained models and training/
 
 ### How to
 
+- Get pretrained models in python:
+
+  ```python
+  from d2go.model_zoo import model_zoo
+  model = model_zoo.get('faster_rcnn_fbnetv3a_C4.yaml', trained=True)
+  ```
+
 - Train: the "name" column contains a link to the config file. Running `d2go.train_net --config-file` with the config file will reproduce the corresponding model.
+
 - Evaluation: Running  `d2go.train_net --config-file path/to/the/config --eval-only MODEL.WEIGHTS path/to/the/model/weights` with the config file and pretrained model will evaluate the results. See details in [Getting Started](./demo/README.md).
+
 - Training curves and other statistics can be found in `metrics` for each model.
 
 ### Backbone Models
@@ -33,7 +42,7 @@ FBNet series are efficient mobile backbones discovered via neural architecture s
 | [Faster-RCNN-FBNetV3A-dsmask](./configs/faster_rcnn_fbnetv3a_dsmask_C4.yaml) | 21.06  | 30ms    | 250414811 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414811/model_0399999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414811/metrics.json) |
 | [Faster-RCNN-FBNetV3G-FPN](./configs/faster_rcnn_fbnetv3g_fpn.yaml) | 43.13  | 132ms   | 250356938 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250356938/model_0374999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250356938/metrics.json) |
 
-	
+
 (Latencies are measured on android system using Pixel.)
 
 ## COCO Instance Segmentation
