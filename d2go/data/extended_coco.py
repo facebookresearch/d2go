@@ -4,7 +4,6 @@
 
 import json
 import logging
-import os
 import shlex
 import subprocess
 from collections import defaultdict
@@ -15,6 +14,13 @@ from detectron2.structures import BoxMode
 from pycocotools.coco import COCO
 
 from .cache_util import _cache_json_file
+try:
+    # virtual_fs is used to support both local and manifold paths
+    # with syntax that is identical to the default python APIs
+    from virtual_fs import virtual_os as os
+    from virtual_fs.virtual_io import open
+except ImportError:
+    import os
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +54,7 @@ def extract_archive_file(archive_fn, im_dir):
             "Extracting datasets {} to local machine at {}".format(archive_fns, im_dir)
         )
         if not os.path.exists(im_dir):
-            os.makedirs(im_dir)
+            os.makedirs(im_dir, exist_ok=True)
 
         for archive_fn in archive_fns:
             # Extract the tgz file directly into the target directory,
