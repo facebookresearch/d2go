@@ -4,6 +4,7 @@
 
 import os
 from functools import wraps
+from tempfile import TemporaryDirectory
 
 import torch
 import torch.distributed as dist
@@ -38,5 +39,15 @@ def enable_ddp_env(func):
         ret = func(*args, **kwargs)
         dist.destroy_process_group()
         return ret
+
+    return wrapper
+
+def tempdir(func):
+    """ A decorator for creating a tempory directory that is cleaned up after function execution. """
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with TemporaryDirectory() as temp:
+            return func(self, temp, *args, **kwargs)
 
     return wrapper

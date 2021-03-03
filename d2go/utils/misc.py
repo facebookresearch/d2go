@@ -4,10 +4,12 @@
 
 import logging
 import os
-from typing import Dict
 import warnings
+from contextlib import contextmanager
+from typing import Dict, Iterator
 
 import detectron2.utils.comm as comm
+import torch
 from d2go.config import CfgNode
 from fvcore.common.file_io import PathManager
 from tabulate import tabulate
@@ -15,6 +17,7 @@ from tabulate import tabulate
 from .tensorboard_log_util import get_tensorboard_log_dir
 
 logger = logging.getLogger(__name__)
+
 
 def check_version(library, min_version, warning_only=False):
     """Check the version of the library satisfies the provided minimum version.
@@ -27,17 +30,21 @@ def check_version(library, min_version, warning_only=False):
         Printing a warning instead of throwing an exception.
     """
     from distutils.version import LooseVersion
+
     version = library.__version__
     bad_version = LooseVersion(version) < LooseVersion(min_version)
     if bad_version:
-        msg = f'Installed {library.__name__} version {version} does not satisfy the ' \
-              f'minimum required version {min_version}'
+        msg = (
+            f"Installed {library.__name__} version {version} does not satisfy the "
+            f"minimum required version {min_version}"
+        )
         if warning_only:
             warnings.warn(msg)
         else:
             raise AssertionError(msg)
         return False
     return True
+
 
 def metrics_dict_to_metrics_table(dic):
     assert isinstance(dic, dict)
@@ -62,7 +69,9 @@ def print_metrics_table(metrics_dic):
     logger.info("Metrics table: \n" + metrics_tabulate)
 
 
-def dump_trained_model_configs(output_dir: str, trained_cfgs: Dict[str, CfgNode]) -> Dict[str, str]:
+def dump_trained_model_configs(
+    output_dir: str, trained_cfgs: Dict[str, CfgNode]
+) -> Dict[str, str]:
     """Writes trained model config files to output_dir.
 
     Args:
@@ -82,3 +91,14 @@ def dump_trained_model_configs(output_dir: str, trained_cfgs: Dict[str, CfgNode]
             with PathManager.open(config_file, "w") as f:
                 f.write(trained_cfg.dump())
     return trained_model_configs
+
+
+@contextmanager
+def mode(net: torch.nn.Module, training: bool) -> Iterator[torch.nn.Module]:
+    """Temporarily switch to training/evaluation mode."""
+    istrain = net.training
+    try:
+        net.train(training)
+        yield net
+    finally:
+        net.train(istrain)
