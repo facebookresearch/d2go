@@ -38,6 +38,7 @@ MODEL:
     NAME: "MaskRCNNConvUpsampleHead"
     NUM_CONV: 4
     POOLER_RESOLUTION: 14
+    NORM: "naiveSyncBN"
 MODEL_EMA:
   ENABLED: True
   DECAY: 0.9998
