@@ -6,7 +6,7 @@ D2Go is a production ready software system from FacebookResearch, which supports
 
 - It is a deep learning toolkit powered by [PyTorch](https://pytorch.org/) and [Detectron2](https://github.com/facebookresearch/detectron2).
 - State-of-the-art efficient backbone networks for mobile devices.
-- End-to-end model training, quantization and depoyment pipeline.
+- End-to-end model training, quantization and deployment pipeline.
 - Easy export to TorchScript format for deployment.
 
 ## Installation
