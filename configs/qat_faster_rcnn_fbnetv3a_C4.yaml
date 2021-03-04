@@ -1,0 +1,13 @@
+_BASE_: "faster_rcnn_fbnetv3a_C4.yaml"
+SOLVER:
+  BASE_LR: 0.0001
+  MAX_ITER: 50
+  IMS_PER_BATCH: 48  # for 8GPUs
+QUANTIZATION:
+  BACKEND: "qnnpack"
+  QAT:
+    ENABLED: True
+    START_ITER: 0
+    ENABLE_OBSERVER_ITER: 0
+    DISABLE_OBSERVER_ITER: 5
+    FREEZE_BN_ITER: 7

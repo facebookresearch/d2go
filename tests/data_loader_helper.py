@@ -9,6 +9,7 @@ import os
 import uuid
 
 from d2go.data.datasets import register_dataset_split
+from d2go.runner import create_runner
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from mobile_cv.common.misc.file_utils import make_temp_directory
 from PIL import Image
@@ -165,3 +166,31 @@ class LocalImageGenerator:
     def prepare_image(self, i):
         image = Image.new("RGB", (self._width, self._height))
         image.save(os.path.join(self._image_dir, self.get_image_dict(i)["file_name"]))
+
+@contextlib.contextmanager
+def create_fake_detection_data_loader(height, width, is_train):
+    with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
+        runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
+        cfg = runner.get_default_cfg()
+        cfg.DATASETS.TRAIN = ["default_dataset_train"]
+        cfg.DATASETS.TEST = ["default_dataset_test"]
+
+        with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
+            image_dir = os.path.join(dataset_dir, "images")
+            os.makedirs(image_dir)
+            image_generator = LocalImageGenerator(image_dir, width=width, height=height)
+
+            if is_train:
+                with register_toy_dataset(
+                    "default_dataset_train", image_generator, num_images=3
+                ):
+                    train_loader = runner.build_detection_train_loader(cfg)
+                    yield train_loader
+            else:
+                with register_toy_dataset(
+                    "default_dataset_test", image_generator, num_images=3
+                ):
+                    test_loader = runner.build_detection_test_loader(
+                        cfg, dataset_name="default_dataset_test"
+                    )
+                    yield test_loader
