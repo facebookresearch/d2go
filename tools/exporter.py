@@ -43,8 +43,8 @@ def main(
     # NOTE: train dataset is used to avoid leakage since the data might be used for
     # running calibration for quantization. test_loader is used to make sure it follows
     # the inference behaviour (augmentation will not be applied).
-    datasest = cfg.DATASETS.TRAIN[0]
-    data_loader = runner.build_detection_test_loader(cfg, datasest)
+    datasets = cfg.DATASETS.TRAIN[0]
+    data_loader = runner.build_detection_test_loader(cfg, datasets)
 
     logger.info("Running the pytorch model and print FLOPS ...")
     first_batch = next(iter(data_loader))
