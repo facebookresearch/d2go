@@ -8,7 +8,6 @@ import time
 import cv2
 import tqdm
 
-from detectron2.config import get_cfg
 from detectron2.data.detection_utils import read_image
 from detectron2.utils.logger import setup_logger
 
@@ -19,7 +18,7 @@ from d2go.utils.demo_predictor import VisualizationDemo
 WINDOW_NAME = "COCO detections"
 
 
-def setup_cfg(cfg):
+def setup_cfg(cfg, args):
     # Set score_threshold for builtin models
     cfg.MODEL.RETINANET.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
@@ -65,16 +64,15 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
     mp.set_start_method("spawn", force=True)
     args = get_parser().parse_args()
     setup_logger(name="fvcore")
     logger = setup_logger()
     logger.info("Arguments: " + str(args))
 
-    #cfg = setup_cfg(args)
     cfg = model_zoo.get_config(args.config_file)
-    cfg = setup_cfg(cfg)
+    cfg = setup_cfg(cfg, args)
     demo = VisualizationDemo(cfg, args.config_file)
 
     if args.input:
@@ -148,3 +146,5 @@ if __name__ == "__main__":
         else:
             cv2.destroyAllWindows()
     
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,6 @@
 # Getting Started with D2Go
 
-This document provides a brief intro of the usage of builtin command-line tools in d2go. 
+This document provides a brief intro of the usage of builtin command-line tools in d2go.
 
 For a tutorial that involves coding with the API, see our [Jupyter Notebook](./d2go_beginner.ipynb) which covers 1). how to run inference with an existing model, 2). how to train a builtin model on a custom dataset, and 3). how to apply quantization to the model for int8 deployment.
 
@@ -14,7 +14,7 @@ cd demo/
 python demo.py --config-file faster_rcnn_fbnetv3a_C4.yaml --input input1.jpg --output output1.jpg
 ```
 
-- To run on a video, replace the `--input files` with `--video-input video.mp4` 
+- To run on a video, replace the `--input files` with `--video-input video.mp4`
 
 ## Training & Evaluation
 
@@ -65,4 +65,3 @@ MODEL.WEIGHTS https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121
 ```
 
 Please see the [config file](./configs/qat_faster_rcnn_fbnetv3a_C4.yaml) for relevant hyper-params.
-
