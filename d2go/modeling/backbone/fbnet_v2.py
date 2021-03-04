@@ -49,7 +49,7 @@ def _get_builder_norm_args(cfg):
 
 def _merge_fbnetv2_arch_def(cfg):
     arch_def = {}
-    assert all(isinstance(x, dict) for x in cfg.MODEL.FBNET_V2.ARCH_DEF)
+    assert all(isinstance(x, dict) for x in cfg.MODEL.FBNET_V2.ARCH_DEF), cfg.MODEL.FBNET_V2.ARCH_DEF
     for dic in cfg.MODEL.FBNET_V2.ARCH_DEF:
         arch_def.update(dic)
     return arch_def
