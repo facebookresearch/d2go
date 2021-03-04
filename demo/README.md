@@ -6,7 +6,7 @@ For a tutorial that involves coding with the API, see our [Jupyter Notebook](./d
 
 ## Inference Demo with Pre-trained Models
 
-- Choose a model from [mdoel_zoo](https://github.com/facebookresearch/d2go/blob/master/MODEL_ZOO.md), e.g. `faster_rcnn_fbnetv3a_C4.yaml`.
+- Choose a model from [model_zoo](https://github.com/facebookresearch/d2go/blob/master/MODEL_ZOO.md), e.g. `faster_rcnn_fbnetv3a_C4.yaml`.
 - Use the provided `demo.py` to try demo on an input image:
 
 ```bash
