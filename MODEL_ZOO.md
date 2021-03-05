@@ -36,14 +36,12 @@ FBNet series are efficient mobile backbones discovered via neural architecture s
 
 ## COCO Object Detection
 
-| name                                                         | box AP | latency | model id  | download                                                     |
+| name                                                         | box AP | latency* | model id  | download                                                     |
 | ------------------------------------------------------------ | ------ | ------- | --------- | ------------------------------------------------------------ |
-| [Faster-RCNN-FBNetV3A](./configs/faster_rcnn_fbnetv3a_C4.yaml) | 22.99  | 59ms    | 246823121 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121/model_0479999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121/metrics.json) |
-| [Faster-RCNN-FBNetV3A-dsmask](./configs/faster_rcnn_fbnetv3a_dsmask_C4.yaml) | 21.06  | 30ms    | 250414811 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414811/model_0399999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414811/metrics.json) |
-| [Faster-RCNN-FBNetV3G-FPN](./configs/faster_rcnn_fbnetv3g_fpn.yaml) | 43.13  | 132ms   | 250356938 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250356938/model_0374999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250356938/metrics.json) |
-
-
-(Latencies are measured on android system using Pixel.)
+| [Faster-RCNN-FBNetV3A](./configs/faster_rcnn_fbnetv3a_C4.yaml) | 22.99  |  73.3ms   | 246823121 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121/model_0479999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121/metrics.json) |
+| [Faster-RCNN-FBNetV3A-dsmask](./configs/faster_rcnn_fbnetv3a_dsmask_C4.yaml) | 21.06  |  33.7ms   | 250414811 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414811/model_0399999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414811/metrics.json) |
+| [Faster-RCNN-FBNetV3G-FPN](./configs/faster_rcnn_fbnetv3g_fpn.yaml) | 43.13  |    -     | 250356938 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250356938/model_0374999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250356938/metrics.json) |
+*: tested on Samsung Galaxy S8 with quantization
 
 ## COCO Instance Segmentation
 
@@ -58,4 +56,3 @@ FBNet series are efficient mobile backbones discovered via neural architecture s
 | name                                                         | box AP | kp. AP | model id  | download                                                     |
 | ------------------------------------------------------------ | ------ | ------ | --------- | ------------------------------------------------------------ |
 | [Keypoint-RCNN-FBNetV3A-dsmask](./configs/keypoint_rcnn_fbnetv3a_dsmask_C4.yaml) | 31.24  | 35.56  | 250430934 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250430934/model_0389999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250430934/metrics.json) |
-
