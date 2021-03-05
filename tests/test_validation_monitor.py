@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from d2go.utils.validation_monitor import fetch_checkpoints_till_final
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
