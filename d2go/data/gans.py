@@ -16,7 +16,7 @@ raw data with fields such as:
 import os
 import json
 import logging
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 from detectron2.data import DatasetCatalog, MetadataCatalog
 
 

@@ -7,7 +7,7 @@ import os
 from typing import Tuple, Optional, Dict
 
 import torch
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 from torch import nn
 
 

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 from d2go.config import temp_defrost
 from d2go.data.datasets import register_dataset_split, ANN_FN, IM_DIR
 from detectron2.data import DatasetCatalog, MetadataCatalog
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 
 
 class AdhocDatasetManager:

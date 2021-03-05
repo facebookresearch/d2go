@@ -21,8 +21,8 @@ from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info
 from detectron2.utils.logger import setup_logger
 from detectron2.utils.serialize import PicklableWrapper
-from fvcore.common.file_io import PathManager
 from d2go.utils.helper import run_once
+from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem_if_fail
 
 

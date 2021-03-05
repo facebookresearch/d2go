@@ -14,6 +14,7 @@ from detectron2.structures import BoxMode
 from pycocotools.coco import COCO
 
 from .cache_util import _cache_json_file
+
 try:
     # virtual_fs is used to support both local and manifold paths
     # with syntax that is identical to the default python APIs
@@ -272,8 +273,8 @@ def extended_coco_load(json_file, image_root, dataset_name=None, loaded_json=Non
     if dataset_name is not None:
         # overwrite attrs
         meta_dict = MetadataCatalog.get(dataset_name).as_dict()
-        meta_dict['thing_classes'] = classes_to_use
-        meta_dict['thing_dataset_id_to_contiguous_id'] = id_map
+        meta_dict["thing_classes"] = classes_to_use
+        meta_dict["thing_dataset_id_to_contiguous_id"] = id_map
         # update MetadataCatalog (cannot change inplace, has to remove)
         MetadataCatalog.remove(dataset_name)
         MetadataCatalog.get(dataset_name).set(**meta_dict)
@@ -298,10 +299,11 @@ if __name__ == "__main__":
         python -m detectron2.data.datasets.coco \
             path/to/json path/to/image_root dataset_name
     """
+    import sys
+
+    import cv2
     from detectron2.utils.logger import setup_logger
     from detectron2.utils.visualizer import Visualizer
-    import cv2
-    import sys
 
     logger = setup_logger(name=__name__)
     meta = MetadataCatalog.get(sys.argv[3])

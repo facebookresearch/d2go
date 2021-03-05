@@ -8,7 +8,7 @@ import re
 import time
 
 from detectron2.checkpoint import DetectionCheckpointer
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
 

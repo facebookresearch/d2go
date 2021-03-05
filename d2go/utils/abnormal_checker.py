@@ -8,7 +8,7 @@ import os
 import detectron2.utils.comm as comm
 import torch
 from d2go.utils.visualization import VisualizerWrapper
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 
 
 logger = logging.getLogger(__name__)

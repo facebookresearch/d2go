@@ -33,7 +33,7 @@ import torch
 import torch.nn as nn
 import torch.quantization.quantize_fx
 from d2go.modeling.quantization import post_training_quantize
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.predictor.api import FuncInfo, ModelInfo, PredictorInfo
 from mobile_cv.predictor.builtin_functions import (
