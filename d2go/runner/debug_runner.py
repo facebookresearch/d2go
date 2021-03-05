@@ -12,7 +12,7 @@ from d2go.runner.default_runner import (
     BaseRunner,
     add_tensorboard_default_configs,
 )
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 
 
 class DebugRunner(BaseRunner):
