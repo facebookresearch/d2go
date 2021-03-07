@@ -41,7 +41,7 @@ MODEL.WEIGHTS https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121
 
 ```bash
 d2go.exporter --config-file configs/faster_rcnn_fbnetv3a_C4.yaml \
---output-dir ./ --predictor-type torchscript \
+--predictor-types torchscript --output-dir ./ \
 MODEL.WEIGHTS https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/246823121/model_0479999.pth
 ```
 
