@@ -11,10 +11,10 @@ from typing import Dict, Iterator
 import detectron2.utils.comm as comm
 import torch
 from d2go.config import CfgNode
-from fvcore.common.file_io import PathManager
+from detectron2.utils.file_io import PathManager
 from tabulate import tabulate
 
-from .tensorboard_log_util import get_tensorboard_log_dir
+from .tensorboard_log_util import get_tensorboard_log_dir  # noqa: forwarding
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,7 @@ def dump_trained_model_configs(
         config_file = os.path.join(trained_model_config_dir, "{}.yaml".format(name))
         trained_model_configs[name] = config_file
         if comm.is_main_process():
+            logger.info("Dump trained config file: {}".format(config_file))
             with PathManager.open(config_file, "w") as f:
                 f.write(trained_cfg.dump())
     return trained_model_configs
