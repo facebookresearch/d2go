@@ -1,5 +1,5 @@
 ---
-name: " \\U0001F680Feature Request"
+name: "\U0001F680Feature Request"
 about: Suggest an improvement or new feature
 title: ''
 labels: enhancement
