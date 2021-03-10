@@ -57,11 +57,20 @@ def _apply_eager_mode_quant(cfg, model):
             n_outputs=len(cfg.MODEL.RPN.IN_FEATURES) * 2,
         )
         # Wrap the roi_heads, box_pooler is not quantized
-        model.roi_heads.box_head = wrap_quant_subclass(
-            model.roi_heads.box_head,
-            n_inputs=1,
-            n_outputs=1,
-        )
+        if hasattr(model.roi_heads, "box_head"):
+            model.roi_heads.box_head = wrap_quant_subclass(
+                model.roi_heads.box_head,
+                n_inputs=1,
+                n_outputs=1,
+            )
+        # for faster_rcnn_R_50_C4
+        if hasattr(model.roi_heads, "res5"):
+            model.roi_heads.res5 = wrap_quant_subclass(
+                model.roi_heads.res5,
+                n_inputs=1,
+                n_outputs=1,
+            )
+
         model.roi_heads.box_predictor = wrap_quant_subclass(
             model.roi_heads.box_predictor, n_inputs=1, n_outputs=2
         )
@@ -116,4 +125,3 @@ def d2_meta_arch_prepare_for_quant(self, cfg):
     logger.info("Setup the model with qconfig:\n{}".format(model.qconfig))
 
     return model
-
