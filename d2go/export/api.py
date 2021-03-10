@@ -110,6 +110,11 @@ def convert_and_export_predictor(
                 pytorch_model = torch.quantization.quantize_fx.convert_fx(pytorch_model)
 
         logger.info("Quantized Model:\n{}".format(pytorch_model))
+    else:
+        pytorch_model = fuse_utils.fuse_model(pytorch_model)
+        logger.info("Fused Model:\n{}".format(pytorch_model))
+        if fuse_utils.count_bn_exist(pytorch_model) > 0:
+            logger.warning("BN existed in pytorch model after fusing.")
 
     return export_predictor(cfg, pytorch_model, predictor_type, output_dir, data_loader)
 
