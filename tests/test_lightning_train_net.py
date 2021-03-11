@@ -41,15 +41,16 @@ class TestLightningTrainNet(unittest.TestCase):
             ckpts,
         )
 
-        with tempfile.TemporaryDirectory() as tmp_dir2:
-            cfg2 = cfg.clone()
-            cfg2.defrost()
-            cfg2.OUTPUT_DIR = tmp_dir2
-            # load the last checkpoint from previous training
-            cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
+        tmp_dir2 = tempfile.TemporaryDirectory()  # noqa to avoid flaky test
+        cfg2 = cfg.clone()
+        cfg2.defrost()
+        cfg2.OUTPUT_DIR = tmp_dir2.name
+        # load the last checkpoint from previous training
+        cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
 
-            out2 = main(cfg2, accelerator=None, eval_only=True)
-            accuracy = flatten_config_dict(out.accuracy)
-            accuracy2 = flatten_config_dict(out2.accuracy)
-            for k in accuracy:
-                np.testing.assert_equal(accuracy[k], accuracy2[k])
+        out2 = main(cfg2, accelerator=None, eval_only=True)
+        accuracy = flatten_config_dict(out.accuracy)
+        accuracy2 = flatten_config_dict(out2.accuracy)
+        for k in accuracy:
+            np.testing.assert_equal(accuracy[k], accuracy2[k])
+        tmp_dir2.cleanup()
