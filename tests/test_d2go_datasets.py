@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-
+import copy
 import json
 import os
 import unittest
 
-from detectron2.data import DatasetCatalog
+import d2go.data.extended_coco as extended_coco
 from d2go.data.utils import maybe_subsample_n_images
 from d2go.runner import Detectron2GoRunner
-from mobile_cv.common.misc.file_utils import make_temp_directory
-
 from d2go.tests.data_loader_helper import LocalImageGenerator, create_toy_dataset
+from detectron2.data import DatasetCatalog
+from mobile_cv.common.misc.file_utils import make_temp_directory
 
 
 def create_test_images_and_dataset_json(data_dir):
@@ -29,6 +29,42 @@ def create_test_images_and_dataset_json(data_dir):
 
 
 class TestD2GoDatasets(unittest.TestCase):
+    def test_coco_conversions(self):
+        test_data_0 = {
+            "info": {},
+            "imgs": {
+                "img_1": {
+                    "file_name": "0.jpg",
+                    "width": 600,
+                    "height": 600,
+                    "id": "img_1",
+                }
+            },
+            "anns": {0: {"id": 0, "image_id": "img_1", "bbox": [30, 30, 60, 20]}},
+            "imgToAnns": {"img_1": [0]},
+            "cats": {},
+        }
+        test_data_1 = copy.deepcopy(test_data_0)
+        test_data_1["imgs"][123] = test_data_1["imgs"].pop("img_1")
+        test_data_1["imgs"][123]["id"] = 123
+        test_data_1["anns"][0]["image_id"] = 123
+        test_data_1["imgToAnns"][123] = test_data_1["imgToAnns"].pop("img_1")
+
+        for test_data, exp_output in [(test_data_0, [0, 0]), (test_data_1, [123, 123])]:
+            with make_temp_directory("detectron2go_tmp_dataset") as tmp_dir:
+                src_json = os.path.join(tmp_dir, "source.json")
+                out_json = os.path.join(tmp_dir, "output.json")
+
+                with open(src_json, "w") as h_in:
+                    json.dump(test_data, h_in)
+
+                out_json = extended_coco.convert_coco_text_to_coco_detection_json(
+                    src_json, out_json
+                )
+
+                self.assertEqual(out_json["images"][0]["id"], exp_output[0])
+                self.assertEqual(out_json["annotations"][0]["image_id"], exp_output[1])
+
     def test_coco_injection(self):
 
         with make_temp_directory("detectron2go_tmp_dataset") as tmp_dir:

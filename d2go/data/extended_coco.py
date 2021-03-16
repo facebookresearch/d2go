@@ -107,6 +107,16 @@ def convert_coco_text_to_coco_detection_json(
         for x in coco_text_json["images"]
         if x["height"] >= min_img_size and x["width"] >= min_img_size
     ]
+    # Remap image_ids if necessary
+    if isinstance(coco_text_json["images"][0]["id"], str):
+        image_id_remap = {
+            x["id"]: id_no for (id_no, x) in enumerate(coco_text_json["images"])
+        }
+        for x in coco_text_json["images"]:
+            x["id"] = image_id_remap[x["id"]]
+        for x in coco_text_json["annotations"]:
+            x["image_id"] = image_id_remap[x["image_id"]]
+
     os.makedirs(os.path.dirname(target_json), exist_ok=True)
     with open(target_json, "w") as f:
         json.dump(coco_text_json, f)
