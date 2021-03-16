@@ -82,7 +82,7 @@ class MultiSemSegEvaluator(DatasetEvaluator):
                     image_root=metadata.image_root,
                     sem_seg_root=metadata.sem_seg_root,
                     instances_json=metadata.json_file,
-                    mask_dir="{}_mask".format(superclass_name),
+                    mask_dir=metadata.mask_dir.format(superclass_name),
                 )
             self.evaluators[key] = create_evaluator_and_reset(tmp_dataset_name)
 
