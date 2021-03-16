@@ -22,6 +22,7 @@ def add_subclass_configs(cfg):
     _C.MODEL.SUBCLASS = CN()
     _C.MODEL.SUBCLASS.SUBCLASS_ON = False
     _C.MODEL.SUBCLASS.NUM_SUBCLASSES = 0  # must be set
+    _C.MODEL.SUBCLASS.NUM_LAYERS = 1
 
 
 def fetch_subclass_from_extras(dataset_dict):
@@ -57,6 +58,12 @@ class SubclassDatasetMapper(D2GoDatasetMapper):
             mapped_dataset_dict["instances"].gt_subclasses = subclasses
         return mapped_dataset_dict
 
+def build_subclass_head(cfg, in_chann, out_chann):
+    #  fully connected layers: n-1 in_chann x in_chann layers, and 1 in_chann x out_chann layer
+    layers = [nn.Linear(in_chann, in_chann) for _ in range(cfg.MODEL.SUBCLASS.NUM_LAYERS - 1)]
+    layers.append(nn.Linear(in_chann, out_chann))
+
+    return nn.Sequential(*layers)
 
 @ROI_HEADS_REGISTRY.register()
 class StandardROIHeadsWithSubClass(StandardROIHeads):
@@ -70,11 +77,12 @@ class StandardROIHeadsWithSubClass(StandardROIHeads):
         if not self.subclass_on:
             return
 
-        self.subclass_head = nn.Linear(
-            self.box_head.output_shape.channels, cfg.MODEL.SUBCLASS.NUM_SUBCLASSES + 1
-        )
-        nn.init.normal_(self.subclass_head.weight, std=0.01)
-        nn.init.constant_(self.subclass_head.bias, 0.0)
+        self.num_subclasses = cfg.MODEL.SUBCLASS.NUM_SUBCLASSES
+        self.subclass_head = build_subclass_head(cfg, self.box_head.output_shape.channels, self.num_subclasses + 1)
+
+        for layer in self.subclass_head:
+            nn.init.normal_(layer.weight, std=0.01)
+            nn.init.constant_(layer.bias, 0.0)
 
     def forward(self, images, features, proposals, targets=None):
         """
