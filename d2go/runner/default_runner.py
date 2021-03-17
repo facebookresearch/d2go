@@ -144,6 +144,10 @@ def default_scale_quantization_configs(cfg, new_world_size):
 
 
 class BaseRunner(object):
+    def __init__(self):
+        identifier = f"D2Go.Runner.{self.__class__.__name__}"
+        torch._C._log_api_usage_once(identifier)
+
     def _initialize(self, cfg):
         """ Runner should be initialized in the sub-process in ddp setting """
         if getattr(self, "_has_initialized", False):
