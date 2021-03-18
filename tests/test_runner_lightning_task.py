@@ -44,7 +44,7 @@ class TestLightningTask(unittest.TestCase):
                 "max_steps": 1,
                 "limit_train_batches": 1,
                 "num_sanity_val_steps": 0,
-                "checkpoint_callback": checkpoint_callback,
+                "callbacks": [checkpoint_callback],
             }
             trainer = pl.Trainer(**params)
             with EventStorage() as storage:
