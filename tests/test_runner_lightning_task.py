@@ -12,7 +12,7 @@ import pytorch_lightning as pl  # type: ignore
 import torch
 from d2go.config import CfgNode
 from d2go.runner.lightning_task import GeneralizedRCNNTask
-from d2go.tests import meta_arch_helper as mah
+from d2go.utils.testing import meta_arch_helper as mah
 from detectron2.utils.events import EventStorage
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch import Tensor

@@ -6,9 +6,8 @@ import unittest
 
 import numpy as np
 import torch
+from d2go.utils.testing import rcnn_helper as rh
 from detectron2.structures import Boxes
-
-from d2go.tests import rcnn_helper as rh
 
 
 class TestRCNNHelper(unittest.TestCase):

@@ -6,11 +6,10 @@ import copy
 import itertools
 import unittest
 
+import d2go.runner.default_runner as default_runner
 import torch
 from d2go.modeling import model_ema
-import d2go.runner.default_runner as default_runner
-
-from d2go.tests import helper
+from d2go.utils.testing import helper
 
 
 class TestArch(torch.nn.Module):
@@ -174,6 +173,4 @@ class TestModelingModelEMAHook(unittest.TestCase):
 
         out_model = TestArch()
         ema_checkpointers["ema_state"].apply_to(out_model)
-        self.assertTrue(
-            _compare_state_dict(out_model, model)
-        )
+        self.assertTrue(_compare_state_dict(out_model, model))

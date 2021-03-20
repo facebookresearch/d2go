@@ -5,11 +5,12 @@
 import os
 import unittest
 
-from d2go.runner import GeneralizedRCNNRunner, create_runner
+from d2go.runner import create_runner
+from d2go.utils.testing.data_loader_helper import (
+    LocalImageGenerator,
+    register_toy_dataset,
+)
 from mobile_cv.common.misc.file_utils import make_temp_directory
-from PIL import Image
-
-from d2go.tests.data_loader_helper import LocalImageGenerator, register_toy_dataset
 
 
 class TestD2GoDatasetMapper(unittest.TestCase):

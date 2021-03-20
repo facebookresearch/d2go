@@ -9,6 +9,8 @@ import unittest
 
 import d2go.runner.default_runner as default_runner
 import torch
+from d2go.utils.testing import helper
+from d2go.utils.testing.data_loader_helper import create_local_dataset
 from detectron2.evaluation import COCOEvaluator, RotatedCOCOEvaluator
 from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, ImageList, Instances
@@ -16,9 +18,6 @@ from mobile_cv.arch.quantization.qconfig import (
     updateable_symmetric_moving_avg_minmax_config,
 )
 from torch.nn.parallel import DistributedDataParallel
-
-from d2go.tests import helper
-from d2go.tests.data_loader_helper import create_local_dataset
 
 
 @META_ARCH_REGISTRY.register()
@@ -327,6 +326,7 @@ class TestDefaultRunner(unittest.TestCase):
                 runner.do_train(cfg, model, resume=True)
 
             default_runner._close_all_tbx_writers()
+
 
 def _compare_state_dict(sd1, sd2, abs_error=1e-3):
     if len(sd1) != len(sd2):

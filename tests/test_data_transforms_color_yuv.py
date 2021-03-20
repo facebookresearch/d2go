@@ -6,20 +6,22 @@ import unittest
 
 import numpy as np
 from d2go.data.transforms import color_yuv as cy
+from d2go.data.transforms.build import build_transform_gen
 from d2go.runner import Detectron2GoRunner
 from detectron2.data.transforms import apply_augmentations
-from d2go.data.transforms.build import build_transform_gen
 
 
 class TestDataTransformsColorYUV(unittest.TestCase):
-
     def test_yuv_color_transforms(self):
         default_cfg = Detectron2GoRunner().get_default_cfg()
-        img = np.concatenate([
-            np.random.uniform(0, 1, size=(80, 60, 1)),
-            np.random.uniform(-0.5, 0.5, size=(80, 60, 1)),
-            np.random.uniform(-0.5, 0.5, size=(80, 60, 1)),
-        ], axis=2)
+        img = np.concatenate(
+            [
+                np.random.uniform(0, 1, size=(80, 60, 1)),
+                np.random.uniform(-0.5, 0.5, size=(80, 60, 1)),
+                np.random.uniform(-0.5, 0.5, size=(80, 60, 1)),
+            ],
+            axis=2,
+        )
 
         default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [
             'RandomContrastYUVOp::{"intensity_min": 0.3, "intensity_max": 0.5}',
@@ -44,7 +46,6 @@ class TestDataTransformsColorYUV(unittest.TestCase):
         self.assertAlmostEqual(np.var(high_saturation[:, :, 0]), np.var(img[:, :, 0]))
         self.assertGreater(np.var(high_saturation[:, :, 1]), np.var(img[:, :, 1]))
         self.assertGreater(np.var(high_saturation[:, :, 2]), np.var(img[:, :, 2]))
-
 
     def test_transform_color_yuv_rgbyuv_convert(self):
         image = np.arange(256).reshape(16, 16, 1).repeat(3, axis=2).astype(np.uint8)

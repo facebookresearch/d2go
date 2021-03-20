@@ -13,9 +13,9 @@ from d2go.runner.callbacks.quantization import (
     get_default_qconfig,
     get_default_qat_qconfig,
 )
-from d2go.tests.helper import tempdir
-from d2go.tests.lightning_test_module import TestModule
 from d2go.utils.misc import mode
+from d2go.utils.testing.helper import tempdir
+from d2go.utils.testing.lightning_test_module import TestModule
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx

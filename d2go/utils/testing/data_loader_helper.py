@@ -44,7 +44,7 @@ def create_toy_dataset(
         bbox = (
             [width / 4, height / 4, width / 2, height / 2]  # XYWH_ABS
             if not is_rotated
-            else [width / 2, height / 2, width / 2, height / 2, 45] # cXcYWHO_ABS
+            else [width / 2, height / 2, width / 2, height / 2, 45]  # cXcYWHO_ABS
         )
 
         annotations.append(
@@ -140,7 +140,7 @@ def create_local_dataset(
         "meta_data": meta_data,
     }
     if is_rotated:
-        split_dict['evaluator_type'] = "rotated_coco"
+        split_dict["evaluator_type"] = "rotated_coco"
     register_dataset_split(dataset_name, split_dict)
 
     return dataset_name

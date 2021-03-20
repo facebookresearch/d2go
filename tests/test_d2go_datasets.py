@@ -9,7 +9,10 @@ import unittest
 import d2go.data.extended_coco as extended_coco
 from d2go.data.utils import maybe_subsample_n_images
 from d2go.runner import Detectron2GoRunner
-from d2go.tests.data_loader_helper import LocalImageGenerator, create_toy_dataset
+from d2go.utils.testing.data_loader_helper import (
+    LocalImageGenerator,
+    create_toy_dataset,
+)
 from detectron2.data import DatasetCatalog
 from mobile_cv.common.misc.file_utils import make_temp_directory
 

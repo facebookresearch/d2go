@@ -2,8 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 # pyre-unsafe
-from functools import wraps
-from tempfile import TemporaryDirectory
 from typing import Optional
 
 import torch

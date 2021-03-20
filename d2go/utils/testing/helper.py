@@ -2,7 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import os
 from functools import wraps
 from tempfile import TemporaryDirectory
 
@@ -41,6 +40,7 @@ def enable_ddp_env(func):
         return ret
 
     return wrapper
+
 
 def tempdir(func):
     """ A decorator for creating a tempory directory that is cleaned up after function execution. """

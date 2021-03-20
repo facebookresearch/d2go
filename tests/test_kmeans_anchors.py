@@ -7,18 +7,20 @@ import unittest
 
 import numpy as np
 import torch
-from detectron2.data import DatasetCatalog, DatasetFromList, MapDataset
-from detectron2.engine import SimpleTrainer
 from d2go.modeling.kmeans_anchors import (
     add_kmeans_anchors_cfg,
     compute_kmeans_anchors,
     compute_kmeans_anchors_hook,
 )
 from d2go.runner import GeneralizedRCNNRunner
+from d2go.utils.testing.data_loader_helper import (
+    LocalImageGenerator,
+    register_toy_dataset,
+)
+from detectron2.data import DatasetCatalog, DatasetFromList, MapDataset
+from detectron2.engine import SimpleTrainer
 from mobile_cv.common.misc.file_utils import make_temp_directory
 from torch.utils.data.sampler import BatchSampler, Sampler
-
-from d2go.tests.data_loader_helper import LocalImageGenerator, register_toy_dataset
 
 
 class IntervalSampler(Sampler):
