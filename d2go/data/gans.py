@@ -190,3 +190,57 @@ def register_lmdb_dataset(
         "max_num": max_num,
     }
     MetadataCatalog.get(name).set(**metadata)
+
+
+def inject_gan_datasets(cfg):
+    if cfg.D2GO_DATA.DATASETS.GAN_INJECTION.ENABLE:
+        name = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.NAME
+        cfg.merge_from_list(["DATASETS.TRAIN", [name], "DATASETS.TEST", [name]])
+
+        json_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.JSON_PATH
+        assert PathManager.isfile(json_path), (
+                "{} is not valid!".format(json_path))
+
+        input_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.INPUT_SRC_DIR
+        assert PathManager.isfile(input_src_path), (
+            "{} is not valid!".format(input_src_path))
+        input_folder = "/tmp/{}/input".format(name)
+
+        gt_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.GT_SRC_DIR
+        if PathManager.isfile(gt_src_path):
+            gt_folder = "/tmp/{}/gt".format(name)
+        else:
+            gt_src_path = None
+            gt_folder=None
+
+        mask_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.MASK_SRC_DIR
+        if PathManager.isfile(mask_src_path):
+            mask_folder = "/tmp/{}/mask".format(name)
+        else:
+            mask_src_path = None
+            mask_folder=None
+
+        real_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.REAL_SRC_DIR
+        if PathManager.isfile(real_src_path):
+            real_folder = "/tmp/{}/mask".format(name)
+            real_json_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.REAL_JSON_PATH
+            assert PathManager.isfile(real_json_path), (
+                "{} is not valid!".format(real_json_path))
+        else:
+            real_src_path = None
+            real_folder=None
+            real_json_path=None
+
+        register_folder_dataset(
+            name,
+            json_path,
+            input_folder,
+            gt_folder,
+            mask_folder,
+            input_src_path,
+            gt_src_path,
+            mask_src_path,
+            real_json_path,
+            real_folder,
+            real_src_path,
+        )
