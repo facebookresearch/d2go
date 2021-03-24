@@ -228,8 +228,12 @@ class DefaultTask(pl.LightningModule):
 
         return [optim], [{"scheduler": lr_scheduler, "interval": "step"}]
 
+    @staticmethod
+    def build_detection_train_loader(cfg, *args, mapper=None, **kwargs):
+        return Detectron2GoRunner.build_detection_train_loader(cfg, *args, **kwargs)
+
     def train_dataloader(self):
-        return Detectron2GoRunner.build_detection_train_loader(self.cfg)
+        return self.build_detection_train_loader(self.cfg)
 
     def _reset_dataset_evaluators(self):
         """reset validation dataset evaluator to be run in EVAL_PERIOD steps"""
@@ -273,15 +277,17 @@ class DefaultTask(pl.LightningModule):
                 dataset_evaluators.append(evaluator)
                 # TODO: add visualization evaluator
 
+    @staticmethod
+    def build_detection_test_loader(cfg, dataset_name, mapper=None):
+        return Detectron2GoRunner.build_detection_test_loader(cfg, dataset_name, mapper)
+
     def _evaluation_dataloader(self):
         # TODO: Support subsample n images
         assert len(self.cfg.DATASETS.TEST)
 
         dataloaders = []
         for dataset_name in self.cfg.DATASETS.TEST:
-            dataloaders.append(
-                Detectron2GoRunner.build_detection_test_loader(self.cfg, dataset_name)
-            )
+            dataloaders.append(self.build_detection_test_loader(self.cfg, dataset_name))
 
         self._reset_dataset_evaluators()
         return dataloaders
