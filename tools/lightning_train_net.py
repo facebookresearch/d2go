@@ -80,6 +80,9 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
     return callbacks
 
 
+def get_accelerator(device: str) -> str:
+    return "ddp_cpu" if device.lower() == "cpu" else "ddp"
+
 
 def do_train(cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask) -> Dict[str, str]:
     """Runs the training loop with given trainer and task.
@@ -129,7 +132,6 @@ def main(
     num_machines: int = 1,
     num_gpus: int = 0,
     num_processes: int = 1,
-    accelerator: Optional[str] = "ddp",
 ) -> TrainOutput:
     """Main function for launching a training with lightning trainer
     Args:
@@ -139,8 +141,6 @@ def main(
         num_processes: Number of processes on each node.
             NOTE: Automatically set to the number of GPUs when using DDP.
             Set a value greater than 1 to mimic distributed training on CPUs.
-        accelerator: Backend for distributed training. Only DDP
-            and DPP_CPU are supported.
         eval_only: True if run evaluation only.
     """
     assert (
@@ -151,6 +151,7 @@ def main(
 
     task = task_cls.from_config(cfg, eval_only)
     tb_logger = TensorBoardLogger(save_dir=cfg.OUTPUT_DIR)
+
     trainer_params = {
         # training loop is bounded by max steps, use a large max_epochs to make
         # sure max_steps is met first
@@ -162,7 +163,7 @@ def main(
         "num_nodes": num_machines,
         "gpus": num_gpus,
         "num_processes": num_processes,
-        "accelerator": accelerator,
+        "accelerator": get_accelerator(cfg.MODEL.DEVICE),
         "callbacks": _get_trainer_callbacks(cfg),
         "logger": tb_logger,
         "num_sanity_val_steps": 0,
@@ -229,7 +230,6 @@ if __name__ == "__main__":
         num_machines=args.num_machines,
         num_gpus=args.num_gpus,
         num_processes=args.num_processes,
-        accelerator="ddp" if args.num_gpus > 0 else "ddp_cpu",
     )
     if get_rank() == 0:
         print(ret)

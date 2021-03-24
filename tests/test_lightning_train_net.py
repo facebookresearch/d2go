@@ -15,6 +15,15 @@ from d2go.utils.testing.helper import tempdir
 
 
 class TestLightningTrainNet(unittest.TestCase):
+    def setUp(self):
+        # set distributed backend to none to avoid spawning child process,
+        # which doesn't inherit the temporary dataset
+        patcher = unittest.mock.patch(
+            "d2go.tools.lightning_train_net.get_accelerator", return_value=None
+        )
+        self.addCleanup(patcher.stop)
+        patcher.start()
+
     def _get_cfg(self, tmp_dir) -> CfgNode:
         return mah.create_detection_cfg(GeneralizedRCNNTask, tmp_dir)
 
@@ -24,14 +33,14 @@ class TestLightningTrainNet(unittest.TestCase):
         cfg = self._get_cfg(root_dir)
         # set distributed backend to none to avoid spawning child process,
         # which doesn't inherit the temporary dataset
-        main(cfg, accelerator=None)
+        main(cfg)
 
     @tempdir
     def test_checkpointing(self, tmp_dir):
         """ tests saving and loading from checkpoint. """
         cfg = self._get_cfg(tmp_dir)
 
-        out = main(cfg, accelerator=None)
+        out = main(cfg)
         ckpts = [file for file in os.listdir(tmp_dir) if file.endswith(".ckpt")]
         self.assertCountEqual(
             [
@@ -48,7 +57,7 @@ class TestLightningTrainNet(unittest.TestCase):
         # load the last checkpoint from previous training
         cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
 
-        out2 = main(cfg2, accelerator=None, eval_only=True)
+        out2 = main(cfg2, eval_only=True)
         accuracy = flatten_config_dict(out.accuracy)
         accuracy2 = flatten_config_dict(out2.accuracy)
         for k in accuracy:
