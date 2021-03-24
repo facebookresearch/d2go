@@ -9,6 +9,7 @@ import unittest
 
 import d2go.runner.default_runner as default_runner
 import torch
+from d2go.runner import create_runner
 from d2go.utils.testing import helper
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 from detectron2.evaluation import COCOEvaluator, RotatedCOCOEvaluator
@@ -159,6 +160,17 @@ class TestDefaultRunner(unittest.TestCase):
 
                 ds_evaluators = runner.get_evaluator(cfg, ds_name, tmp_dir)
                 self.assertTrue(isinstance(ds_evaluators._evaluators[0], evaluator))
+
+    def test_create_runner(self):
+        runner = create_runner(
+            ".".join(
+                [
+                    default_runner.Detectron2GoRunner.__module__,
+                    default_runner.Detectron2GoRunner.__name__,
+                ]
+            )
+        )
+        self.assertTrue(isinstance(runner, default_runner.Detectron2GoRunner))
 
     @helper.enable_ddp_env
     def test_d2go_runner_ema(self):

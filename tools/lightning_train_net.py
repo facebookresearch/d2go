@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Type
 
 import pytorch_lightning as pl  # type: ignore
 from d2go.config import CfgNode, temp_defrost
-from d2go.runner import get_class
+from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.setup import basic_argument_parser
@@ -80,26 +80,6 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
     return callbacks
 
 
-def build_task(
-    cfg: CfgNode, task_cls: Type[GeneralizedRCNNTask]
-) -> GeneralizedRCNNTask:
-    """Builds instance of Lightning module based on the config and task class
-       name. To build a pre-trained model, specify the `MODEL.WEIGHTS` in the
-       config.
-
-    Args:
-        cfg: The normalized ConfigNode for this D2Go Task.
-        task_cls: Lightning module class name.
-
-    Returns:
-        A instance of the given Lightning module.
-    """
-    if cfg.MODEL.WEIGHTS:
-        # only load model weights from checkpoint
-        logger.info(f"Load model weights from checkpoint: {cfg.MODEL.WEIGHTS}.")
-        return task_cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg)
-    return task_cls(cfg)
-
 
 def do_train(cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask) -> Dict[str, str]:
     """Runs the training loop with given trainer and task.
@@ -169,7 +149,7 @@ def main(
 
     maybe_override_output_dir(cfg, output_dir)
 
-    task = build_task(cfg, task_cls)
+    task = task_cls.from_config(cfg, eval_only)
     tb_logger = TensorBoardLogger(save_dir=cfg.OUTPUT_DIR)
     trainer_params = {
         # training loop is bounded by max steps, use a large max_epochs to make
@@ -239,7 +219,7 @@ def argument_parser():
 
 if __name__ == "__main__":
     args = argument_parser().parse_args()
-    task_cls = get_class(args.runner) if args.runner else GeneralizedRCNNTask
+    task_cls = create_runner(args.runner) if args.runner else GeneralizedRCNNTask
     cfg = build_config(args.config_file, task_cls, args.opts)
     ret = main(
         cfg,

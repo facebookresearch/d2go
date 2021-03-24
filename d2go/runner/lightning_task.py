@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import logging
 import os
 from copy import deepcopy
 from enum import Enum
@@ -9,6 +10,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 from d2go.config import CfgNode
+from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
+from d2go.data.utils import (
+    update_cfg_if_using_adhoc_dataset,
+)
+from d2go.export.d2_meta_arch import patch_d2_meta_arch
+from d2go.modeling.model_freezing_utils import (
+    set_requires_grad,
+)
 from d2go.runner.default_runner import (
     Detectron2GoRunner,
     GeneralizedRCNNRunner,
@@ -24,6 +33,9 @@ from pytorch_lightning.utilities import rank_zero_info
 
 _STATE_DICT_KEY = "state_dict"
 _OLD_STATE_DICT_KEY = "model"
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def _is_lightning_checkpoint(checkpoint: Dict[str, Any]) -> bool:
@@ -73,8 +85,9 @@ class ModelTag(str, Enum):
 class DefaultTask(pl.LightningModule):
     def __init__(self, cfg: CfgNode):
         super().__init__()
+        self.register(cfg)
         self.cfg = cfg
-        self.model = build_model(cfg)
+        self.model = self._build_model()
         self.storage = None
         # evaluators for validation datasets, split by model tag(default, ema),
         # in the order of DATASETS.TEST
@@ -93,6 +106,64 @@ class DefaultTask(pl.LightningModule):
 
     def setup(self, stage: str):
         setup_after_launch(self.cfg, self.cfg.OUTPUT_DIR, runner=None)
+
+    def register(self, cfg: CfgNode):
+        inject_coco_datasets(cfg)
+        register_dynamic_datasets(cfg)
+        update_cfg_if_using_adhoc_dataset(cfg)
+        patch_d2_meta_arch()
+
+    def _build_model(self):
+        model = build_model(self.cfg)
+
+        if self.cfg.MODEL.FROZEN_LAYER_REG_EXP:
+            set_requires_grad(model, self.cfg.MODEL.FROZEN_LAYER_REG_EXP, value=False)
+
+        return model
+
+    @classmethod
+    def from_config(cls, cfg: CfgNode, eval_only=False):
+        """Builds Lightning module including model from config.
+        To load weights from a pretrained checkpoint, please specify checkpoint
+        path in `MODEL.WEIGHTS`.
+
+        Args:
+            cfg: D2go config node.
+            eval_only: True if module should be in eval mode.
+        """
+        if eval_only and not cfg.MODEL.WEIGHTS:
+            logger.warning("MODEL.WEIGHTS is missing for eval only mode.")
+
+        if cfg.MODEL.WEIGHTS:
+            # only load model weights from checkpoint
+            logger.info(f"Load model weights from checkpoint: {cfg.MODEL.WEIGHTS}.")
+            task = cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg)
+        else:
+            task = cls(cfg)
+
+        if cfg.MODEL_EMA.ENABLED and cfg.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY:
+            assert task.ema_state, "EMA state is not loaded from checkpoint."
+            task.ema_state.apply_to(task.model)
+
+        if eval_only:
+            task.eval()
+        return task
+
+    @classmethod
+    def build_model(cls, cfg: CfgNode, eval_only=False):
+        """Builds D2go model instance from config.
+        NOTE: For backward compatible with existing D2Go tools. Prefer
+        `from_config` in other use cases.
+
+        Args:
+            cfg: D2go config node.
+            eval_only: True if model should be in eval mode.
+        """
+        return cls.from_config(cfg, eval_only).model
+
+    @classmethod
+    def get_default_cfg(cls):
+        return Detectron2GoRunner.get_default_cfg()
 
     @classmethod
     def get_default_cfg(cls):
@@ -224,6 +295,13 @@ class DefaultTask(pl.LightningModule):
     def forward(self, input):
         return self.model(input)
 
+    @staticmethod
+    def _initialize(cfg: CfgNode):
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Hooks
+    # ---------------------------------------------------------------------------
     def on_pretrain_routine_end(self) -> None:
         if self.cfg.MODEL_EMA.ENABLED:
             if self.ema_state and self.ema_state.has_inited():
