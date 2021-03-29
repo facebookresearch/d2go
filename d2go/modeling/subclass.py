@@ -32,6 +32,7 @@ def add_subclass_configs(cfg):
     _C.MODEL.SUBCLASS.NUM_SUBCLASSES = 0  # must be set
     _C.MODEL.SUBCLASS.NUM_LAYERS = 1
     _C.MODEL.SUBCLASS.SUBCLASS_ID_FETCHER = "SubclassFetcher"  # ABC, must be set
+    _C.MODEL.SUBCLASS.SUBCLASS_MAPPING = [] # subclass mapping from model output to annotation
 
 
 class SubclassFetcher(ABC):
