@@ -83,7 +83,6 @@ if __name__ == '__main__':
                 'LICENSE',
             ],
             "d2go.model_zoo": get_model_zoo_configs(),
-            "d2go.tests": d2go_gather_files("tests", "tests", "**/*helper.py"),
             "d2go.tools": d2go_gather_files("tools", "tools", "**/*.py"),
         },
         entry_points={
