@@ -2,6 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import os
+import socket
+import uuid
 from functools import wraps
 from tempfile import TemporaryDirectory
 
@@ -28,12 +31,20 @@ def skip_if_no_gpu(func):
 def enable_ddp_env(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
+        def find_free_port() -> str:
+            s = socket.socket()
+            s.bind(("localhost", 0))  # Bind to a free port provided by the host.
+            return str(s.getsockname()[1])
 
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = find_free_port()
         dist.init_process_group(
             "gloo",
             rank=0,
             world_size=1,
-            init_method="file:///tmp/detectron2go_test_ddp_init",
+            init_method="file:///tmp/detectron2go_test_ddp_init_{}".format(
+                uuid.uuid4().hex
+            ),
         )
         ret = func(*args, **kwargs)
         dist.destroy_process_group()
