@@ -2,7 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import os
-import tempfile
 import unittest
 
 import numpy as np
@@ -50,10 +49,9 @@ class TestLightningTrainNet(unittest.TestCase):
             ckpts,
         )
 
-        tmp_dir2 = tempfile.TemporaryDirectory()  # noqa to avoid flaky test
         cfg2 = cfg.clone()
         cfg2.defrost()
-        cfg2.OUTPUT_DIR = tmp_dir2.name
+        cfg2.OUTPUT_DIR = os.path.join(tmp_dir, 'output')
         # load the last checkpoint from previous training
         cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
 
@@ -62,4 +60,3 @@ class TestLightningTrainNet(unittest.TestCase):
         accuracy2 = flatten_config_dict(out2.accuracy)
         for k in accuracy:
             np.testing.assert_equal(accuracy[k], accuracy2[k])
-        tmp_dir2.cleanup()

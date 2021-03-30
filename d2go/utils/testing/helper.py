@@ -2,14 +2,27 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import importlib
 import os
 import socket
 import uuid
 from functools import wraps
 from tempfile import TemporaryDirectory
+from typing import Optional
 
 import torch
 import torch.distributed as dist
+
+
+def get_resource_path(file: Optional[str] = None):
+    path_list = [
+        os.path.dirname(importlib.import_module("d2go.tests").__file__),
+        "resources",
+    ]
+    if file is not None:
+        path_list.append(file)
+
+    return os.path.join(*path_list)
 
 
 def skip_if_no_gpu(func):

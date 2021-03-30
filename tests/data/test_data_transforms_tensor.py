@@ -10,7 +10,7 @@ from d2go.data.transforms import tensor as tensor_aug
 from detectron2.data.transforms.augmentation import AugmentationList
 
 
-class TestDataTransformsTenaor(unittest.TestCase):
+class TestDataTransformsTensor(unittest.TestCase):
     def test_tensor_aug(self):
         """Data augmentation that that allows torch.Tensor as input"""
 
