@@ -164,7 +164,13 @@ class VisualizationEvaluator(DatasetEvaluator):
     _counter = 0
 
     def __init__(
-        self, cfg, tbx_writer, dataset_mapper, dataset_name, train_iter=None, tag_postfix=None
+        self,
+        cfg,
+        tbx_writer,
+        dataset_mapper,
+        dataset_name,
+        train_iter=None,
+        tag_postfix=None,
     ):
         self.tbx_writer = tbx_writer
         self.dataset_mapper = dataset_mapper
@@ -174,18 +180,26 @@ class VisualizationEvaluator(DatasetEvaluator):
         self.tag_postfix = tag_postfix or ""
 
         self.log_limit = max(cfg.TENSORBOARD.TEST_VIS_MAX_IMAGES, 0)
+        self._metadata = None
+        self._dataset_dict = None
+        self._file_name_to_dataset_dict = None
         if self.log_limit > 0:
-            self._metadata = MetadataCatalog.get(dataset_name)
-            # NOTE: Since there's no GT from test loader, we need to get GT from
-            # the dataset_dict, this assumes the test data loader uses the item from
-            # dataset_dict in the default way.
-            self._dataset_dict = DatasetCatalog.get(dataset_name)
-            self._file_name_to_dataset_dict = {
-                dic["file_name"]: dic for dic in self._dataset_dict
-            }
+            self._initialize_dataset_dict(dataset_name)
 
         VisualizationEvaluator._counter += 1
         self.reset()
+
+    def _initialize_dataset_dict(self, dataset_name: str) -> None:
+        # Enable overriding defaults in case the dataset hasn't been registered.
+
+        self._metadata = MetadataCatalog.get(dataset_name)
+        # NOTE: Since there's no GT from test loader, we need to get GT from
+        # the dataset_dict, this assumes the test data loader uses the item from
+        # dataset_dict in the default way.
+        self._dataset_dict = DatasetCatalog.get(dataset_name)
+        self._file_name_to_dataset_dict = {
+            dic["file_name"]: dic for dic in self._dataset_dict
+        }
 
     def reset(self):
         self._iter = 0
