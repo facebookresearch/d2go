@@ -10,8 +10,10 @@ from d2go.runner.callbacks.quantization import (
     PostTrainingQuantization,
     QuantizationAwareTraining,
     ModelTransform,
-    get_default_qconfig,
     get_default_qat_qconfig,
+    rgetattr,
+    rsetattr,
+    rhasattr,
 )
 from d2go.utils.misc import mode
 from d2go.utils.testing.helper import tempdir
@@ -25,6 +27,30 @@ from torch.quantization import (  # @manual; @manual
     default_dynamic_qconfig,
     get_default_qconfig,
 )
+
+
+class TestUtilities(unittest.TestCase):
+    """ Test some basic utilities we rely on. """
+
+    def test_get_set_has(self):
+        """ Trivial test for generic behavior. Only support pre-existing deeply nested values."""
+
+        class TestObject(object):
+            def __init__(self):
+                self.object = None
+                self.set_to_five = 5
+
+        obj = TestObject()
+        obj.object = TestObject()
+        obj.object.set_to_five = 10
+
+        rsetattr(obj, "object.set_to_five", 1)
+        self.assertTrue(rhasattr(obj, "object.set_to_five"))
+        self.assertEqual(1, rgetattr(obj, "object.set_to_five"))
+        self.assertEqual(5, rgetattr(obj, "set_to_five"))
+
+        with self.assertRaises(AttributeError):
+            rsetattr(obj, "object.does_not_exist.five", 5)
 
 
 class TestModelTransform(unittest.TestCase):
@@ -213,6 +239,40 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         self.assertIsNotNone(qat.quantized)
 
     @tempdir
+    def test_attribute_preservation_qat(self, root_dir):
+        """ Validates we can preserve specified properties in module. """
+        seed_everything(100)
+
+        model = TestModule()
+        model.layer._added_property = 10
+        model._not_preserved = 15
+        model._added_property = 20
+
+        num_epochs = 2
+        qat = QuantizationAwareTraining(
+            preserved_attrs=["_added_property", "layer._added_property"]
+        )
+        trainer = Trainer(
+            default_root_dir=os.path.join(root_dir, "quantized"),
+            checkpoint_callback=False,
+            callbacks=[qat],
+            max_epochs=num_epochs,
+            logger=False,
+        )
+
+        trainer.fit(model)
+
+        self.assertIsNotNone(qat.prepared)
+        self.assertIsNotNone(qat.quantized)
+
+        # Assert properties are maintained.
+        self.assertTrue(hasattr(qat.prepared, "_added_property"))
+        self.assertTrue(hasattr(qat.prepared.layer, "_added_property"))
+
+        with self.assertRaises(AttributeError):
+            qat.prepared._not_preserved
+
+    @tempdir
     def test_quantization_and_checkpointing(self, root_dir):
         """ Validate written checkpoints can be loaded back as expected. """
         seed_everything(100)
@@ -243,11 +303,11 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         class _CustomQAT(QuantizationAwareTraining):
             """ Only quantize TestModule.another_layer. """
 
-            def prepare(self, model, configs):
+            def prepare(self, model, configs, attrs):
                 model.another_layer = prepare_qat_fx(model.another_layer, configs[""])
                 return model
 
-            def convert(self, model, submodules):
+            def convert(self, model, submodules, attrs):
                 model.another_layer = convert_fx(model.another_layer)
                 return model
 
@@ -406,11 +466,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
         class _CustomStaticQuant(PostTrainingQuantization):
             """ Only quantize TestModule.another_layer. """
 
-            def prepare(self, model, configs):
+            def prepare(self, model, configs, attrs):
                 model.another_layer = prepare_fx(model.another_layer, configs[""])
                 return model
 
-            def convert(self, model, submodules):
+            def convert(self, model, submodules, attrs):
                 model.another_layer = convert_fx(model.another_layer)
                 return model
 
