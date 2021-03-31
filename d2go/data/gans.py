@@ -195,7 +195,7 @@ def register_lmdb_dataset(
 def inject_gan_datasets(cfg):
     if cfg.D2GO_DATA.DATASETS.GAN_INJECTION.ENABLE:
         name = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.NAME
-        cfg.merge_from_list(["DATASETS.TRAIN", [name], "DATASETS.TEST", [name]])
+        cfg.merge_from_list(["DATASETS.TRAIN", [name + "_train"], "DATASETS.TEST", [name + "_test"]])
 
         json_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.JSON_PATH
         assert PathManager.isfile(json_path), (
@@ -232,7 +232,7 @@ def inject_gan_datasets(cfg):
             real_json_path=None
 
         register_folder_dataset(
-            name,
+            name + "_train",
             json_path,
             input_folder,
             gt_folder,
@@ -243,4 +243,19 @@ def inject_gan_datasets(cfg):
             real_json_path,
             real_folder,
             real_src_path,
+        )
+
+        register_folder_dataset(
+            name + "_test",
+            json_path,
+            input_folder,
+            gt_folder,
+            mask_folder,
+            input_src_path,
+            gt_src_path,
+            mask_src_path,
+            real_json_path,
+            real_folder,
+            real_src_path,
+            max_num=5000,
         )
