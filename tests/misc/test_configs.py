@@ -9,7 +9,7 @@ import unittest
 
 from d2go.config import auto_scale_world_size, reroute_config_path
 from d2go.runner import GeneralizedRCNNRunner
-from d2go.tests.helper import get_resource_path
+from d2go.utils.testing.helper import get_resource_path
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
 
