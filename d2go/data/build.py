@@ -10,13 +10,21 @@ from typing import Dict
 
 import torch
 from d2go.config import CfgNode
+from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.utils import ClipLengthGroupedDataset
-from detectron2.data import build_batch_data_loader, get_detection_dataset_dicts
+from detectron2.data import (
+    build_batch_data_loader,
+    build_detection_train_loader,
+    get_detection_dataset_dicts,
+)
 from detectron2.data.build import worker_init_reset_seed
 from detectron2.data.common import MapDataset, DatasetFromList
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.data.samplers import RepeatFactorTrainingSampler
 from detectron2.utils.comm import get_world_size
+from mobile_cv.common.misc.registry import Registry
+
+logger = logging.getLogger(__name__)
 
 
 def add_weighted_training_sampler_default_configs(cfg: CfgNode):
@@ -44,7 +52,6 @@ def get_train_datasets_repeat_factors(cfg: CfgNode) -> Dict[str, float]:
     unrecognized = set(name_to_weight.keys()) - set(cfg.DATASETS.TRAIN)
     assert not unrecognized, f"unrecognized datasets: {unrecognized}"
 
-    logger = logging.getLogger(__name__)
     logger.info(f"Found repeat factors: {list(name_to_weight.items())}")
 
     # pyre-fixme[7]: Expected `Dict[str, float]` but got `DefaultDict[typing.Any, int]`.
@@ -83,7 +90,6 @@ def build_weighted_detection_train_loader(cfg: CfgNode, mapper=None):
         mapper = DatasetMapper(cfg, True)
     dataset = MapDataset(dataset, mapper)
 
-    logger = logging.getLogger(__name__)
     logger.info(
         "Using WeightedTrainingSampler with repeat_factors={}".format(
             cfg.DATASETS.TRAIN_REPEAT_FACTOR
@@ -130,3 +136,36 @@ def build_clip_grouping_data_loader(dataset, sampler, total_batch_size, num_work
         worker_init_fn=worker_init_reset_seed,
     )  # yield individual mapped dict
     return ClipLengthGroupedDataset(data_loader, batch_size)
+
+
+_MAPPED_TRAIN_LOADER_BUILDER_REGISTRY = Registry("MAPPED_TRAIN_LOADER_BUILDER")
+
+
+@_MAPPED_TRAIN_LOADER_BUILDER_REGISTRY.register("oss")
+def build_mapped_train_loader(cfg, mapper):
+    if cfg.DATALOADER.SAMPLER_TRAIN == "WeightedTrainingSampler":
+        data_loader = build_weighted_detection_train_loader(cfg, mapper=mapper)
+    else:
+        data_loader = build_detection_train_loader(cfg, mapper=mapper)
+    return data_loader
+
+
+def build_d2go_train_loader(cfg, mapper=None):
+    """
+    Build the dataloader for training in D2Go. This is the main entry and customizations
+    will be done by using Registry.
+
+    This interface is currently experimental.
+    """
+    logger.info("Building D2Go's train loader ...")
+    # TODO: disallow passing mapper and use registry for all mapper registering
+    mapper = mapper or build_dataset_mapper(cfg, is_train=True)
+    logger.info("Using dataset mapper:\n{}".format(mapper))
+
+    data_loader = (
+        _MAPPED_TRAIN_LOADER_BUILDER_REGISTRY.get("internal", is_raise=False)
+        or _MAPPED_TRAIN_LOADER_BUILDER_REGISTRY.get("oss")
+    )(cfg, mapper)
+
+    # TODO: decide if move vis_wrapper inside this interface
+    return data_loader

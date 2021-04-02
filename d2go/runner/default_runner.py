@@ -15,9 +15,7 @@ import detectron2.utils.comm as comm
 import mock
 import torch
 from d2go.config import CfgNode as CN, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost, get_cfg_diff_table
-from d2go.data.build import (
-    build_weighted_detection_train_loader,
-)
+from d2go.data.build import build_d2go_train_loader
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.transforms.build import build_transform_gen
@@ -476,17 +474,8 @@ class Detectron2GoRunner(BaseRunner):
 
     @classmethod
     def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
-        logger.info("Building detection train loader ...")
         mapper = mapper or cls.get_mapper(cfg, is_train=True)
-        logger.info("Using dataset mapper:\n{}".format(mapper))
-
-        sampler_name = cfg.DATALOADER.SAMPLER_TRAIN
-        if sampler_name == "WeightedTrainingSampler":
-            data_loader = build_weighted_detection_train_loader(cfg, mapper=mapper)
-        else:
-            data_loader = d2_build_detection_train_loader(
-                cfg, *args, mapper=mapper, **kwargs
-            )
+        data_loader = build_d2go_train_loader(cfg, mapper)
 
         if comm.is_main_process():
             tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
