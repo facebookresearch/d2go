@@ -14,7 +14,12 @@ import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
 import mock
 import torch
-from d2go.config import CfgNode as CN, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost, get_cfg_diff_table
+from d2go.config import (
+    CfgNode as CN,
+    CONFIG_SCALING_METHOD_REGISTRY,
+    temp_defrost,
+    get_cfg_diff_table,
+)
 from d2go.data.build import build_d2go_train_loader
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
@@ -34,11 +39,12 @@ from d2go.modeling.quantization import (
     setup_qat_model,
     silicon_qat_build_model_context,
 )
+from d2go.optimizer import build_optimizer_mapper
 from d2go.utils.flop_calculator import add_print_flops_callback
+from d2go.utils.get_default_cfg import get_default_cfg
+from d2go.utils.helper import TensorboardXWriter, D2Trainer
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
-from d2go.utils.get_default_cfg import get_default_cfg
-from d2go.optimizer import build_optimizer_mapper
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
 from detectron2.data import (
     build_detection_test_loader as d2_build_detection_test_loader,
@@ -56,7 +62,6 @@ from detectron2.evaluation import (
 )
 from detectron2.export.caffe2_inference import ProtobufDetectionModel
 from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
-from d2go.utils.helper import TensorboardXWriter, D2Trainer
 from detectron2.modeling import GeneralizedRCNNWithTTA, build_model
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
@@ -453,9 +458,11 @@ class Detectron2GoRunner(BaseRunner):
         trainer.register_hooks(trainer_hooks)
         trainer.train(start_iter, max_iter)
 
-        if hasattr(self, 'original_cfg'):
+        if hasattr(self, "original_cfg"):
             table = get_cfg_diff_table(cfg, self.original_cfg)
-            logger.info("GeneralizeRCNN Runner ignoring training config change: \n" + table)
+            logger.info(
+                "GeneralizeRCNN Runner ignoring training config change: \n" + table
+            )
             trained_cfg = self.original_cfg.clone()
         else:
             trained_cfg = cfg.clone()
