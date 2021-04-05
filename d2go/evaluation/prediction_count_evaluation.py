@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-
+import itertools
 import logging
 from collections import OrderedDict
 
 import numpy as np
+import detectron2.utils.comm as comm
 from detectron2.evaluation import DatasetEvaluator
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,11 @@ class PredictionCountEvaluator(DatasetEvaluator):
     See class pattern from detectron2.evaluation.evaluator.py, especially
     :func:`inference_on_dataset` to see how this class will be called.
     """
+
+    def __init__(self, distributed: bool = True):
+        self._distributed = distributed
+        self.prediction_counts = []
+        self.confidence_scores = []
 
     def reset(self):
         self.prediction_counts = []
@@ -54,8 +59,21 @@ class PredictionCountEvaluator(DatasetEvaluator):
                 * key: the name of the task (e.g., bbox)
                 * value: a dict of {metric name: score}, e.g.: {"AP50": 80}
         """
-        mpi = np.mean(self.prediction_counts)
-        mcp = np.mean(self.confidence_scores)
+        if self._distributed:
+            comm.synchronize()
+            prediction_counts = comm.gather(self.prediction_counts, dst=0)
+            prediction_counts = list(itertools.chain(*prediction_counts))
+            confidence_scores = comm.gather(self.confidence_scores, dst=0)
+            confidence_scores = list(itertools.chain(*confidence_scores))
+
+            if not comm.is_main_process():
+                return {}
+        else:
+            prediction_counts = self.prediction_counts
+            confidence_scores = self.confidence_scores
+
+        mpi = np.mean(prediction_counts)
+        mcp = np.mean(confidence_scores)
         output_metrics = OrderedDict(
             {
                 "false_positives": {
