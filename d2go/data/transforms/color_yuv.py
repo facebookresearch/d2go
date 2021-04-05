@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from typing import List
+from typing import List, Callable, Union
 
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
@@ -22,7 +22,7 @@ class InvertibleColorTransform(Transform):
         coordinates such as bounding boxes should not be changed)
     """
 
-    def __init__(self, op, inverse_op):
+    def __init__(self, op: Callable, inverse_op: Callable):
         """
         Args:
             op (Callable): operation to be applied to the image,
@@ -35,16 +35,16 @@ class InvertibleColorTransform(Transform):
         super().__init__()
         self._set_attributes(locals())
 
-    def apply_image(self, img):
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
         return self.op(img)
 
-    def apply_coords(self, coords):
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         return coords
 
-    def inverse(self):
+    def inverse(self) -> Transform:
         return InvertibleColorTransform(self.inverse_op, self.op)
 
-    def apply_segmentation(self, segmentation):
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         return segmentation
 
 
@@ -60,7 +60,7 @@ class RandomContrastYUV(aug.Augmentation):
         super().__init__()
         self._init(locals())
 
-    def get_transform(self, img):
+    def get_transform(self, img: np.ndarray) -> Transform:
         w = np.random.uniform(self.intensity_min, self.intensity_max)
         pure_gray = np.zeros_like(img)
         pure_gray[:, :, 0] = 0.5
@@ -77,7 +77,7 @@ class RandomSaturationYUV(aug.Augmentation):
         super().__init__()
         self._init(locals())
 
-    def get_transform(self, img):
+    def get_transform(self, img: np.ndarray) -> Transform:
         assert (
             len(img.shape) == 3 and img.shape[-1] == 3
         ), f"Expected (H, W, 3), image shape {img.shape}"
@@ -87,7 +87,7 @@ class RandomSaturationYUV(aug.Augmentation):
         return BlendTransform(src_image=grayscale, src_weight=1 - w, dst_weight=w)
 
 
-def convert_rgb_to_yuv_bt601(image):
+def convert_rgb_to_yuv_bt601(image: np.ndarray) -> np.ndarray:
     """Convert RGB image in (H, W, C) to YUV format
     image: range 0 ~ 255
     """
@@ -96,7 +96,7 @@ def convert_rgb_to_yuv_bt601(image):
     return image
 
 
-def convery_yuv_bt601_to_rgb(image):
+def convery_yuv_bt601_to_rgb(image: np.ndarray) -> np.ndarray:
     return du.convert_image_to_rgb(image, "YUV-BT.601")
 
 
@@ -107,7 +107,7 @@ class RGB2YUVBT601(aug.Augmentation):
             convert_rgb_to_yuv_bt601, convery_yuv_bt601_to_rgb
         )
 
-    def get_transform(self, image):
+    def get_transform(self, image) -> Transform:
         return self.trans
 
 
@@ -118,11 +118,13 @@ class YUVBT6012RGB(aug.Augmentation):
             convery_yuv_bt601_to_rgb, convert_rgb_to_yuv_bt601
         )
 
-    def get_transform(self, image):
+    def get_transform(self, image) -> Transform:
         return self.trans
 
 
-def build_func(cfg: CfgNode, arg_str: str, is_train: bool, obj) -> List[aug.Augmentation]:
+def build_func(
+    cfg: CfgNode, arg_str: str, is_train: bool, obj
+) -> List[Union[aug.Augmentation, Transform]]:
     assert is_train
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
@@ -130,20 +132,28 @@ def build_func(cfg: CfgNode, arg_str: str, is_train: bool, obj) -> List[aug.Augm
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomContrastYUVOp(cfg, arg_str, is_train):
+def RandomContrastYUVOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
     return build_func(cfg, arg_str, is_train, obj=RandomContrastYUV)
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomSaturationYUVOp(cfg, arg_str, is_train):
+def RandomSaturationYUVOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
     return build_func(cfg, arg_str, is_train, obj=RandomSaturationYUV)
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RGB2YUVBT601Op(cfg, arg_str, is_train):
+def RGB2YUVBT601Op(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
     return build_func(cfg, arg_str, is_train, obj=RGB2YUVBT601)
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def YUVBT6012RGBOp(cfg, arg_str, is_train):
+def YUVBT6012RGBOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
     return build_func(cfg, arg_str, is_train, obj=YUVBT6012RGB)

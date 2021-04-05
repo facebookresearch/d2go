@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from typing import Tuple, List
 
 import numpy as np
 import torch
@@ -18,7 +19,7 @@ def get_box_union(boxes: Boxes):
     return Boxes(union_bt)
 
 
-def get_box_from_mask(mask: np.ndarray):
+def get_box_from_mask(mask: torch.Tensor) -> Tuple[int, int, int, int]:
     """Find if there are non-zero elements per row/column first and then find
     min/max position of those elements.
     Only support 2d image (h x w)
@@ -39,7 +40,9 @@ def get_box_from_mask(mask: np.ndarray):
     return cmin, rmin, cmax - cmin + 1, rmax - rmin + 1
 
 
-def get_min_box_aspect_ratio(bbox_xywh, target_aspect_ratio):
+def get_min_box_aspect_ratio(
+    bbox_xywh: torch.Tensor, target_aspect_ratio: float
+) -> torch.Tensor:
     """Get a minimal bbox that matches the target_aspect_ratio
     target_aspect_ratio is representation by w/h
     bbox are represented by pixel coordinates"""
@@ -58,19 +61,21 @@ def get_min_box_aspect_ratio(bbox_xywh, target_aspect_ratio):
     return torch.cat([new_xy, new_wh])
 
 
-def get_box_center(bbox_xywh):
+def get_box_center(bbox_xywh: torch.Tensor) -> torch.Tensor:
     """Get the center of the bbox"""
     return torch.Tensor(bbox_xywh[:2]) + torch.Tensor(bbox_xywh[2:]) / 2.0
 
 
-def get_bbox_xywh_from_center_wh(bbox_center, bbox_wh):
+def get_bbox_xywh_from_center_wh(
+    bbox_center: torch.Tensor, bbox_wh: torch.Tensor
+) -> torch.Tensor:
     """Get a bbox from bbox center and the width and height"""
     bbox_wh = torch.Tensor(bbox_wh)
     bbox_xy = torch.Tensor(bbox_center) - bbox_wh / 2.0
     return torch.cat([bbox_xy, bbox_wh])
 
 
-def get_bbox_xyxy_from_xywh(bbox_xywh):
+def get_bbox_xyxy_from_xywh(bbox_xywh: torch.Tensor) -> torch.Tensor:
     """Convert the bbox from xywh format to xyxy format
     bbox are represented by pixel coordinates,
     the center of pixels are (x + 0.5, y + 0.5)
@@ -85,7 +90,7 @@ def get_bbox_xyxy_from_xywh(bbox_xywh):
     )
 
 
-def get_bbox_xywh_from_xyxy(bbox_xyxy):
+def get_bbox_xywh_from_xyxy(bbox_xyxy: torch.Tensor) -> torch.Tensor:
     """Convert the bbox from xyxy format to xywh format"""
     return torch.Tensor(
         [
@@ -97,25 +102,25 @@ def get_bbox_xywh_from_xyxy(bbox_xyxy):
     )
 
 
-def to_boxes_from_xywh(bbox_xywh):
+def to_boxes_from_xywh(bbox_xywh: torch.Tensor) -> torch.Tensor:
     return Boxes(get_bbox_xyxy_from_xywh(bbox_xywh).unsqueeze(0))
 
 
-def scale_bbox_center(bbox_xywh, target_scale):
+def scale_bbox_center(bbox_xywh: torch.Tensor, target_scale: float) -> torch.Tensor:
     """Scale the bbox around the center of the bbox"""
     box_center = get_box_center(bbox_xywh)
     box_wh = torch.Tensor(bbox_xywh[2:]) * target_scale
     return get_bbox_xywh_from_center_wh(box_center, box_wh)
 
 
-def offset_bbox(bbox_xywh, target_offset):
+def offset_bbox(bbox_xywh: torch.Tensor, target_offset: float) -> torch.Tensor:
     """Offset the bbox based on target_offset"""
     box_center = get_box_center(bbox_xywh)
     new_center = box_center + torch.Tensor(target_offset)
     return get_bbox_xywh_from_center_wh(new_center, bbox_xywh[2:])
 
 
-def clip_box_xywh(bbox_xywh, image_size_hw):
+def clip_box_xywh(bbox_xywh: torch.Tensor, image_size_hw: List[int]):
     """Clip the bbox based on image_size_hw"""
     h, w = image_size_hw
     bbox_xyxy = get_bbox_xyxy_from_xywh(bbox_xywh)

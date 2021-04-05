@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Any
 
 import numpy as np
 import torch
@@ -51,7 +51,7 @@ class AugInput:
 
     def apply_augmentations(
         self, augmentations: List[Union[Augmentation, Transform]]
-    ) -> TransformList:
+    ) -> AugmentationList:
         """
         Equivalent of ``AugmentationList(augmentations)(self)``
         """
@@ -70,14 +70,14 @@ class Tensor2Array(Transform):
         assert len(img.shape) == 3, img.shape
         return img.cpu().numpy().transpose(1, 2, 0)
 
-    def apply_coords(self, coords):
+    def apply_coords(self, coords: Any) -> Any:
         return coords
 
     def apply_segmentation(self, segmentation: torch.Tensor) -> np.ndarray:
         assert len(segmentation.shape) == 2, segmentation.shape
         return segmentation.cpu().numpy()
 
-    def inverse(self):
+    def inverse(self) -> Transform:
         return Array2Tensor()
 
 
@@ -93,12 +93,12 @@ class Array2Tensor(Transform):
         assert len(img.shape) == 3, img.shape
         return torch.from_numpy(img.transpose(2, 0, 1).astype("float32"))
 
-    def apply_coords(self, coords):
+    def apply_coords(self, coords: Any) -> Any:
         return coords
 
     def apply_segmentation(self, segmentation: np.ndarray) -> torch.Tensor:
         assert len(segmentation.shape) == 2, segmentation.shape
         return torch.from_numpy(segmentation.astype("long"))
 
-    def inverse(self):
+    def inverse(self) -> Transform:
         return Tensor2Array()

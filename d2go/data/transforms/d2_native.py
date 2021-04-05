@@ -3,10 +3,14 @@
 
 
 import logging
+from typing import List, Union
 
-from .build import TRANSFORM_OP_REGISTRY, _json_load
+import detectron2.data.transforms.augmentation as aug
+from detectron2.config import CfgNode
 from detectron2.data import transforms as d2T
 from detectron2.projects.point_rend import ColorAugSSDTransform
+
+from .build import TRANSFORM_OP_REGISTRY, _json_load
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +27,10 @@ D2_RANDOM_TRANSFORMS = {
 }
 
 
-def build_func(cfg, arg_str, is_train, name):
-    assert is_train
+def build_func(
+    cfg: CfgNode, arg_str: str, is_train: bool, name: str
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
+    assert is_train, "Random augmentation is for training only"
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [D2_RANDOM_TRANSFORMS[name](**kwargs)]
@@ -35,47 +41,65 @@ def build_func(cfg, arg_str, is_train, name):
 # example 3: RandomFlipOp::{"prob":0.5}
 # example 4: RandomBrightnessOp::{"intensity_min":1.0, "intensity_max":2.0}
 @TRANSFORM_OP_REGISTRY.register()
-def RandomBrightnessOp(cfg, arg_str, is_train):
+def RandomBrightnessOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomBrightness")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomContrastOp(cfg, arg_str, is_train):
+def RandomContrastOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomContrast")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomCropOp(cfg, arg_str, is_train):
+def RandomCropOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomCrop")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomRotation(cfg, arg_str, is_train):
+def RandomRotation(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomRotation")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomExtentOp(cfg, arg_str, is_train):
+def RandomExtentOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomExtent")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomFlipOp(cfg, arg_str, is_train):
+def RandomFlipOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomFlip")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomSaturationOp(cfg, arg_str, is_train):
+def RandomSaturationOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomSaturation")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomLightingOp(cfg, arg_str, is_train):
+def RandomLightingOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     return build_func(cfg, arg_str, is_train, name="RandomLighting")
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomSSDColorAugOp(cfg, arg_str, is_train):
+def RandomSSDColorAugOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, d2T.Transform]]:
     assert is_train
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)

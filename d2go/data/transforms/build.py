@@ -4,7 +4,9 @@
 
 import json
 import logging
+from typing import List, Dict, Optional, Tuple
 
+from detectron2.config import CfgNode
 from detectron2.data import transforms as d2T
 from detectron2.utils.registry import Registry
 
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 TRANSFORM_OP_REGISTRY = Registry("D2GO_TRANSFORM_REGISTRY")
 
 
-def _json_load(arg_str):
+def _json_load(arg_str: str) -> Dict:
     try:
         return json.loads(arg_str)
     except json.decoder.JSONDecodeError as e:
@@ -25,7 +27,9 @@ def _json_load(arg_str):
 
 # example repr: "ResizeShortestEdgeOp"
 @TRANSFORM_OP_REGISTRY.register()
-def ResizeShortestEdgeOp(cfg, arg_str, is_train):
+def ResizeShortestEdgeOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[d2T.Transform]:
     if is_train:
         min_size = cfg.INPUT.MIN_SIZE_TRAIN
         max_size = cfg.INPUT.MAX_SIZE_TRAIN
@@ -47,9 +51,11 @@ def ResizeShortestEdgeOp(cfg, arg_str, is_train):
 
 # example repr: "ResizeShortestEdgeSquareOp"
 @TRANSFORM_OP_REGISTRY.register()
-def ResizeShortestEdgeSquareOp(cfg, arg_str, is_train):
-    """ Resize the input to square using INPUT.MIN_SIZE_TRAIN or INPUT.MIN_SIZE_TEST
-        without keeping aspect ratio
+def ResizeShortestEdgeSquareOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[d2T.Transform]:
+    """Resize the input to square using INPUT.MIN_SIZE_TRAIN or INPUT.MIN_SIZE_TEST
+    without keeping aspect ratio
     """
     if is_train:
         min_size = cfg.INPUT.MIN_SIZE_TRAIN
@@ -67,7 +73,7 @@ def ResizeShortestEdgeSquareOp(cfg, arg_str, is_train):
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def ResizeOp(cfg, arg_str, is_train):
+def ResizeOp(cfg: CfgNode, arg_str: str, is_train: bool) -> List[d2T.Transform]:
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [d2T.Resize(**kwargs)]
@@ -76,7 +82,7 @@ def ResizeOp(cfg, arg_str, is_train):
 _TRANSFORM_REPR_SEPARATOR = "::"
 
 
-def parse_tfm_gen_repr(tfm_gen_repr):
+def parse_tfm_gen_repr(tfm_gen_repr: str) -> Tuple[str, Optional[str]]:
     if tfm_gen_repr.count(_TRANSFORM_REPR_SEPARATOR) == 0:
         return tfm_gen_repr, None
     elif tfm_gen_repr.count(_TRANSFORM_REPR_SEPARATOR) == 1:
@@ -88,7 +94,7 @@ def parse_tfm_gen_repr(tfm_gen_repr):
         )
 
 
-def build_transform_gen(cfg, is_train):
+def build_transform_gen(cfg: CfgNode, is_train: bool) -> List[d2T.Transform]:
     """
     This function builds a list of TransformGen or Transform objects using the a list of
     strings from cfg.D2GO_DATA.AUG_OPS.TRAIN/TEST. Each string (aka. `tfm_gen_repr`)

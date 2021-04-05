@@ -2,18 +2,29 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import random
-import cv2
 import json
+import random
+from typing import List, Optional, Tuple
+
+import cv2
 import numpy as np
+import torchvision.transforms as T
+from detectron2.config import CfgNode
+from detectron2.data.transforms import Transform, TransformGen, NoOpTransform
 
 from .build import TRANSFORM_OP_REGISTRY
-from detectron2.data.transforms import Transform, TransformGen, NoOpTransform
-import torchvision.transforms as T
 
 
 class AffineTransform(Transform):
-    def __init__(self, M, img_w, img_h, flags=None, border_mode=None, is_inversed_M=False):
+    def __init__(
+        self,
+        M: np.ndarray,
+        img_w: int,
+        img_h: int,
+        flags: Optional[int] = None,
+        border_mode: Optional[int] = None,
+        is_inversed_M: bool = False,
+    ):
         """
         Args:
            will transform img according to affine transform M
@@ -26,7 +37,7 @@ class AffineTransform(Transform):
         if border_mode is not None:
             self.warp_kwargs["borderMode"] = border_mode
 
-    def apply_image(self, img):
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
         M = self.M
         if self.is_inversed_M:
             M = M[:2]
@@ -38,7 +49,7 @@ class AffineTransform(Transform):
         )
         return img
 
-    def apply_coords(self, coords):
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         # Add row of ones to enable matrix multiplication
         coords = coords.T
         ones = np.ones((1, coords.shape[1]))
@@ -52,21 +63,22 @@ class AffineTransform(Transform):
 
 class RandomPivotScaling(TransformGen):
     """
-        Uniformly pick a random pivot point inside image frame, scaling the image
-        around the pivot point using the scale factor sampled from a list of
-        given scales. The pivot point's location is unchanged after the transform.
+    Uniformly pick a random pivot point inside image frame, scaling the image
+    around the pivot point using the scale factor sampled from a list of
+    given scales. The pivot point's location is unchanged after the transform.
 
-        Arguments:
-            scales: List[float]: each element can be any positive float number,
-                when larger than 1.0 objects become larger after transform
-                and vice versa.
+    Arguments:
+        scales: List[float]: each element can be any positive float number,
+            when larger than 1.0 objects become larger after transform
+            and vice versa.
     """
-    def __init__(self, scales):
+
+    def __init__(self, scales: List[int]):
         super().__init__()
         self._init(locals())
         self.scales = scales
 
-    def get_transform(self, img):
+    def get_transform(self, img: np.ndarray) -> Transform:
         img_h, img_w, _ = img.shape
         img_h = float(img_h)
         img_w = float(img_w)
@@ -85,10 +97,8 @@ class RandomPivotScaling(TransformGen):
         rb = (img_w, img_h)
         pivot = (pivot_x, pivot_y)
         pts1 = np.float32([lt, pivot, rb])
-        pts2 = np.float32([
-            _interp(pivot, lt, scale),
-            pivot,
-            _interp(pivot, rb, scale)],
+        pts2 = np.float32(
+            [_interp(pivot, lt, scale), pivot, _interp(pivot, rb, scale)],
         )
 
         M = cv2.getAffineTransform(pts1, pts2)
@@ -97,16 +107,17 @@ class RandomPivotScaling(TransformGen):
 
 class RandomAffine(TransformGen):
     """
-        Apply random affine trasform to the image given
-        probabilities and ranges in each dimension.
+    Apply random affine trasform to the image given
+    probabilities and ranges in each dimension.
     """
+
     def __init__(
         self,
-        prob=0.5,
-        angle_range=(-90, 90),
-        translation_range=(0, 0),
-        scale_range=(1.0, 1.0),
-        shear_range=(0, 0),
+        prob: float = 0.5,
+        angle_range: Tuple[float, float] = (-90, 90),
+        translation_range: Tuple[float, float] = (0, 0),
+        scale_range: Tuple[float, float] = (1.0, 1.0),
+        shear_range: Tuple[float, float] = (0, 0),
     ):
         """
         Args:
@@ -123,7 +134,7 @@ class RandomAffine(TransformGen):
         # Turn all locals into member variables.
         self._init(locals())
 
-    def get_transform(self, img):
+    def get_transform(self, img: np.ndarray) -> Transform:
         im_h, im_w = img.shape[:2]
         max_size = max(im_w, im_h)
         center = [im_w / 2, im_h / 2]
@@ -148,11 +159,13 @@ class RandomAffine(TransformGen):
         M = np.linalg.inv(M_inv)
 
         # Center in output patch
-        img_corners = np.array([
-            [0, 0, im_w, im_w],
-            [0, im_h, 0, im_h],
-            [1, 1, 1, 1],
-        ])
+        img_corners = np.array(
+            [
+                [0, 0, im_w, im_w],
+                [0, im_h, 0, im_h],
+                [1, 1, 1, 1],
+            ]
+        )
         transformed_corners = M @ img_corners
         x_min = np.amin(transformed_corners[0])
         x_max = np.amax(transformed_corners[0])
@@ -184,14 +197,15 @@ class RandomAffine(TransformGen):
                 max_size,
                 flags=cv2.WARP_INVERSE_MAP + cv2.INTER_LINEAR,
                 border_mode=cv2.BORDER_REPLICATE,
-                is_inversed_M=True
+                is_inversed_M=True,
             )
         else:
             return NoOpTransform()
 
+
 # example repr: "RandomPivotScalingOp::[1.0, 0.75, 0.5]"
 @TRANSFORM_OP_REGISTRY.register()
-def RandomPivotScalingOp(cfg, arg_str, is_train):
+def RandomPivotScalingOp(cfg: CfgNode, arg_str: str, is_train: bool) -> List[Transform]:
     assert is_train
     scales = json.loads(arg_str)
     assert isinstance(scales, list)
@@ -200,7 +214,7 @@ def RandomPivotScalingOp(cfg, arg_str, is_train):
 
 
 @TRANSFORM_OP_REGISTRY.register()
-def RandomAffineOp(cfg, arg_str, is_train):
+def RandomAffineOp(cfg: CfgNode, arg_str: str, is_train: bool) -> List[Transform]:
     assert is_train
     kwargs = json.loads(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
