@@ -79,11 +79,12 @@ if __name__ == '__main__':
         license='Apache-2.0',
         install_requires=requirements,
         packages=find_packages(exclude=["tools", "tests"]),
-        package_data={'resnest': [
+        package_data={'d2go': [
                 'LICENSE',
             ],
             "d2go.model_zoo": get_model_zoo_configs(),
             "d2go.tools": d2go_gather_files("tools", "tools", "**/*.py"),
+            "d2go.tests": d2go_gather_files("tests", "tests", "**/*helper.py"),
         },
         entry_points={
             'console_scripts': [
