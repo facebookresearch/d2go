@@ -284,8 +284,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         checkpoint = ModelCheckpoint(dirpath=checkpoint_dir, save_last=True)
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=checkpoint,
-            callbacks=[qat],
+            callbacks=[qat, checkpoint],
             max_epochs=num_epochs,
             logger=False,
         )
