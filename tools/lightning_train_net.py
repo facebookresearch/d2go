@@ -54,7 +54,7 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
         cfg: The normalized ConfigNode for this D2Go Task.
 
     Returns:
-        A list of configured Callbacks to be used by the Lightning Traininer.
+        A list of configured Callbacks to be used by the Lightning Trainer.
     """
     callbacks: List[Callback] = [
         LearningRateMonitor(logging_interval="step"),
@@ -84,7 +84,9 @@ def get_accelerator(device: str) -> str:
     return "ddp_cpu" if device.lower() == "cpu" else "ddp"
 
 
-def do_train(cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask) -> Dict[str, str]:
+def do_train(
+    cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask
+) -> Dict[str, str]:
     """Runs the training loop with given trainer and task.
 
     Args:

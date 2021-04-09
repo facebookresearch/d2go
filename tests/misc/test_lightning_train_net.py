@@ -40,18 +40,14 @@ class TestLightningTrainNet(unittest.TestCase):
         cfg = self._get_cfg(tmp_dir)
 
         out = main(cfg)
-        ckpts = [file for file in os.listdir(tmp_dir) if file.endswith(".ckpt")]
-        self.assertCountEqual(
-            [
-                "last.ckpt",
-                FINAL_MODEL_CKPT,
-            ],
-            ckpts,
-        )
+        ckpts = [f for f in os.listdir(tmp_dir) if f.endswith(".ckpt")]
+        expected_ckpts = ("last.ckpt", FINAL_MODEL_CKPT)
+        for ckpt in expected_ckpts:
+            self.assertIn(ckpt, ckpts)
 
         cfg2 = cfg.clone()
         cfg2.defrost()
-        cfg2.OUTPUT_DIR = os.path.join(tmp_dir, 'output')
+        cfg2.OUTPUT_DIR = os.path.join(tmp_dir, "output")
         # load the last checkpoint from previous training
         cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
 
