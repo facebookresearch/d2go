@@ -2,14 +2,22 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import copy
+import unittest
 from typing import Optional
 
 import d2go.data.transforms.box_utils as bu
 import torch
+from d2go.export.api import convert_and_export_predictor
+from d2go.runner import GeneralizedRCNNRunner
+from d2go.utils.testing.data_loader_helper import create_fake_detection_data_loader
 from detectron2.structures import (
     Boxes,
     Instances,
 )
+from detectron2.utils.testing import assert_instances_allclose
+from mobile_cv.common.misc.file_utils import make_temp_directory
+from mobile_cv.predictor.api import create_predictor
 
 
 def _get_image_with_box(image_size, boxes: Optional[Boxes] = None):
@@ -169,3 +177,94 @@ class MockRCNNInference(object):
             results = [{"instances": r} for r in results]
 
         return results
+
+
+def _validate_outputs(inputs, outputs):
+    assert len(inputs) == len(outputs)
+    # TODO: figure out how to validate outputs
+
+
+def get_quick_test_config_opts():
+    epsilon = 1e-4
+    return [
+        str(x)
+        for x in [
+            "MODEL.RPN.POST_NMS_TOPK_TEST",
+            1,
+            "TEST.DETECTIONS_PER_IMAGE",
+            1,
+            "MODEL.PROPOSAL_GENERATOR.MIN_SIZE",
+            0,
+            "MODEL.RPN.NMS_THRESH",
+            1.0 + epsilon,
+            "MODEL.ROI_HEADS.NMS_THRESH_TEST",
+            1.0 + epsilon,
+            "MODEL.ROI_HEADS.SCORE_THRESH_TEST",
+            0.0 - epsilon,
+        ]
+        + [
+            "MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION",
+            1,
+            "MODEL.ROI_MASK_HEAD.POOLER_RESOLUTION",
+            1,
+            "MODEL.ROI_KEYPOINT_HEAD.POOLER_RESOLUTION",
+            1,
+        ]
+    ]
+
+
+class RCNNBaseTestCases:
+    class TemplateTestCase(unittest.TestCase):  # TODO: maybe subclass from TestMetaArch
+        def setup_custom_test(self):
+            raise NotImplementedError()
+
+        def setUp(self):
+            runner = GeneralizedRCNNRunner()
+            self.cfg = runner.get_default_cfg()
+            self.is_mcs = False
+            self.setup_custom_test()
+
+            # NOTE: change some config to make the model run fast
+            self.cfg.merge_from_list(get_quick_test_config_opts())
+
+            self.cfg.merge_from_list(["MODEL.DEVICE", "cpu"])
+            self.test_model = runner.build_model(self.cfg, eval_only=True)
+
+        def _test_export(self, predictor_type, compare_match=True):
+            size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
+            h, w = size_divisibility, size_divisibility * 2
+            with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
+                inputs = next(iter(data_loader))
+
+                with make_temp_directory(
+                    "test_export_{}".format(predictor_type)
+                ) as tmp_dir:
+                    # TODO: the export may change model it self, need to fix this
+                    model_to_export = copy.deepcopy(self.test_model)
+                    predictor_path = convert_and_export_predictor(
+                        self.cfg, model_to_export, predictor_type, tmp_dir, data_loader
+                    )
+
+                    predictor = create_predictor(predictor_path)
+                    predicotr_outputs = predictor(inputs)
+                    _validate_outputs(inputs, predicotr_outputs)
+
+                    if compare_match:
+                        with torch.no_grad():
+                            pytorch_outputs = self.test_model(inputs)
+
+                        assert_instances_allclose(
+                            predicotr_outputs[0]["instances"],
+                            pytorch_outputs[0]["instances"],
+                        )
+
+        def _test_inference(self):
+            size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
+            h, w = size_divisibility, size_divisibility * 2
+
+            with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
+                inputs = next(iter(data_loader))
+
+            with torch.no_grad():
+                outputs = self.test_model(inputs)
+            _validate_outputs(inputs, outputs)

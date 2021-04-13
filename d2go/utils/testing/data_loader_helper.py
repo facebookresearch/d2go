@@ -167,6 +167,7 @@ class LocalImageGenerator:
         image = Image.new("RGB", (self._width, self._height))
         image.save(os.path.join(self._image_dir, self.get_image_dict(i)["file_name"]))
 
+
 @contextlib.contextmanager
 def create_fake_detection_data_loader(height, width, is_train):
     with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
@@ -174,6 +175,12 @@ def create_fake_detection_data_loader(height, width, is_train):
         cfg = runner.get_default_cfg()
         cfg.DATASETS.TRAIN = ["default_dataset_train"]
         cfg.DATASETS.TEST = ["default_dataset_test"]
+        min_size = min(width, height)
+        max_size = max(width, height)
+        cfg.INPUT.MIN_SIZE_TRAIN = (min_size,)
+        cfg.INPUT.MAX_SIZE_TRAIN = max_size
+        cfg.INPUT.MIN_SIZE_TEST = min_size
+        cfg.INPUT.MAX_SIZE_TEST = max_size
 
         with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
             image_dir = os.path.join(dataset_dir, "images")
