@@ -79,7 +79,7 @@ def convert_coco_text_to_coco_detection_json(
     For COCOText see: https://vision.cornell.edu/se3/coco-text-2/
     For COCODetection see: http://cocodataset.org/#overview
     """
-    with open(source_json) as f:
+    with open(source_json, "r") as f:
         coco_text_json = json.load(f)
 
     coco_text_json["annotations"] = list(coco_text_json["anns"].values())
@@ -115,7 +115,8 @@ def convert_coco_text_to_coco_detection_json(
         for x in coco_text_json["images"]:
             x["id"] = image_id_remap[x["id"]]
         for x in coco_text_json["annotations"]:
-            x["image_id"] = image_id_remap[x["image_id"]]
+            if x["image_id"] in image_id_remap:
+                x["image_id"] = image_id_remap[x["image_id"]]
 
     os.makedirs(os.path.dirname(target_json), exist_ok=True)
     with open(target_json, "w") as f:
