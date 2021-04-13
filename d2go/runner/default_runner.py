@@ -438,6 +438,7 @@ class Detectron2GoRunner(BaseRunner):
         trainer_hooks = [
             hooks.IterationTimer(),
             model_ema.EMAHook(cfg, model) if cfg.MODEL_EMA.ENABLED else None,
+            self._create_data_loader_hook(cfg),
             self._create_after_step_hook(
                 cfg, model, optimizer, scheduler, periodic_checkpointer
             ),
@@ -552,6 +553,12 @@ class Detectron2GoRunner(BaseRunner):
                 periodic_checkpointer.step(trainer.iter)
 
         return hooks.CallbackHook(after_step=after_step_callback)
+
+    def _create_data_loader_hook(self, cfg):
+        """
+        Create a hook for manipulating data loader
+        """
+        return None
 
     def _create_qat_hook(self, cfg):
         """
