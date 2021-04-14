@@ -66,7 +66,7 @@ class D2Caffe2MetaArchPostprocessFunc(object):
         encoded_info = fake_predict_net.SerializeToString().decode("ascii")
 
         # HACK: Caffe2MetaArch's post processing requires the blob name of model output,
-        # this information is missed for torchscript. There'no easy way to know this
+        # this information is missed for torchscript. There's no easy way to know this
         # unless using NamedTuple for tracing.
         external_input = ["data", "im_info"]
         if cfg.MODEL.META_ARCHITECTURE == "GeneralizedRCNN":
@@ -98,7 +98,6 @@ def dataclass_object_dump(ob):
     ref = f"{datacls.__module__}.{datacls.__qualname__}"
     fields = (f.name for f in dataclasses.fields(ob))
     return {**{f: getattr(ob, f) for f in fields}, "__dataclass__": ref}
-
 
 
 def dataclass_object_load(d):

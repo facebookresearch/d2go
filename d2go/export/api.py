@@ -4,7 +4,7 @@
 
 """
 API for exporting a pytorch model to a predictor, the predictor contains model(s) in
-deployable format and predifined functions as glue code. The exported predictor should
+deployable format and predefined functions as glue code. The exported predictor should
 generate same output as the original pytorch model. (See predictor/api.py for details of
 predictor)
 
@@ -17,7 +17,7 @@ This API defines two customizable methods for the pytorch model:
 
 NOTE:
     1: There's a difference between predictor type and model type. model type
-        refers to predifined deployable format such as caffe2, torchscript(_int8),
+        refers to predefined deployable format such as caffe2, torchscript(_int8),
         while the predictor type can be anything that "export_predictor" can
         recognize.
     2: The standard model exporting methods are provided by the library code, they're
@@ -54,7 +54,7 @@ class PredictorExportConfig(NamedTuple):
         model (any nested iterable structure of nn.Module): the model(s) to be exported
             (via tracing/onnx or scripting). This can be sub-model(s) when the predictor
             consists of multiple models in deployable format, and/or pre/post processing
-            is excluded due to requirement of tracing or hardward incompatibility.
+            is excluded due to requirement of tracing or hardware incompatibility.
         data_generator (Callable): a function to generate all data needed for tracing,
             such that data = data_generator(x), the returned data has the same nested
             structure as model. The data for each model will be treated as positional
@@ -83,7 +83,7 @@ def convert_and_export_predictor(
     cfg, pytorch_model, predictor_type, output_dir, data_loader
 ):
     """
-    Entry point for convert and export model. This involes two steps:
+    Entry point for convert and export model. This involves two steps:
         - convert: converting the given `pytorch_model` to another format, currently
             mainly for quantizing the model.
         - export: exporting the converted `pytorch_model` to predictor. This step
@@ -122,7 +122,7 @@ def convert_and_export_predictor(
 def export_predictor(cfg, pytorch_model, predictor_type, output_dir, data_loader):
     """
     Interface for exporting a pytorch model to predictor of given type. This function
-    can be override to arhieve customized exporting procedure, eg. using non-default
+    can be override to achieve customized exporting procedure, eg. using non-default
     optimization passes, composing traced models, etc.
 
     Args:
@@ -176,7 +176,7 @@ def default_export_predictor(
     model_export_kwargs = export_config.model_export_kwargs or {}
     # the default implementation assumes model type is the same as the predictor type
     model_type = predictor_type
-    model_path = predictor_path  # maye be sub dir for multipe models
+    model_path = predictor_path  # might be sub dir for multiple models
 
     standard_model_export(
         model,
@@ -209,14 +209,14 @@ def default_export_predictor(
 # TODO: define the supported model types, current caffe2/torchscript/torchscript_int8
 # is not enough.
 # TODO: determine if registry is needed (probably not since we only need to support
-# a few known formats) as libarary code.
+# a few known formats) as library code.
 def standard_model_export(model, model_type, save_path, input_args, **kwargs):
     if model_type.startswith("torchscript"):
         from d2go.export.torchscript import trace_and_save_torchscript
         trace_and_save_torchscript(model, input_args, save_path, **kwargs)
     elif model_type == "caffe2":
         from d2go.export.caffe2 import export_caffe2
-        # TODO: export_caffe2 depends on D2, need to make a copy of the implemetation
+        # TODO: export_caffe2 depends on D2, need to make a copy of the implementation
         # TODO: support specifying optimization pass via kwargs
         export_caffe2(model, input_args[0], save_path, **kwargs)
     else:

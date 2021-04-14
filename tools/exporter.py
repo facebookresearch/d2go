@@ -101,7 +101,7 @@ def get_parser():
         "--compare-accuracy",
         action="store_true",
         help="If true, all exported models and the original pytorch model will be"
-        " evaluted on cfg.DATASETS.TEST",
+        " evaluated on cfg.DATASETS.TEST",
     )
     parser.add_argument(
         "--skip-if-fail",
