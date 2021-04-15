@@ -2,7 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import os
 import unittest
 
 import numpy as np
@@ -13,13 +12,9 @@ from d2go.modeling.kmeans_anchors import (
     compute_kmeans_anchors_hook,
 )
 from d2go.runner import GeneralizedRCNNRunner
-from d2go.utils.testing.data_loader_helper import (
-    LocalImageGenerator,
-    register_toy_dataset,
-)
+from d2go.utils.testing.data_loader_helper import register_toy_coco_dataset
 from detectron2.data import DatasetCatalog, DatasetFromList, MapDataset
 from detectron2.engine import SimpleTrainer
-from mobile_cv.common.misc.file_utils import make_temp_directory
 from torch.utils.data.sampler import BatchSampler, Sampler
 
 
@@ -123,29 +118,25 @@ class TestKmeansAnchors(unittest.TestCase):
         cfg.MODEL.DEVICE = "cpu"
         cfg.MODEL.ANCHOR_GENERATOR.NAME = "KMeansAnchorGenerator"
 
-        with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
-            image_dir = os.path.join(dataset_dir, "images")
-            os.makedirs(image_dir)
-            image_generator = LocalImageGenerator(image_dir, width=80, height=60)
-            with register_toy_dataset(
-                "toy_dataset",
-                image_generator,
-                num_images=cfg.MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG,
-            ):
-                model = self.runner.build_model(cfg)
-                trainer = SimpleTrainer(model, data_loader=[], optimizer=None)
-                trainer_hooks = [compute_kmeans_anchors_hook(self.runner, cfg)]
-                trainer.register_hooks(trainer_hooks)
-                trainer.before_train()
-                anchor_generator = model.proposal_generator.anchor_generator
-                cell_anchors = [x for x in anchor_generator.cell_anchors]
-                gt_anchors = np.array(
-                    [
-                        [-20, -15, 20, 15]  # toy_dataset's bbox is half size of image
-                        for _ in range(cfg.MODEL.KMEANS_ANCHORS.NUM_CLUSTERS)
-                    ]
-                )
-                np.testing.assert_allclose(cell_anchors[0], gt_anchors)
+        with register_toy_coco_dataset(
+            "toy_dataset",
+            image_size=(80, 60),  # w, h
+            num_images=cfg.MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG,
+        ):
+            model = self.runner.build_model(cfg)
+            trainer = SimpleTrainer(model, data_loader=[], optimizer=None)
+            trainer_hooks = [compute_kmeans_anchors_hook(self.runner, cfg)]
+            trainer.register_hooks(trainer_hooks)
+            trainer.before_train()
+            anchor_generator = model.proposal_generator.anchor_generator
+            cell_anchors = list(anchor_generator.cell_anchors)
+            gt_anchors = np.array(
+                [
+                    [-20, -15, 20, 15]  # toy_dataset's bbox is half size of image
+                    for _ in range(cfg.MODEL.KMEANS_ANCHORS.NUM_CLUSTERS)
+                ]
+            )
+            np.testing.assert_allclose(cell_anchors[0], gt_anchors)
 
 
 if __name__ == "__main__":

@@ -83,7 +83,7 @@ def create_toy_dataset(
 
 
 @contextlib.contextmanager
-def register_toy_dataset(
+def _register_toy_dataset(
     dataset_name, image_generator, num_images, num_classes=-1, num_keypoints=0
 ):
     json_dataset, meta_data = create_toy_dataset(
@@ -110,6 +110,26 @@ def register_toy_dataset(
         finally:
             DatasetCatalog.remove(dataset_name)
             MetadataCatalog.remove(dataset_name)
+
+
+@contextlib.contextmanager
+def register_toy_coco_dataset(
+    dataset_name, num_images=3, image_size=(5, 10), num_classes=-1, num_keypoints=0
+):
+    width, height = image_size
+    with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
+        image_dir = os.path.join(dataset_dir, "images")
+        os.makedirs(image_dir)
+        image_generator = LocalImageGenerator(image_dir, width=width, height=height)
+
+        with _register_toy_dataset(
+            dataset_name,
+            image_generator,
+            num_images=num_images,
+            num_classes=num_classes,
+            num_keypoints=num_keypoints,
+        ):
+            yield
 
 
 def create_local_dataset(
@@ -170,34 +190,24 @@ class LocalImageGenerator:
 
 @contextlib.contextmanager
 def create_fake_detection_data_loader(height, width, is_train):
-    with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
-        runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
-        cfg = runner.get_default_cfg()
-        cfg.DATASETS.TRAIN = ["default_dataset_train"]
-        cfg.DATASETS.TEST = ["default_dataset_test"]
-        min_size = min(width, height)
-        max_size = max(width, height)
-        cfg.INPUT.MIN_SIZE_TRAIN = (min_size,)
-        cfg.INPUT.MAX_SIZE_TRAIN = max_size
-        cfg.INPUT.MIN_SIZE_TEST = min_size
-        cfg.INPUT.MAX_SIZE_TEST = max_size
+    runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
+    cfg = runner.get_default_cfg()
+    cfg.DATASETS.TRAIN = ["default_dataset_train"]
+    cfg.DATASETS.TEST = ["default_dataset_test"]
+    min_size = min(width, height)
+    max_size = max(width, height)
+    cfg.INPUT.MIN_SIZE_TRAIN = (min_size,)
+    cfg.INPUT.MAX_SIZE_TRAIN = max_size
+    cfg.INPUT.MIN_SIZE_TEST = min_size
+    cfg.INPUT.MAX_SIZE_TEST = max_size
 
-        with make_temp_directory("detectron2go_tmp_dataset") as dataset_dir:
-            image_dir = os.path.join(dataset_dir, "images")
-            os.makedirs(image_dir)
-            image_generator = LocalImageGenerator(image_dir, width=width, height=height)
-
-            if is_train:
-                with register_toy_dataset(
-                    "default_dataset_train", image_generator, num_images=3
-                ):
-                    train_loader = runner.build_detection_train_loader(cfg)
-                    yield train_loader
-            else:
-                with register_toy_dataset(
-                    "default_dataset_test", image_generator, num_images=3
-                ):
-                    test_loader = runner.build_detection_test_loader(
-                        cfg, dataset_name="default_dataset_test"
-                    )
-                    yield test_loader
+    if is_train:
+        with register_toy_coco_dataset("default_dataset_train", num_images=3):
+            train_loader = runner.build_detection_train_loader(cfg)
+            yield train_loader
+    else:
+        with register_toy_coco_dataset("default_dataset_test", num_images=3):
+            test_loader = runner.build_detection_test_loader(
+                cfg, dataset_name="default_dataset_test"
+            )
+            yield test_loader

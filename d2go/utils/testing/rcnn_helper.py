@@ -184,33 +184,55 @@ def _validate_outputs(inputs, outputs):
     # TODO: figure out how to validate outputs
 
 
-def get_quick_test_config_opts():
-    epsilon = 1e-4
-    return [
-        str(x)
-        for x in [
-            "MODEL.RPN.POST_NMS_TOPK_TEST",
-            1,
-            "TEST.DETECTIONS_PER_IMAGE",
-            1,
-            "MODEL.PROPOSAL_GENERATOR.MIN_SIZE",
-            0,
-            "MODEL.RPN.NMS_THRESH",
-            1.0 + epsilon,
-            "MODEL.ROI_HEADS.NMS_THRESH_TEST",
-            1.0 + epsilon,
-            "MODEL.ROI_HEADS.SCORE_THRESH_TEST",
-            0.0 - epsilon,
-        ]
-        + [
-            "MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION",
-            1,
-            "MODEL.ROI_MASK_HEAD.POOLER_RESOLUTION",
-            1,
-            "MODEL.ROI_KEYPOINT_HEAD.POOLER_RESOLUTION",
-            1,
-        ]
-    ]
+def get_quick_test_config_opts(
+    fixed_single_proposals=True,
+    small_pooler_resolution=True,
+    small_resize_resolution=True,
+):
+    ret = []
+    if fixed_single_proposals:
+        epsilon = 1e-4
+        ret.extend(
+            [
+                "MODEL.RPN.POST_NMS_TOPK_TEST",
+                1,
+                "TEST.DETECTIONS_PER_IMAGE",
+                1,
+                "MODEL.PROPOSAL_GENERATOR.MIN_SIZE",
+                0,
+                "MODEL.RPN.NMS_THRESH",
+                1.0 + epsilon,
+                "MODEL.ROI_HEADS.NMS_THRESH_TEST",
+                1.0 + epsilon,
+                "MODEL.ROI_HEADS.SCORE_THRESH_TEST",
+                0.0 - epsilon,
+            ]
+        )
+    if small_pooler_resolution:
+        ret.extend(
+            [
+                "MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION",
+                1,
+                "MODEL.ROI_MASK_HEAD.POOLER_RESOLUTION",
+                1,
+                "MODEL.ROI_KEYPOINT_HEAD.POOLER_RESOLUTION",
+                1,
+            ]
+        )
+    if small_resize_resolution:
+        ret.extend(
+            [
+                "INPUT.MIN_SIZE_TRAIN",
+                (10,),
+                "INPUT.MAX_SIZE_TRAIN",
+                10,
+                "INPUT.MIN_SIZE_TEST",
+                10,
+                "INPUT.MAX_SIZE_TEST",
+                10,
+            ]
+        )
+    return [str(x) for x in ret]
 
 
 class RCNNBaseTestCases:
