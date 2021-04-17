@@ -4,13 +4,17 @@
 
 import logging
 import os
+from d2go.runner.callbacks.build import build_quantization_callback
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
 import pytorch_lightning as pl  # type: ignore
 from d2go.config import CfgNode, temp_defrost
 from d2go.runner import create_runner
-from d2go.runner.callbacks.quantization import QuantizationAwareTraining
+from d2go.runner.callbacks.quantization import (
+    QuantizationAwareTraining,
+    ModelTransform,
+)
 from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.setup import basic_argument_parser
 from d2go.utils.misc import dump_trained_model_configs
@@ -63,20 +67,8 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
             save_last=True,
         ),
     ]
-    if cfg.QUANTIZATION.QAT.ENABLED:
-        qat = cfg.QUANTIZATION.QAT
-        callbacks.append(
-            QuantizationAwareTraining(
-                qconfig_dicts={
-                    submodule: None for submodule in cfg.QUANTIZATION.MODULES
-                }
-                if cfg.QUANTIZATION.MODULES
-                else None,
-                start_step=qat.START_ITER,
-                enable_observer=(qat.ENABLE_OBSERVER_ITER, qat.DISABLE_OBSERVER_ITER),
-                freeze_bn_step=qat.FREEZE_BN_ITER,
-            )
-        )
+    if cfg.QUANTIZATION.NAME and cfg.QUANTIZATION.QAT.ENABLED:
+        callbacks.append(build_quantization_callback(cfg))
     return callbacks
 
 
@@ -184,6 +176,11 @@ def main(
         do_test(trainer, task)
     else:
         model_configs = do_train(cfg, trainer, task)
+
+    for cb in trainer_params["callbacks"]:
+        if isinstance(cb, QuantizationAwareTraining):
+            print("################ quantized #################")
+            print(cb.quantized)
 
     return TrainOutput(
         output_dir=cfg.OUTPUT_DIR,

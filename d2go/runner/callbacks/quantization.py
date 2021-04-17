@@ -7,7 +7,10 @@ from types import MethodType
 from typing import Any, Callable, Dict, List, Set, Optional, Tuple, Union
 
 import torch
+from d2go.config import CfgNode
 from d2go.utils.misc import mode
+from d2go.runner.callbacks.build import CALLBACK_REGISTRY
+from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities import rank_zero_info
@@ -235,6 +238,7 @@ class ModelTransform:
             raise ValueError("interval must be positive.")
 
 
+@CALLBACK_REGISTRY.register()
 class QuantizationAwareTraining(Callback, QuantizationMixin):
     """Enable QAT of a model using the STL Trainer.
 
@@ -396,6 +400,29 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
             }
         self.quantized: Optional[torch.nn.Module] = None
 
+    @classmethod
+    def from_config(cls, cfg: CfgNode):
+        qat = cfg.QUANTIZATION.QAT
+        callback = cls(
+            qconfig_dicts={submodule: None for submodule in cfg.QUANTIZATION.MODULES}
+            if cfg.QUANTIZATION.MODULES
+            else None,
+            # We explicitly pass this to maintain properties for now.
+            preserved_attrs=["model.backbone.size_divisibility"],
+            start_step=qat.START_ITER,
+            enable_observer=(qat.ENABLE_OBSERVER_ITER, qat.DISABLE_OBSERVER_ITER),
+            freeze_bn_step=qat.FREEZE_BN_ITER,
+        )
+        if qat.UPDATE_OBSERVER_STATS_PERIODICALLY:
+            callback.transforms.append(
+                ModelTransform(
+                    interval=qat.UPDATE_OBSERVER_STATS_PERIOD,
+                    fb=observer_update_stat,
+                    message="Updating observers.",
+                )
+            )
+        return callback
+
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
         """Override the model with a quantized-aware version on setup.
 
@@ -470,6 +497,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
         self.quantized = pl_module._quantized
 
 
+@CALLBACK_REGISTRY.register()
 class PostTrainingQuantization(Callback, QuantizationMixin):
     """Enable post-training quantization, such as dynamic, static, and weight-only.
 
@@ -526,6 +554,16 @@ class PostTrainingQuantization(Callback, QuantizationMixin):
         self.prepared: Optional[torch.nn.Module] = None
         self.quantized: Optional[torch.nn.Module] = None
         self.should_calibrate = _requires_calibration(self.qconfig_dicts)
+
+    @classmethod
+    def from_config(cls, cfg: CfgNode):
+        return cls(
+            qconfig_dicts={submodule: None for submodule in cfg.QUANTIZATION.MODULES}
+            if cfg.QUANTIZATION.MODULES
+            else None,
+            # We explicitly pass this to maintain properties for now.
+            preserved_attrs=["model.backbone.size_divisibility"],
+        )
 
     def on_validation_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """

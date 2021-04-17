@@ -62,6 +62,12 @@ def _convert_to_lightning(d2_checkpoint: Dict[str, Any]) -> None:
         ][key]
         del d2_checkpoint[_OLD_STATE_DICT_KEY][key]
 
+    if "model.pixel_mean" in d2_checkpoint[_OLD_STATE_DICT_KEY]:
+        del d2_checkpoint[_OLD_STATE_DICT_KEY]["model.pixel_mean"]
+
+    if "model.pixel_std" in d2_checkpoint[_OLD_STATE_DICT_KEY]:
+        del d2_checkpoint[_OLD_STATE_DICT_KEY]["model.pixel_std"]
+
     for old, new in zip(
         [_OLD_STATE_DICT_KEY, "iteration"], [_STATE_DICT_KEY, "global_step"]
     ):

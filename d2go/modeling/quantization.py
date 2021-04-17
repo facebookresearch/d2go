@@ -79,6 +79,9 @@ def add_quantization_default_configs(_C):
     # used to enable metarch set_custom_qscheme (need to implement)
     # this is a limited implementation where only str is provided to change options
     _C.QUANTIZATION.CUSTOM_QSCHEME = ""
+    _C.QUANTIZATION.MODULES = None
+    # Lightning quantization callback name
+    _C.QUANTIZATION.NAME = ""
 
     # quantization-aware training
     _C.QUANTIZATION.QAT = CfgNode()
