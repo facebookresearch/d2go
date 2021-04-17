@@ -11,12 +11,18 @@ import pytorch_lightning as pl  # type: ignore
 import torch
 from d2go.config import CfgNode, temp_defrost
 from d2go.runner import create_runner
+from d2go.runner.callbacks.quantization import (
+    QuantizationAwareTraining,
+)
 from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.utils.testing import meta_arch_helper as mah
 from d2go.utils.testing.helper import tempdir
+from detectron2.modeling import META_ARCH_REGISTRY
+from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 from detectron2.utils.events import EventStorage
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch import Tensor
+from torch.quantization.quantize_fx import prepare_qat_fx, convert_fx
 
 
 class TestLightningTask(unittest.TestCase):
@@ -175,3 +181,80 @@ class TestLightningTask(unittest.TestCase):
                     model.state_dict(), task.ema_state.state_dict()
                 )
             )
+
+    @tempdir
+    def test_qat(self, tmp_dir):
+        @META_ARCH_REGISTRY.register()
+        class QuantizableDetMetaArchForTest(mah.DetMetaArchForTest):
+            custom_config_dict = {"preserved_attributes": ["preserved_attr"]}
+
+            def __init__(self, cfg):
+                super().__init__(cfg)
+                self.avgpool.preserved_attr = "foo"
+                self.avgpool.not_preserved_attr = "bar"
+
+            def prepare_for_quant(self, cfg):
+                self.avgpool = prepare_qat_fx(
+                    self.avgpool,
+                    {"": torch.quantization.get_default_qat_qconfig()},
+                    self.custom_config_dict,
+                )
+                return self
+
+            def prepare_for_quant_convert(self, cfg):
+                self.avgpool = convert_fx(
+                    self.avgpool, convert_custom_config_dict=self.custom_config_dict
+                )
+                return self
+
+        cfg = self._get_cfg(tmp_dir)
+        cfg.MODEL.META_ARCHITECTURE = "QuantizableDetMetaArchForTest"
+        cfg.QUANTIZATION.QAT.ENABLED = True
+        task = GeneralizedRCNNTask(cfg)
+
+        callbacks = [
+            QuantizationAwareTraining.from_config(cfg),
+            ModelCheckpoint(dirpath=task.cfg.OUTPUT_DIR, save_last=True),
+        ]
+        trainer = pl.Trainer(
+            max_steps=1,
+            limit_train_batches=1,
+            num_sanity_val_steps=0,
+            callbacks=callbacks,
+            logger=None,
+        )
+        with EventStorage() as storage:
+            task.storage = storage
+            trainer.fit(task)
+        prepared_avgpool = task._prepared.model.avgpool
+        self.assertEqual(prepared_avgpool.preserved_attr, "foo")
+        self.assertFalse(hasattr(prepared_avgpool, "not_preserved_attr"))
+
+        with temp_defrost(cfg):
+            cfg.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
+            model = GeneralizedRCNNTask.build_model(cfg, eval_only=True)
+            self.assertTrue(isinstance(model.avgpool, torch.fx.GraphModule))
+
+    @tempdir
+    def test_generalized_rcnn_qat(self, tmp_dir):
+        cfg = GeneralizedRCNNTask.get_default_cfg()
+        cfg.merge_from_file("detectron2go://e2e_mask_rcnn_fbnet_600_qat.yaml")
+        cfg.MODEL.DEVICE = "cpu"
+        cfg.QUANTIZATION.EAGER_MODE = False
+        cfg.OUTPUT_DIR = tmp_dir
+        task = GeneralizedRCNNTask(cfg)
+
+        callbacks = [
+            QuantizationAwareTraining.from_config(cfg),
+            ModelCheckpoint(dirpath=task.cfg.OUTPUT_DIR, save_last=True),
+        ]
+        trainer = pl.Trainer(
+            max_steps=1,
+            limit_train_batches=1,
+            num_sanity_val_steps=0,
+            callbacks=callbacks,
+            logger=None,
+        )
+        with EventStorage() as storage:
+            task.storage = storage
+            trainer.fit(task)

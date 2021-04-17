@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import torch
 from d2go.export.api import PredictorExportConfig
+from d2go.utils.prepare_for_export import d2_meta_arch_prepare_for_export
 from detectron2.export.caffe2_modeling import (
     META_ARCH_CAFFE2_EXPORT_TYPE_MAP,
     convert_batched_inputs_to_c2_format,
@@ -21,7 +22,7 @@ from mobile_cv.arch.utils.quantize_utils import (
     QuantWrapper,
 )
 from mobile_cv.predictor.api import FuncInfo
-from d2go.utils.prepare_for_export import d2_meta_arch_prepare_for_export
+from torch.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,16 @@ def patch_d2_meta_arch():
                 assert cls_obj.prepare_for_quant == d2_meta_arch_prepare_for_quant
             else:
                 cls_obj.prepare_for_quant = d2_meta_arch_prepare_for_quant
+
+            if hasattr(cls_obj, "prepare_for_quant_convert"):
+                assert (
+                    cls_obj.prepare_for_quant_convert
+                    == d2_meta_arch_prepare_for_quant_convert
+                )
+            else:
+                cls_obj.prepare_for_quant_convert = (
+                    d2_meta_arch_prepare_for_quant_convert
+                )
 
 
 def _apply_eager_mode_quant(cfg, model):
@@ -107,15 +118,37 @@ def _apply_eager_mode_quant(cfg, model):
     return model
 
 
+def _fx_quant_prepare(self, cfg):
+    prep_fn = prepare_qat_fx if self.training else prepare_fx
+    qconfig = {"": self.qconfig}
+    self.backbone = prep_fn(
+        self.backbone,
+        qconfig,
+        {"preserved_attributes": ["size_divisibility"]},
+    )
+    self.proposal_generator.rpn_head.rpn_feature = prep_fn(
+        self.proposal_generator.rpn_head.rpn_feature, qconfig
+    )
+    self.proposal_generator.rpn_head.rpn_regressor.cls_logits = prep_fn(
+        self.proposal_generator.rpn_head.rpn_regressor.cls_logits, qconfig
+    )
+    self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = prep_fn(
+        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred, qconfig
+    )
+    self.roi_heads.box_head.roi_box_conv = prep_fn(
+        self.roi_heads.box_head.roi_box_conv, qconfig
+    )
+    self.roi_heads.box_head.avgpool = prep_fn(self.roi_heads.box_head.avgpool, qconfig)
+    self.roi_heads.box_predictor.cls_score = prep_fn(
+        self.roi_heads.box_predictor.cls_score, qconfig
+    )
+    self.roi_heads.box_predictor.bbox_pred = prep_fn(
+        self.roi_heads.box_predictor.bbox_pred, qconfig
+    )
+
+
 def d2_meta_arch_prepare_for_quant(self, cfg):
     model = self
-
-    # Modify the model for eager mode
-    if cfg.QUANTIZATION.EAGER_MODE:
-        model = _apply_eager_mode_quant(cfg, model)
-
-    model = fuse_utils.fuse_model(model, inplace=True)
-
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
     model.qconfig = (
         torch.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
@@ -124,4 +157,41 @@ def d2_meta_arch_prepare_for_quant(self, cfg):
     )
     logger.info("Setup the model with qconfig:\n{}".format(model.qconfig))
 
+    # Modify the model for eager mode
+    if cfg.QUANTIZATION.EAGER_MODE:
+        model = _apply_eager_mode_quant(cfg, model)
+        model = fuse_utils.fuse_model(model, inplace=True)
+    else:
+        _fx_quant_prepare(model, cfg)
+
     return model
+
+
+def d2_meta_arch_prepare_for_quant_convert(self, cfg):
+    if cfg.QUANTIZATION.EAGER_MODE:
+        raise NotImplementedError()
+
+    self.backbone = convert_fx(
+        self.backbone,
+        convert_custom_config_dict={"preserved_attributes": ["size_divisibility"]},
+    )
+    self.proposal_generator.rpn_head.rpn_feature = convert_fx(
+        self.proposal_generator.rpn_head.rpn_feature
+    )
+    self.proposal_generator.rpn_head.rpn_regressor.cls_logits = convert_fx(
+        self.proposal_generator.rpn_head.rpn_regressor.cls_logits
+    )
+    self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = convert_fx(
+        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred
+    )
+    self.roi_heads.box_head.roi_box_conv = convert_fx(
+        self.roi_heads.box_head.roi_box_conv
+    )
+    self.roi_heads.box_head.avgpool = convert_fx(self.roi_heads.box_head.avgpool)
+    self.roi_heads.box_predictor.cls_score = convert_fx(
+        self.roi_heads.box_predictor.cls_score
+    )
+    self.roi_heads.box_predictor.bbox_pred = convert_fx(
+        self.roi_heads.box_predictor.bbox_pred
+    )
+    return self

@@ -6,6 +6,7 @@ import torch
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, ImageList, Instances
+from torch.quantization.quantize_fx import prepare_qat_fx, convert_fx
 
 
 @META_ARCH_REGISTRY.register()
@@ -49,6 +50,17 @@ class DetMetaArchForTest(torch.nn.Module):
         instance.pred_classes = torch.tensor([1], dtype=torch.int32, device=self.device)
         ret = [{"instances": instance}]
         return ret
+
+    def prepare_for_quant(self, cfg):
+        self.avgpool = prepare_qat_fx(
+            self.avgpool,
+            {"": torch.quantization.get_default_qat_qconfig()},
+        )
+        return self
+
+    def prepare_for_quant_convert(self, cfg):
+        self.avgpool = convert_fx(self.avgpool)
+        return self
 
 
 def get_det_meta_arch_cfg(cfg, dataset_name, output_dir):

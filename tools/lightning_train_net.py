@@ -4,7 +4,6 @@
 
 import logging
 import os
-from d2go.runner.callbacks.build import build_quantization_callback
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
@@ -67,8 +66,8 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
             save_last=True,
         ),
     ]
-    if cfg.QUANTIZATION.NAME and cfg.QUANTIZATION.QAT.ENABLED:
-        callbacks.append(build_quantization_callback(cfg))
+    if cfg.QUANTIZATION.QAT.ENABLED:
+        callbacks.append(QuantizationAwareTraining.from_config(cfg))
     return callbacks
 
 
@@ -176,11 +175,6 @@ def main(
         do_test(trainer, task)
     else:
         model_configs = do_train(cfg, trainer, task)
-
-    for cb in trainer_params["callbacks"]:
-        if isinstance(cb, QuantizationAwareTraining):
-            print("################ quantized #################")
-            print(cb.quantized)
 
     return TrainOutput(
         output_dir=cfg.OUTPUT_DIR,

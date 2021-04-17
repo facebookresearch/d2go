@@ -9,7 +9,6 @@ from typing import Any, Callable, Dict, List, Set, Optional, Tuple, Union
 import torch
 from d2go.config import CfgNode
 from d2go.utils.misc import mode
-from d2go.runner.callbacks.build import CALLBACK_REGISTRY
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
@@ -26,6 +25,7 @@ from torch.quantization.utils import get_quant_type
 
 
 QConfigDicts = Dict[str, Dict[str, Union[QConfig, QConfigDynamic]]]
+PREPARED = "_prepared"
 
 
 def rsetattr(obj: Any, attr: str, val: Any) -> None:
@@ -96,6 +96,20 @@ def _requires_calibration(config_dicts: QConfigDicts) -> bool:
     return False
 
 
+def checkpoint_has_prepared(checkpoint: Dict[str, Any]) -> bool:
+    return any(k.startswith(PREPARED) for k in checkpoint["state_dict"].keys())
+
+
+def maybe_prepare_for_quantization(model: LightningModule, checkpoint: Dict[str, Any]):
+    if checkpoint_has_prepared(checkpoint) and not hasattr(model, PREPARED):
+        # model has been prepared for QAT before saving into checkpoint
+        setattr(
+            model,
+            PREPARED,
+            _deepcopy(model).prepare_for_quant()
+        )
+
+
 class QuantizationMixin(ABC):
     """Mixin defining an overrideable API for quantization customization.
 
@@ -155,6 +169,8 @@ class QuantizationMixin(ABC):
         Returns:
             The prepared Module to be used for quantized aware training.
         """
+        if hasattr(root, "prepare_for_quant"):
+            return root.prepare_for_quant()
         prep_fn = (
             prepare_qat_fx
             if isinstance(self, QuantizationAwareTraining)
@@ -191,6 +207,8 @@ class QuantizationMixin(ABC):
         Returns:
             The quantized model.
         """
+        if hasattr(root, "prepare_for_quant_convert"):
+            return root.prepare_for_quant_convert()
         old_attrs = {
             attr: rgetattr(root, attr) for attr in attrs if rhasattr(root, attr)
         }
@@ -238,7 +256,6 @@ class ModelTransform:
             raise ValueError("interval must be positive.")
 
 
-@CALLBACK_REGISTRY.register()
 class QuantizationAwareTraining(Callback, QuantizationMixin):
     """Enable QAT of a model using the STL Trainer.
 
@@ -305,6 +322,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
             Dict[str, Optional[Dict[str, Union[QConfig, QConfigDynamic]]]]
         ] = None,
         preserved_attrs: Optional[List[str]] = None,
+        skip_conversion: bool = False,
     ) -> None:
         """
         Args:
@@ -399,6 +417,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
                 for key, value in qconfig_dicts.items()
             }
         self.quantized: Optional[torch.nn.Module] = None
+        self.skip_conversion = skip_conversion
 
     @classmethod
     def from_config(cls, cfg: CfgNode):
@@ -412,6 +431,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
             start_step=qat.START_ITER,
             enable_observer=(qat.ENABLE_OBSERVER_ITER, qat.DISABLE_OBSERVER_ITER),
             freeze_bn_step=qat.FREEZE_BN_ITER,
+            skip_conversion=True,  # convert_fx will be handled by D2Go exporter
         )
         if qat.UPDATE_OBSERVER_STATS_PERIODICALLY:
             callback.transforms.append(
@@ -477,7 +497,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
 
     def on_fit_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """ Quantize the weights since training has finalized. """
-        if hasattr(pl_module, "_quantized"):
+        if hasattr(pl_module, "_quantized") or self.skip_conversion:
             return
         pl_module._quantized = self.convert(
             pl_module._prepared, self.qconfig_dicts.keys(), attrs=self.preserved_attrs
@@ -497,7 +517,6 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
         self.quantized = pl_module._quantized
 
 
-@CALLBACK_REGISTRY.register()
 class PostTrainingQuantization(Callback, QuantizationMixin):
     """Enable post-training quantization, such as dynamic, static, and weight-only.
 

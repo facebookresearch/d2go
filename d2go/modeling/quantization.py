@@ -270,6 +270,9 @@ def default_prepare_for_quant(cfg, model):
 
     return model
 
+def default_prepare_for_quant_convert(cfg, model):
+    return torch.quantization.quantize_fx.convert_fx(model)
+
 
 @mock_quantization_type
 def post_training_quantize(cfg, model, data_loader):

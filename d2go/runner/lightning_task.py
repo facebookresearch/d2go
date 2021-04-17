@@ -24,12 +24,14 @@ from d2go.runner.default_runner import (
 )
 from d2go.setup import setup_after_launch
 from d2go.utils.ema_state import EMAState
+from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from detectron2.modeling import build_model
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
     build_optimizer as d2_build_optimizer,
 )
 from pytorch_lightning.utilities import rank_zero_info
+from d2go.modeling.quantization import default_prepare_for_quant, default_prepare_for_quant_convert
 
 _STATE_DICT_KEY = "state_dict"
 _OLD_STATE_DICT_KEY = "model"
@@ -157,7 +159,8 @@ class DefaultTask(pl.LightningModule):
 
     @classmethod
     def build_model(cls, cfg: CfgNode, eval_only=False):
-        """Builds D2go model instance from config.
+        """Builds D2go model instance from config. If model has been prepared
+        for quantization, the function returns the prepared model.
         NOTE: For backward compatible with existing D2Go tools. Prefer
         `from_config` in other use cases.
 
@@ -165,7 +168,10 @@ class DefaultTask(pl.LightningModule):
             cfg: D2go config node.
             eval_only: True if model should be in eval mode.
         """
-        return cls.from_config(cfg, eval_only).model
+        task = cls.from_config(cfg, eval_only)
+        if hasattr(task, PREPARED):
+            task = getattr(task, PREPARED)
+        return task.model
 
     @classmethod
     def get_default_cfg(cls):
@@ -362,6 +368,8 @@ class DefaultTask(pl.LightningModule):
         if not _is_lightning_checkpoint(checkpointed_state):
             _convert_to_lightning(checkpointed_state)
 
+        maybe_prepare_for_quantization(self, checkpointed_state)
+
         if self.ema_state:
             if "model_ema" not in checkpointed_state:
                 rank_zero_info(
@@ -374,6 +382,20 @@ class DefaultTask(pl.LightningModule):
                     # EMA state device not given, move to module device
                     self.ema_state.to(self.device)
 
+    def prepare_for_quant(self) -> pl.LightningModule:
+        if hasattr(self.model, "prepare_for_quant"):
+            self.model = self.model.prepare_for_quant(self.cfg)
+        else:
+            self.model = default_prepare_for_quant(self.cfg, self.model)
+        return self
+
+
+    def prepare_for_quant_convert(self) -> pl.LightningModule:
+        if hasattr(self.model, "prepare_for_quant_convert"):
+            self.model = self.model.prepare_for_quant_convert(self.cfg)
+        else:
+            self.model = default_prepare_for_quant_convert(self.cfg, self.model)
+        return self
 
 class GeneralizedRCNNTask(DefaultTask):
     @classmethod
