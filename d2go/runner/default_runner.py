@@ -276,6 +276,13 @@ class Detectron2GoRunner(BaseRunner):
             if cfg.MODEL_EMA.ENABLED and cfg.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY:
                 model_ema.apply_model_ema(model)
 
+        # Note: the _visualize_model API is experimental
+        if comm.is_main_process():
+            if hasattr(model, "_visualize_model"):
+                logger.info("Adding model visualization ...")
+                tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+                model._visualize_model(tbx_writer)
+
         return model
 
     def build_checkpointer(self, cfg, model, save_dir, **kwargs):
