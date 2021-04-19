@@ -339,6 +339,26 @@ class TestDefaultRunner(unittest.TestCase):
 
             default_runner._close_all_tbx_writers()
 
+    def test_d2go_runner_trainer_hooks(self):
+        counts = 0
+
+        @default_runner.TRAINER_HOOKS_REGISTRY.register()
+        def _check_hook_func(hooks):
+            nonlocal counts
+            counts = len(hooks)
+            print(hooks)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ds_name = create_local_dataset(tmp_dir, 5, 10, 10)
+            runner = default_runner.Detectron2GoRunner()
+            cfg = _get_cfg(runner, tmp_dir, ds_name)
+            model = runner.build_model(cfg)
+            runner.do_train(cfg, model, resume=True)
+
+            default_runner._close_all_tbx_writers()
+
+        self.assertGreater(counts, 0)
+
 
 def _compare_state_dict(sd1, sd2, abs_error=1e-3):
     if len(sd1) != len(sd2):

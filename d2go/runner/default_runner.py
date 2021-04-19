@@ -8,7 +8,7 @@ import math
 import os
 from collections import OrderedDict
 from functools import lru_cache, partial
-from typing import Type, Optional
+from typing import Type, Optional, List
 
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
@@ -51,6 +51,7 @@ from detectron2.data import (
     build_detection_train_loader as d2_build_detection_train_loader,
     MetadataCatalog,
 )
+from detectron2.engine import HookBase
 from detectron2.engine import SimpleTrainer, AMPTrainer, hooks
 from detectron2.evaluation import (
     COCOEvaluator,
@@ -67,6 +68,7 @@ from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
 )
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
+from detectron2.utils.registry import Registry
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 
 
@@ -219,6 +221,18 @@ class BaseRunner(object):
     @classmethod
     def build_detection_train_loader(cls, *args, **kwargs):
         return d2_build_detection_train_loader(*args, **kwargs)
+
+
+# List of functions to add hooks for trainer, all functions in the registry will
+# be called to add hooks
+#   func(hooks: List[HookBase]) -> None
+TRAINER_HOOKS_REGISTRY = Registry("TRAINER_HOOKS_REGISTRY")
+
+
+def update_hooks_from_registry(hooks: List[HookBase]):
+    for name, hook_func in TRAINER_HOOKS_REGISTRY:
+        logger.info(f"Update trainer hooks from {name}...")
+        hook_func(hooks)
 
 
 class Detectron2GoRunner(BaseRunner):
@@ -458,6 +472,7 @@ class Detectron2GoRunner(BaseRunner):
                 tbx_writer,
             ]
             trainer_hooks.append(hooks.PeriodicWriter(writers))
+        update_hooks_from_registry(trainer_hooks)
         trainer.register_hooks(trainer_hooks)
         trainer.train(start_iter, max_iter)
 
