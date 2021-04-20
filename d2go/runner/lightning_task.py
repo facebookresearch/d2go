@@ -282,12 +282,18 @@ class DefaultTask(pl.LightningModule):
                 output_folder = _get_inference_dir_name(
                     self.cfg.OUTPUT_DIR, "inference", dataset_name, tag
                 )
-                evaluator = Detectron2GoRunner.get_evaluator(
+                evaluator = self.get_evaluator(
                     self.cfg, dataset_name, output_folder=output_folder
                 )
                 evaluator.reset()
                 dataset_evaluators.append(evaluator)
                 # TODO: add visualization evaluator
+
+    @staticmethod
+    def get_evaluator(cfg: CfgNode, dataset_name: str, output_folder: str):
+        return Detectron2GoRunner.get_evaluator(
+            cfg=cfg, dataset_name=dataset_name, output_folder=output_folder
+        )
 
     @staticmethod
     def build_detection_test_loader(cfg, dataset_name, mapper=None):
