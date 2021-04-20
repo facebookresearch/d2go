@@ -234,27 +234,3 @@ class TestLightningTask(unittest.TestCase):
             cfg.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
             model = GeneralizedRCNNTask.build_model(cfg, eval_only=True)
             self.assertTrue(isinstance(model.avgpool, torch.fx.GraphModule))
-
-    @tempdir
-    def test_generalized_rcnn_qat(self, tmp_dir):
-        cfg = GeneralizedRCNNTask.get_default_cfg()
-        cfg.merge_from_file("detectron2go://e2e_mask_rcnn_fbnet_600_qat.yaml")
-        cfg.MODEL.DEVICE = "cpu"
-        cfg.QUANTIZATION.EAGER_MODE = False
-        cfg.OUTPUT_DIR = tmp_dir
-        task = GeneralizedRCNNTask(cfg)
-
-        callbacks = [
-            QuantizationAwareTraining.from_config(cfg),
-            ModelCheckpoint(dirpath=task.cfg.OUTPUT_DIR, save_last=True),
-        ]
-        trainer = pl.Trainer(
-            max_steps=1,
-            limit_train_batches=1,
-            num_sanity_val_steps=0,
-            callbacks=callbacks,
-            logger=None,
-        )
-        with EventStorage() as storage:
-            task.storage = storage
-            trainer.fit(task)
