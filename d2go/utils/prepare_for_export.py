@@ -18,9 +18,9 @@ from d2go.utils.export_utils import (D2Caffe2MetaArchPreprocessFunc,
 logger = logging.getLogger(__name__)
 
 
-def d2_meta_arch_prepare_for_export(self, cfg, inputs, export_scheme):
+def d2_meta_arch_prepare_for_export(self, cfg, inputs, predictor_type):
 
-    if "torchscript" in export_scheme and "@tracing" in export_scheme:
+    if "torchscript" in predictor_type and "@tracing" in predictor_type:
 
         def inference_func(model, image):
             inputs = [{"image": image}]

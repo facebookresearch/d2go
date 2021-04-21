@@ -179,9 +179,7 @@ def default_export_predictor(
     # according to the "predictor_type".
     assert hasattr(pytorch_model, "prepare_for_export"), pytorch_model
     inputs = next(iter(data_loader))
-    export_config = pytorch_model.prepare_for_export(
-        cfg, inputs, export_scheme=predictor_type
-    )
+    export_config = pytorch_model.prepare_for_export(cfg, inputs, predictor_type)
     model_inputs = (
         export_config.data_generator(inputs)
         if export_config.data_generator is not None
