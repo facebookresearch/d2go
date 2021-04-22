@@ -32,6 +32,10 @@ from typing import Callable, Dict, NamedTuple, Optional, Union
 import torch
 import torch.nn as nn
 import torch.quantization.quantize_fx
+from d2go.export.torchscript import (
+    trace_and_save_torchscript,
+    MobileOptimizationConfig,
+)
 from d2go.modeling.quantization import post_training_quantize
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
@@ -263,7 +267,20 @@ class DefaultCaffe2Export(object):
 class DefaultTorchscriptExport(object):
     @classmethod
     def export(cls, model, input_args, save_path, **export_kwargs):
-        from d2go.export.torchscript import trace_and_save_torchscript
-
         trace_and_save_torchscript(model, input_args, save_path, **export_kwargs)
+        return {}
+
+
+@ModelExportMethodRegistry.register("torchscript_mobile")
+@ModelExportMethodRegistry.register("torchscript_mobile_int8")
+class DefaultTorchscriptMobileExport(object):
+    @classmethod
+    def export(cls, model, input_args, save_path, **export_kwargs):
+        trace_and_save_torchscript(
+            model,
+            input_args,
+            save_path,
+            mobile_optimization=MobileOptimizationConfig(),
+            **export_kwargs,
+        )
         return {}
