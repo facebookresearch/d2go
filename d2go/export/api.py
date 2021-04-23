@@ -39,6 +39,8 @@ from d2go.export.torchscript import (
     MobileOptimizationConfig,
 )
 from d2go.modeling.quantization import post_training_quantize
+from detectron2.config.instantiate import dump_dataclass, instantiate
+from detectron2.export.flatten import TracingAdapter, flatten_to_tuple
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.file_utils import make_temp_directory
@@ -346,10 +348,8 @@ class DefaultCaffe2Export(ModelExportMethod):
 
 
 @ModelExportMethodRegistry.register("torchscript")
-@ModelExportMethodRegistry.register("torchscript@tracing")
 @ModelExportMethodRegistry.register("torchscript@scripting")
 @ModelExportMethodRegistry.register("torchscript_int8")
-@ModelExportMethodRegistry.register("torchscript_int8@tracing")
 @ModelExportMethodRegistry.register("torchscript_int8@scripting")
 class DefaultTorchscriptExport(ModelExportMethod):
     @classmethod
@@ -360,6 +360,40 @@ class DefaultTorchscriptExport(ModelExportMethod):
     @classmethod
     def load(cls, save_path, **load_kwargs):
         return load_model(save_path, "torchscript")
+
+
+@ModelExportMethodRegistry.register("torchscript@tracing")
+@ModelExportMethodRegistry.register("torchscript_int8@tracing")
+class D2TorchscriptTracingExport(ModelExportMethod):
+    @classmethod
+    def export(cls, model, input_args, save_path, **export_kwargs):
+        adapter = TracingAdapter(model, input_args)
+        trace_and_save_torchscript(
+            adapter, adapter.flattened_inputs, save_path, **export_kwargs
+        )
+        inputs_schema = dump_dataclass(adapter.inputs_schema)
+        outputs_schema = dump_dataclass(adapter.outputs_schema)
+        return {"inputs_schema": inputs_schema, "outputs_schema": outputs_schema}
+
+    @classmethod
+    def load(cls, save_path, inputs_schema, outputs_schema, **load_kwargs):
+        inputs_schema = instantiate(inputs_schema)
+        outputs_schema = instantiate(outputs_schema)
+        traced_model = load_model(save_path, "torchscript")
+
+        class TracingAdapterWrapper(nn.Module):
+            def __init__(self, traced_model, inputs_schema, outputs_schema):
+                super().__init__()
+                self.traced_model = traced_model
+                self.inputs_schema = inputs_schema
+                self.outputs_schema = outputs_schema
+
+            def forward(self, *input_args):
+                flattened_inputs, _ = flatten_to_tuple(input_args)
+                flattened_outputs = self.traced_model(*flattened_inputs)
+                return self.outputs_schema(flattened_outputs)
+
+        return TracingAdapterWrapper(traced_model, inputs_schema, outputs_schema)
 
 
 @ModelExportMethodRegistry.register("torchscript_mobile")

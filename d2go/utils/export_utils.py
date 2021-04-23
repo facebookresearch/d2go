@@ -2,10 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import sys
-import json
-import importlib
-import dataclasses
+import torch.nn as nn
 from caffe2.proto import caffe2_pb2
 from detectron2.export.caffe2_modeling import (
     META_ARCH_CAFFE2_EXPORT_TYPE_MAP,
@@ -88,49 +85,38 @@ class D2Caffe2MetaArchPostprocessFunc(object):
         }
 
 
-def dataclass_object_dump(ob):
-    datacls = type(ob)
-    if not dataclasses.is_dataclass(datacls):
-        raise TypeError(f"Expected dataclass instance, got '{datacls!r}' object")
-    mod = sys.modules.get(datacls.__module__)
-    if mod is None or not hasattr(mod, datacls.__qualname__):
-        raise ValueError(f"Can't resolve '{datacls!r}' reference")
-    ref = f"{datacls.__module__}.{datacls.__qualname__}"
-    fields = (f.name for f in dataclasses.fields(ob))
-    return {**{f: getattr(ob, f) for f in fields}, "__dataclass__": ref}
+class D2RCNNTracingWrapper(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
 
+    def forward(self, image):
+        """
+        This function describes what happends during the tracing. Note that the output
+        contains non-tensor, therefore the D2TorchscriptTracingExport must be used in
+        order to convert the output back from flattened tensors.
+        """
+        inputs = [{"image": image}]
+        return self.model.inference(inputs, do_postprocess=False)[0]
 
-def dataclass_object_load(d):
-    ref = d.pop("__dataclass__", None)
-    if ref is None:
-        return d
-    try:
-        modname, hasdot, qualname = ref.rpartition(".")
-        module = importlib.import_module(modname)
-        datacls = getattr(module, qualname)
-        if not dataclasses.is_dataclass(datacls) or not isinstance(datacls, type):
-            raise ValueError
-        return datacls(**d)
-    except (ModuleNotFoundError, ValueError, AttributeError, TypeError):
-        raise ValueError(f"Invalid dataclass reference {ref!r}") from None
+    @staticmethod
+    def generator_trace_inputs(batch):
+        """
+        This function describes how to covert orginal input (from the data loader)
+        to the inputs used during the tracing (i.e. the inputs of forward function).
+        """
+        return (batch[0]["image"],)
 
-
-class D2TracingAdapterPreprocessFunc(object):
-    def __call__(self, inputs):
-        assert len(inputs) == 1, "only support single batch"
-        return inputs[0]["image"]
-
-
-class D2TracingAdapterPostFunc(object):
-    def __init__(self, outputs_schema_json):
-        self.outputs_schema = json.loads(
-            outputs_schema_json, object_hook=dataclass_object_load
-        )
-
-    def __call__(self, inputs, tensor_inputs, tensor_outputs):
-        results_per_image = self.outputs_schema(tensor_outputs)
-
-        assert len(inputs) == 1, "only support single batch"
-        width, height = inputs[0]["width"], inputs[0]["height"]
-        r = detector_postprocess(results_per_image, height, width)
-        return [{"instances": r}]
+    class RunFunc(object):
+        def __call__(self, tracing_adapter_wrapper, batch):
+            """
+            This function describes how to run the predictor using exported model. Note
+            that `tracing_adapter_wrapper` runs the traced model under the hood and
+            behaves exactly the same as the forward function.
+            """
+            assert len(batch) == 1, "only support single batch"
+            width, height = batch[0]["width"], batch[0]["height"]
+            inputs = D2RCNNTracingWrapper.generator_trace_inputs(batch)
+            results_per_image = tracing_adapter_wrapper(inputs)
+            r = detector_postprocess(results_per_image, height, width)
+            return [{"instances": r}]

@@ -2,18 +2,16 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import json
 import logging
 
-import torch
 from d2go.export.api import PredictorExportConfig
+from d2go.utils.export_utils import (
+    D2Caffe2MetaArchPreprocessFunc,
+    D2Caffe2MetaArchPostprocessFunc,
+    D2RCNNTracingWrapper,
+)
 from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
 from mobile_cv.predictor.api import FuncInfo
-from detectron2.export.flatten import TracingAdapter
-from detectron2.export.torchscript_patch import patch_builtin_len
-from d2go.utils.export_utils import (D2Caffe2MetaArchPreprocessFunc,
-        D2Caffe2MetaArchPostprocessFunc, D2TracingAdapterPreprocessFunc, D2TracingAdapterPostFunc,
-        dataclass_object_dump)
 
 logger = logging.getLogger(__name__)
 
@@ -21,37 +19,11 @@ logger = logging.getLogger(__name__)
 def d2_meta_arch_prepare_for_export(self, cfg, inputs, predictor_type):
 
     if "torchscript" in predictor_type and "@tracing" in predictor_type:
-
-        def inference_func(model, image):
-            inputs = [{"image": image}]
-            return model.inference(inputs, do_postprocess=False)[0]
-
-        def data_generator(x):
-            return (x[0]["image"],)
-
-        image = data_generator(inputs)[0]
-        wrapper = TracingAdapter(self, image, inference_func)
-        wrapper.eval()
-
-        # HACK: outputs_schema can only be obtained after running tracing, but
-        # PredictorExportConfig requires a pre-defined postprocessing function, this
-        # causes tracing to run twice.
-        logger.info("tracing the model to get outputs_schema ...")
-        with torch.no_grad(), patch_builtin_len():
-            _ = torch.jit.trace(wrapper, (image,))
-        outputs_schema_json = json.dumps(
-            wrapper.outputs_schema, default=dataclass_object_dump
-        )
-
         return PredictorExportConfig(
-            model=wrapper,
-            data_generator=data_generator,
-            preprocess_info=FuncInfo.gen_func_info(
-                D2TracingAdapterPreprocessFunc, params={}
-            ),
-            postprocess_info=FuncInfo.gen_func_info(
-                D2TracingAdapterPostFunc,
-                params={"outputs_schema_json": outputs_schema_json},
+            model=D2RCNNTracingWrapper(self),
+            data_generator=D2RCNNTracingWrapper.generator_trace_inputs,
+            run_func_info=FuncInfo.gen_func_info(
+                D2RCNNTracingWrapper.RunFunc, params={}
             ),
         )
 
@@ -80,4 +52,3 @@ def d2_meta_arch_prepare_for_export(self, cfg, inputs, predictor_type):
         )
 
     raise NotImplementedError("Can't determine prepare_for_tracing!")
-
