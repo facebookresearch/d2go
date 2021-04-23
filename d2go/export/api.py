@@ -203,7 +203,7 @@ def default_export_predictor(
     model_inputs = (
         export_config.data_generator(inputs)
         if export_config.data_generator is not None
-        else None
+        else (inputs,)
     )
 
     predictor_path = os.path.join(output_dir, predictor_type)
