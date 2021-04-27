@@ -24,7 +24,6 @@ class MobileOptimizationConfig(NamedTuple):
     optimization_blocklist: Set[MobileOptimizerType] = None
     preserved_methods: List[AnyStr] = None
     backend: str = "CPU"
-    methods_to_optimize: List[AnyStr] = None
 
 
 def trace_and_save_torchscript(
@@ -68,7 +67,6 @@ def trace_and_save_torchscript(
                 optimization_blocklist=mobile_optimization.optimization_blocklist,
                 preserved_methods=mobile_optimization.preserved_methods,
                 backend=mobile_optimization.backend,
-                methods_to_optimize=mobile_optimization.methods_to_optimize,
             )
             with _synced_local_file("mobile_optimized.ptl") as lite_path:
                 liteopt_model._save_for_lite_interpreter(lite_path)
