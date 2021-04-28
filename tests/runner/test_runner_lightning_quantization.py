@@ -484,6 +484,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             callbacks=[static_quantization],
             max_epochs=num_epochs,
             logger=False,
+            num_sanity_val_steps=0,
         )
         trainer.fit(model)
 
