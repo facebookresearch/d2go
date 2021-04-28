@@ -23,6 +23,7 @@ from mobile_cv.arch.utils.quantize_utils import (
 )
 from mobile_cv.predictor.api import FuncInfo
 from torch.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
+from detectron2.projects.point_rend import PointRendMaskHead
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,6 @@ def _fx_quant_prepare(self, cfg):
         self.roi_heads.box_predictor.bbox_pred, qconfig
     )
 
-
 def d2_meta_arch_prepare_for_quant(self, cfg):
     model = self
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
@@ -155,6 +155,9 @@ def d2_meta_arch_prepare_for_quant(self, cfg):
         if model.training
         else torch.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
     )
+    if hasattr(model, "roi_heads") and hasattr(model.roi_heads, "mask_head") and \
+                isinstance(model.roi_heads.mask_head, PointRendMaskHead):
+        model.roi_heads.mask_head.qconfig = None
     logger.info("Setup the model with qconfig:\n{}".format(model.qconfig))
 
     # Modify the model for eager mode
