@@ -34,13 +34,7 @@ from typing import final
 import torch
 import torch.nn as nn
 import torch.quantization.quantize_fx
-from d2go.export.torchscript import (
-    trace_and_save_torchscript,
-    MobileOptimizationConfig,
-)
 from d2go.modeling.quantization import post_training_quantize
-from detectron2.config.instantiate import dump_dataclass, instantiate
-from detectron2.export.flatten import TracingAdapter, flatten_to_tuple
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.file_utils import make_temp_directory
@@ -51,7 +45,6 @@ from mobile_cv.predictor.builtin_functions import (
     IdentityPreprocess,
     NaiveRunFunc,
 )
-from mobile_cv.predictor.model_wrappers import load_model
 
 
 logger = logging.getLogger(__name__)
@@ -170,7 +163,9 @@ def _export_single_model(
 ):
     assert isinstance(model, nn.Module), model
     # model_export_method either inherits ModelExportMethod or is a key in the registry
+    model_export_method_str = None
     if isinstance(model_export_method, str):
+        model_export_method_str = model_export_method
         model_export_method = ModelExportMethodRegistry.get(model_export_method)
     assert issubclass(model_export_method, ModelExportMethod), model_export_method
 
@@ -178,6 +173,7 @@ def _export_single_model(
         model=model,
         input_args=input_args,
         save_path=save_path,
+        export_method=model_export_method_str,
         **model_export_kwargs,
     )
     assert isinstance(load_kwargs, dict)
@@ -268,7 +264,7 @@ class ModelExportMethod(ABC):
 
     @classmethod
     @abstractmethod
-    def export(cls, model, input_args, save_path, **export_kwargs):
+    def export(cls, model, input_args, save_path, export_method, **export_kwargs):
         """
         Export the model to deployable format.
 
@@ -276,6 +272,7 @@ class ModelExportMethod(ABC):
             model (nn.Module): a pytorch model to export
             input_args (Tuple[Any]): inputs of model, called as model(*input_args)
             save_path (str): directory where the model will be exported
+            export_method (str): string name for the export method
             export_kwargs (Dict): additional parameters for exporting model defined
                 by each model export method.
         Return:
@@ -302,7 +299,9 @@ class ModelExportMethod(ABC):
 
     @classmethod
     @final
-    def test_export_and_load(cls, model, input_args, export_kwargs, output_checker):
+    def test_export_and_load(
+        cls, model, input_args, export_method, export_kwargs, output_checker
+    ):
         """
         Illustrate the life-cycle of export and load, used for testing.
         """
@@ -313,7 +312,9 @@ class ModelExportMethod(ABC):
             original_output = model(*input_args)
             # export the model
             model.eval()  # TODO: decide where eval() should be called
-            load_kwargs = cls.export(model, input_args, save_path, **export_kwargs)
+            load_kwargs = cls.export(
+                model, input_args, save_path, export_method, **export_kwargs
+            )
             # sanity check for load_kwargs
             assert isinstance(load_kwargs, dict), load_kwargs
             assert json.dumps(load_kwargs), load_kwargs
@@ -327,89 +328,3 @@ class ModelExportMethod(ABC):
 
 
 ModelExportMethodRegistry = Registry("ModelExportMethod", allow_override=True)
-
-
-@ModelExportMethodRegistry.register("caffe2")
-class DefaultCaffe2Export(ModelExportMethod):
-    @classmethod
-    def export(cls, model, input_args, save_path, **export_kwargs):
-        from d2go.export.caffe2 import export_caffe2
-
-        # HACK: workaround the current caffe2 export API
-        if not hasattr(model, "encode_additional_info"):
-            model.encode_additional_info = lambda predict_net, init_net: None
-
-        export_caffe2(model, input_args[0], save_path, **export_kwargs)
-        return {}
-
-    @classmethod
-    def load(cls, save_path, **load_kwargs):
-        return load_model(save_path, "caffe2")
-
-
-@ModelExportMethodRegistry.register("torchscript")
-@ModelExportMethodRegistry.register("torchscript@scripting")
-@ModelExportMethodRegistry.register("torchscript_int8")
-@ModelExportMethodRegistry.register("torchscript_int8@scripting")
-class DefaultTorchscriptExport(ModelExportMethod):
-    @classmethod
-    def export(cls, model, input_args, save_path, **export_kwargs):
-        trace_and_save_torchscript(model, input_args, save_path, **export_kwargs)
-        return {}
-
-    @classmethod
-    def load(cls, save_path, **load_kwargs):
-        return load_model(save_path, "torchscript")
-
-
-@ModelExportMethodRegistry.register("torchscript@tracing")
-@ModelExportMethodRegistry.register("torchscript_int8@tracing")
-class D2TorchscriptTracingExport(ModelExportMethod):
-    @classmethod
-    def export(cls, model, input_args, save_path, **export_kwargs):
-        adapter = TracingAdapter(model, input_args)
-        trace_and_save_torchscript(
-            adapter, adapter.flattened_inputs, save_path, **export_kwargs
-        )
-        inputs_schema = dump_dataclass(adapter.inputs_schema)
-        outputs_schema = dump_dataclass(adapter.outputs_schema)
-        return {"inputs_schema": inputs_schema, "outputs_schema": outputs_schema}
-
-    @classmethod
-    def load(cls, save_path, inputs_schema, outputs_schema, **load_kwargs):
-        inputs_schema = instantiate(inputs_schema)
-        outputs_schema = instantiate(outputs_schema)
-        traced_model = load_model(save_path, "torchscript")
-
-        class TracingAdapterWrapper(nn.Module):
-            def __init__(self, traced_model, inputs_schema, outputs_schema):
-                super().__init__()
-                self.traced_model = traced_model
-                self.inputs_schema = inputs_schema
-                self.outputs_schema = outputs_schema
-
-            def forward(self, *input_args):
-                flattened_inputs, _ = flatten_to_tuple(input_args)
-                flattened_outputs = self.traced_model(*flattened_inputs)
-                return self.outputs_schema(flattened_outputs)
-
-        return TracingAdapterWrapper(traced_model, inputs_schema, outputs_schema)
-
-
-@ModelExportMethodRegistry.register("torchscript_mobile")
-@ModelExportMethodRegistry.register("torchscript_mobile_int8")
-class DefaultTorchscriptMobileExport(ModelExportMethod):
-    @classmethod
-    def export(cls, model, input_args, save_path, **export_kwargs):
-        trace_and_save_torchscript(
-            model,
-            input_args,
-            save_path,
-            mobile_optimization=MobileOptimizationConfig(),
-            **export_kwargs,
-        )
-        return {}
-
-    @classmethod
-    def load(cls, save_path, **load_kwargs):
-        return load_model(save_path, "torchscript")

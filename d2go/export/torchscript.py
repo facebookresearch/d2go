@@ -8,8 +8,14 @@ import os
 from typing import Tuple, Optional, Dict, NamedTuple, List, AnyStr, Set
 
 import torch
+from d2go.export.api import ModelExportMethodRegistry, ModelExportMethod
+from detectron2.config.instantiate import dump_dataclass, instantiate
+from detectron2.export.flatten import TracingAdapter, flatten_to_tuple
+from detectron2.export.torchscript_patch import patch_builtin_len
 from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory
+from mobile_cv.common.misc.iter_utils import recursive_iterate
+from mobile_cv.predictor.model_wrappers import load_model
 from torch import nn
 from torch._C import MobileOptimizerType
 from torch.utils.bundled_inputs import augment_model_with_bundled_inputs
@@ -38,11 +44,7 @@ def trace_and_save_torchscript(
     if _extra_files is None:
         _extra_files = {}
 
-    # TODO: patch_builtin_len depends on D2, we should either copy the function or
-    # dynamically registering the D2's version.
-    from detectron2.export.torchscript_patch import patch_builtin_len
-
-    with torch.no_grad(), patch_builtin_len():
+    with torch.no_grad():
         script_model = torch.jit.trace(model, inputs)
 
     with make_temp_directory("trace_and_save_torchscript") as tmp_dir:
@@ -77,7 +79,99 @@ def trace_and_save_torchscript(
             )
 
             logger.info("Applying augment_model_with_bundled_inputs ...")
+            # make all tensors zero-like to save storage
+            iters = recursive_iterate(inputs)
+            for x in iters:
+                if isinstance(x, torch.Tensor):
+                    iters.send(torch.zeros_like(x))
+            inputs = iters.value
             augment_model_with_bundled_inputs(liteopt_model, [inputs])
             liteopt_model.run_on_bundled_input(0)  # sanity check
             with _synced_local_file("mobile_optimized_bundled.ptl") as lite_path:
                 liteopt_model._save_for_lite_interpreter(lite_path)
+
+
+def tracing_adapter_wrap_export(old_f):
+    def new_f(cls, model, input_args, *args, **kwargs):
+        adapter = TracingAdapter(model, input_args)
+        load_kwargs = old_f(cls, adapter, adapter.flattened_inputs, *args, **kwargs)
+        inputs_schema = dump_dataclass(adapter.inputs_schema)
+        outputs_schema = dump_dataclass(adapter.outputs_schema)
+        assert "inputs_schema" not in load_kwargs
+        assert "outputs_schema" not in load_kwargs
+        load_kwargs.update(
+            {"inputs_schema": inputs_schema, "outputs_schema": outputs_schema}
+        )
+        return load_kwargs
+
+    return new_f
+
+
+def tracing_adapter_wrap_load(old_f):
+    def new_f(cls, save_path, **load_kwargs):
+        assert "inputs_schema" in load_kwargs
+        assert "outputs_schema" in load_kwargs
+        inputs_schema = instantiate(load_kwargs.pop("inputs_schema"))
+        outputs_schema = instantiate(load_kwargs.pop("outputs_schema"))
+        traced_model = old_f(cls, save_path, **load_kwargs)
+
+        class TracingAdapterModelWrapper(nn.Module):
+            def __init__(self, traced_model, inputs_schema, outputs_schema):
+                super().__init__()
+                self.traced_model = traced_model
+                self.inputs_schema = inputs_schema
+                self.outputs_schema = outputs_schema
+
+            def forward(self, *input_args):
+                flattened_inputs, _ = flatten_to_tuple(input_args)
+                flattened_outputs = self.traced_model(*flattened_inputs)
+                return self.outputs_schema(flattened_outputs)
+
+        return TracingAdapterModelWrapper(traced_model, inputs_schema, outputs_schema)
+
+    return new_f
+
+
+@ModelExportMethodRegistry.register("torchscript")
+@ModelExportMethodRegistry.register("torchscript_int8")
+@ModelExportMethodRegistry.register("torchscript_mobile")
+@ModelExportMethodRegistry.register("torchscript_mobile_int8")
+class DefaultTorchscriptExport(ModelExportMethod):
+    @classmethod
+    def export(cls, model, input_args, save_path, export_method, **export_kwargs):
+        if export_method is not None:
+            # update export_kwargs based on export_method
+            assert isinstance(export_method, str)
+            if "_mobile" in export_method:
+                if "mobile_optimization" in export_kwargs:
+                    logger.warning(
+                        "`mobile_optimization` is already specified, keep using it"
+                    )
+                else:
+                    export_kwargs["mobile_optimization"] = MobileOptimizationConfig()
+
+        trace_and_save_torchscript(model, input_args, save_path, **export_kwargs)
+        return {}
+
+    @classmethod
+    def load(cls, save_path, **load_kwargs):
+        return load_model(save_path, "torchscript")
+
+
+@ModelExportMethodRegistry.register("torchscript@tracing")
+@ModelExportMethodRegistry.register("torchscript_int8@tracing")
+@ModelExportMethodRegistry.register("torchscript_mobile@tracing")
+@ModelExportMethodRegistry.register("torchscript_mobile_int8@tracing")
+class D2TorchscriptTracingExport(DefaultTorchscriptExport):
+    @classmethod
+    @tracing_adapter_wrap_export
+    def export(cls, model, input_args, save_path, export_method, **export_kwargs):
+        with patch_builtin_len():
+            return super().export(
+                model, input_args, save_path, export_method, **export_kwargs
+            )
+
+    @classmethod
+    @tracing_adapter_wrap_load
+    def load(cls, save_path, **load_kwargs):
+        return super().load(save_path, **load_kwargs)
