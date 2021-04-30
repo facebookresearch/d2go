@@ -17,10 +17,17 @@ def add_d2go_data_default_configs(_C):
     _C.D2GO_DATA.DATASETS.TEST_CATEGORIES = ()
 
     # Register a list of COCO datasets in config
+    # The following specifies additional coco data to inject. The required is the
+    # name (NAMES), image root (IM_DIRS), coco json file (JSON_FILES) while keypoint
+    # metadata (KEYPOINT_METADATA) is optional. The keypoint metadata name provided
+    # here is used to lookup the metadata specified within the KEYPOINT_METADATA
+    # metadata registry specified in "data/keypoint_metadata_registry.py". For adding
+    # new use cases, simply register new metadata to that registry.
     _C.D2GO_DATA.DATASETS.COCO_INJECTION = CN()
     _C.D2GO_DATA.DATASETS.COCO_INJECTION.NAMES = []
     _C.D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS = []
     _C.D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES = []
+    _C.D2GO_DATA.DATASETS.COCO_INJECTION.KEYPOINT_METADATA = []
 
     # On-the-fly register a list of datasets located under detectron2go/datasets
     # by specifying the filename (without .py).

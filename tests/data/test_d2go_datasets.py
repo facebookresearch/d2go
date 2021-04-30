@@ -7,13 +7,19 @@ import os
 import unittest
 
 import d2go.data.extended_coco as extended_coco
+from d2go.data.keypoint_metadata_registry import (
+    KEYPOINT_METADATA_REGISTRY,
+    KeypointMetadata,
+    get_keypoint_metadata,
+)
 from d2go.data.utils import maybe_subsample_n_images
 from d2go.runner import Detectron2GoRunner
 from d2go.utils.testing.data_loader_helper import (
     LocalImageGenerator,
     create_toy_dataset,
 )
-from detectron2.data import DatasetCatalog
+from d2go.utils.testing.helper import tempdir
+from detectron2.data import DatasetCatalog, MetadataCatalog
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
 
@@ -68,61 +74,117 @@ class TestD2GoDatasets(unittest.TestCase):
                 self.assertEqual(out_json["images"][0]["id"], exp_output[0])
                 self.assertEqual(out_json["annotations"][0]["image_id"], exp_output[1])
 
-    def test_coco_injection(self):
+    @tempdir
+    def test_coco_injection(self, tmp_dir):
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
 
-        with make_temp_directory("detectron2go_tmp_dataset") as tmp_dir:
-            image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
-
-            runner = Detectron2GoRunner()
-            cfg = runner.get_default_cfg()
-            cfg.merge_from_list(
-                [
-                    str(x)
-                    for x in [
-                        "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
-                        ["inj_ds1", "inj_ds2"],
-                        "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
-                        [image_dir, "/mnt/fair"],
-                        "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
-                        [json_file, "inj_ds2"],
-                    ]
+        runner = Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_list(
+            [
+                str(x)
+                for x in [
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
+                    ["inj_ds1", "inj_ds2"],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
+                    [image_dir, "/mnt/fair"],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
+                    [json_file, "inj_ds2"],
                 ]
+            ]
+        )
+
+        runner.register(cfg)
+        inj_ds1 = DatasetCatalog.get("inj_ds1")
+        self.assertEqual(len(inj_ds1), 10)
+        for dic in inj_ds1:
+            self.assertEqual(dic["width"], 80)
+            self.assertEqual(dic["height"], 60)
+
+    @tempdir
+    def test_sub_dataset(self, tmp_dir):
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
+
+        runner = Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_list(
+            [
+                str(x)
+                for x in [
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
+                    ["inj_ds"],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
+                    [image_dir],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
+                    [json_file],
+                    "DATASETS.TEST",
+                    ("inj_ds",),
+                    "D2GO_DATA.TEST.MAX_IMAGES",
+                    1,
+                ]
+            ]
+        )
+
+        runner.register(cfg)
+        with maybe_subsample_n_images(cfg) as new_cfg:
+            test_loader = runner.build_detection_test_loader(
+                new_cfg, new_cfg.DATASETS.TEST[0]
+            )
+            self.assertEqual(len(test_loader), 1)
+
+    def test_coco_metadata_registry(self):
+        @KEYPOINT_METADATA_REGISTRY.register()
+        def TriangleMetadata():
+            return KeypointMetadata(
+                names=("A", "B", "C"),
+                flip_map=(
+                    ("A", "B"),
+                    ("B", "C"),
+                ),
+                connection_rules=[
+                    ("A", "B", (102, 204, 255)),
+                    ("B", "C", (51, 153, 255)),
+                ],
             )
 
-            runner.register(cfg)
-            inj_ds1 = DatasetCatalog.get("inj_ds1")
-            self.assertEqual(len(inj_ds1), 10)
-            for dic in inj_ds1:
-                self.assertEqual(dic["width"], 80)
-                self.assertEqual(dic["height"], 60)
+        tri_md = get_keypoint_metadata("TriangleMetadata")
+        self.assertEqual(tri_md["keypoint_names"][0], "A")
+        self.assertEqual(tri_md["keypoint_flip_map"][0][0], "A")
+        self.assertEqual(tri_md["keypoint_connection_rules"][0][0], "A")
 
-    def test_sub_dataset(self):
-        with make_temp_directory("detectron2go_tmp_dataset") as tmp_dir:
-            image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
-
-            runner = Detectron2GoRunner()
-            cfg = runner.get_default_cfg()
-            cfg.merge_from_list(
-                [
-                    str(x)
-                    for x in [
-                        "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
-                        ["inj_ds"],
-                        "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
-                        [image_dir],
-                        "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
-                        [json_file],
-                        "DATASETS.TEST",
-                        ("inj_ds",),
-                        "D2GO_DATA.TEST.MAX_IMAGES",
-                        1,
-                    ]
-                ]
+    @tempdir
+    def test_coco_metadata_register(self, tmp_dir):
+        @KEYPOINT_METADATA_REGISTRY.register()
+        def LineMetadata():
+            return KeypointMetadata(
+                names=("A", "B"),
+                flip_map=(("A", "B"),),
+                connection_rules=[
+                    ("A", "B", (102, 204, 255)),
+                ],
             )
 
-            runner.register(cfg)
-            with maybe_subsample_n_images(cfg) as new_cfg:
-                test_loader = runner.build_detection_test_loader(
-                    new_cfg, new_cfg.DATASETS.TEST[0]
-                )
-                self.assertEqual(len(test_loader), 1)
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
+
+        runner = Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_list(
+            [
+                str(x)
+                for x in [
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
+                    ["inj_ds"],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
+                    [image_dir],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
+                    [json_file],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.KEYPOINT_METADATA",
+                    ["LineMetadata"],
+                ]
+            ]
+        )
+        runner.register(cfg)
+        inj_md = MetadataCatalog.get("inj_ds")
+        self.assertEqual(inj_md.keypoint_names[0], "A")
+        self.assertEqual(inj_md.keypoint_flip_map[0][0], "A")
+        self.assertEqual(inj_md.keypoint_connection_rules[0][0], "A")

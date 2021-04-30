@@ -7,11 +7,12 @@ import importlib
 import logging
 import os
 
-from detectron2.data import DatasetCatalog, MetadataCatalog
 from d2go.utils.helper import get_dir_path
+from detectron2.data import DatasetCatalog, MetadataCatalog
 
 from .extended_coco import coco_text_load, extended_coco_load
 from .extended_lvis import extended_lvis_load
+from .keypoint_metadata_registry import get_keypoint_metadata
 
 
 logger = logging.getLogger(__name__)
@@ -104,10 +105,15 @@ def inject_coco_datasets(cfg):
     names = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.NAMES
     im_dirs = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS
     json_files = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES
+    metadata_type = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.KEYPOINT_METADATA
 
     assert len(names) == len(im_dirs) == len(json_files)
-    for name, im_dir, json_file in zip(names, im_dirs, json_files):
+    for ds_index, (name, im_dir, json_file) in enumerate(
+        zip(names, im_dirs, json_files)
+    ):
         split_dict = {IM_DIR: im_dir, ANN_FN: json_file}
+        if len(metadata_type) != 0:
+            split_dict["meta_data"] = get_keypoint_metadata(metadata_type[ds_index])
         logger.info("Inject coco dataset {}: {}".format(name, split_dict))
         _register_extended_coco(name, split_dict)
 
