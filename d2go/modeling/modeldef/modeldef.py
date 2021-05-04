@@ -519,10 +519,66 @@ MODEL_ARCH_BUILTIN = {
         "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
         "basic_args": _BASIC_ARGS,
     },
+    "FBNetV3_A_fpn": {
+        "trunk": FBNetV3_A[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_A[3], n=1)]],
+        "bbox": [FBNetV3_A[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
+    "FBNetV3_B_fpn": {
+        "trunk": FBNetV3_B[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_B[3], n=1)]],
+        "bbox": [FBNetV3_B[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
+    "FBNetV3_C_fpn": {
+        "trunk": FBNetV3_C[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_C[3], n=1)]],
+        "bbox": [FBNetV3_C[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
+    "FBNetV3_D_fpn": {
+        "trunk": FBNetV3_D[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_D[3], n=1)]],
+        "bbox": [FBNetV3_D[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
+    "FBNetV3_E_fpn": {
+        "trunk": FBNetV3_E[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_E[3], n=1)]],
+        "bbox": [FBNetV3_E[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
+    "FBNetV3_F_fpn": {
+        "trunk": FBNetV3_F[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_F[3], n=1)]],
+        "bbox": [FBNetV3_F[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
     "FBNetV3_G_fpn": {
         "trunk": FBNetV3_G[0:5],  # FPN uses all 5 stages
         "rpn": [[_repeat_last(FBNetV3_G[3], n=1)]],
         "bbox": [FBNetV3_G[4]],
+        "mask": FPN_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
+    "FBNetV3_H_fpn": {
+        "trunk": FBNetV3_H[0:5],  # FPN uses all 5 stages
+        "rpn": [[_repeat_last(FBNetV3_H[3], n=1)]],
+        "bbox": [FBNetV3_H[4]],
         "mask": FPN_UPSAMPLE_HEAD_STAGES,
         "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
         "basic_args": _BASIC_ARGS,
