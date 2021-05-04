@@ -5,7 +5,7 @@
 import logging
 import numpy as np
 
-from mobile_cv.torch.utils_caffe2.ws_utils import ScopedWS
+from detectron2.export.shared import ScopedWS
 
 
 logger = logging.getLogger(__name__)
