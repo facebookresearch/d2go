@@ -443,6 +443,7 @@ MODEL_ARCH_BUILTIN = {
         "trunk": FBNetV3_A[0:4],
         "rpn": [[_repeat_last(FBNetV3_A[3])]],
         "bbox": [FBNetV3_A[4]],
+        "mask": SMALL_DS_UPSAMPLE_HEAD_STAGES,
         "basic_args": _BASIC_ARGS,
     },
     "FBNetV3_B": {

@@ -47,8 +47,8 @@ FBNet series are efficient mobile backbones discovered via neural architecture s
 
 | name                                                         | box AP | mask AP | model id  | download                                                     |
 | ------------------------------------------------------------ | ------ | ------- | --------- | ------------------------------------------------------------ |
-| [Mask-RCNN-FBNetV3A](./configs/mask_rcnn_fbnetv3a_C4.yaml)   | 23.74  | 21.18   | 250355374 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250355374/model_0479999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250355374/metrics.json) |
-| [Mask-RCNN-FBNetV3A-dsmask](./configs/mask_rcnn_fbnetv3a_dsmask_C4.yaml) | 21.81  | 19.76   | 250414867 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414867/model_0399999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250414867/metrics.json) |
+| [Mask-RCNN-FBNetV3A](./configs/mask_rcnn_fbnetv3a_C4.yaml)   | 23.05  | 20.71   | 268421013 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268421013/model_final.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268421013/metrics.json) |
+| [Mask-RCNN-FBNetV3A-dsmask](./configs/mask_rcnn_fbnetv3a_dsmask_C4.yaml) | 21.76  | 19.97   | 268412271 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268412271/model_0499999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268412271/metrics.json) |
 | [Mask-RCNN-FBNetV3G-FPN](./configs/mask_rcnn_fbnetv3g_fpn.yaml) | 43.88  | 39.25   | 250376154 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250376154/model_0404999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250376154/metrics.json) |
 
 ### COCO Person Keypoint Detection
