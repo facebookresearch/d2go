@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Tuple, List
+from typing import Tuple, List, Any, Union
 
+import detectron2.data.transforms.augmentation as aug
 import numpy as np
 import torch
+from detectron2.config import CfgNode
+from detectron2.data.transforms.transform import Transform
 from detectron2.structures.boxes import Boxes
+
+from .build import TRANSFORM_OP_REGISTRY, _json_load
 
 
 def get_box_union(boxes: Boxes):
@@ -129,3 +134,44 @@ def clip_box_xywh(bbox_xywh: torch.Tensor, image_size_hw: List[int]):
     bbox_xyxy[2] = min(bbox_xyxy[2], w)
     bbox_xyxy[3] = min(bbox_xyxy[3], h)
     return get_bbox_xywh_from_xyxy(bbox_xyxy)
+
+
+class EnlargeBoundingBox(Transform):
+    """ Enlarge bounding box based on fixed padding or percentage """
+
+    def __init__(self, percentage: float = None, fixed_pad: int = None):
+        super().__init__()
+        assert percentage is not None or fixed_pad is not None
+        assert percentage is None or fixed_pad is None
+
+        if percentage is not None:
+
+            def xfn(x, c):
+                return [((a - b) * percentage + a) for a, b in zip(x, c)]
+
+        elif fixed_pad is not None:
+
+            def xfn(x, c):
+                return [(np.sign(a - b) * fixed_pad + a) for a, b in zip(x, c)]
+
+        self.xfm_fn = xfn
+
+    def apply_image(self, img: torch.Tensor) -> np.ndarray:
+        return img
+
+    def apply_coords(self, coords: Any) -> Any:
+        assert coords.shape[1] == 2, "Supported 2d inputs only"
+        center = np.mean(coords, axis=0)
+        for index in range(coords.shape[0]):
+            coords[index] = self.xfm_fn(coords[index], center)
+        return coords
+
+
+@TRANSFORM_OP_REGISTRY.register()
+def EnlargeBoundingBoxOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
+    assert is_train
+    kwargs = _json_load(arg_str) if arg_str is not None else {}
+    assert isinstance(kwargs, dict)
+    return [EnlargeBoundingBox(**kwargs)]

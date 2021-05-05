@@ -7,6 +7,15 @@ import unittest
 import d2go.data.transforms.box_utils as bu
 import numpy as np
 import torch
+from d2go.config import CfgNode
+from d2go.data.transforms.build import build_transform_gen
+
+
+def get_default_config():
+    cfg = CfgNode()
+    cfg.D2GO_DATA = CfgNode()
+    cfg.D2GO_DATA.AUG_OPS = CfgNode()
+    return cfg
 
 
 class TestDataTransformsBoxUtils(unittest.TestCase):
@@ -46,3 +55,52 @@ class TestDataTransformsBoxUtils(unittest.TestCase):
 
     def assertArrayEqual(self, a1, a2):
         self.assertTrue(np.array_equal(a1, a2))
+
+    def test_enlarge_bounding_box(self):
+        default_cfg = get_default_config()
+
+        default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [
+            'EnlargeBoundingBoxOp::{"fixed_pad": 20}',
+            'EnlargeBoundingBoxOp::{"percentage": 0.2}',
+        ]
+        enlarge_box_tfm = build_transform_gen(default_cfg, is_train=True)
+
+        boxes = np.array(
+            [[91, 46, 144, 111]],
+            dtype=np.float64,
+        )
+        transformed_bboxs = enlarge_box_tfm[0].apply_box(boxes)
+        expected_bboxs = np.array(
+            [[71, 26, 164, 131]],
+            dtype=np.float64,
+        )
+        err_msg = "transformed_bbox = {}, expected {}".format(
+            transformed_bboxs, expected_bboxs
+        )
+        self.assertTrue(np.allclose(transformed_bboxs, expected_bboxs), err_msg)
+
+        boxes = np.array(
+            [[91, 46, 144, 111]],
+            dtype=np.float64,
+        )
+        transformed_bboxs = enlarge_box_tfm[1].apply_box(boxes)
+        expected_bboxs = np.array(
+            [[85.7, 39.5, 149.3, 117.5]],
+            dtype=np.float64,
+        )
+        err_msg = "transformed_bbox = {}, expected {}".format(
+            transformed_bboxs, expected_bboxs
+        )
+        self.assertTrue(np.allclose(transformed_bboxs, expected_bboxs), err_msg)
+
+        dummy_data = np.array(
+            [[91, 46, 144, 111]],
+            dtype=np.float64,
+        )
+        dummy_data_out = enlarge_box_tfm[1].apply_image(dummy_data)
+        expected_out = np.array(
+            [[91, 46, 144, 111]],
+            dtype=np.float64,
+        )
+        err_msg = "Apply image failed"
+        self.assertTrue(np.allclose(dummy_data_out, expected_out), err_msg)
