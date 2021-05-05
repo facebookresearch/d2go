@@ -28,7 +28,7 @@ from d2go.data.utils import (
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
-from d2go.export.caffe2_model_helper import update_cfg_from_pb_model
+from d2go.export.fb.caffe2_model_helper import update_cfg_from_pb_model
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import (
