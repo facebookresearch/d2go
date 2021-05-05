@@ -676,25 +676,4 @@ class Detectron2GoRunner(BaseRunner):
         return hooks.CallbackHook(before_step=qat_before_step_callback)
 
 
-class GeneralizedRCNNRunner(Detectron2GoRunner):
-    @staticmethod
-    def get_default_cfg():
-        _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
-        _C.EXPORT_CAFFE2 = CN()
-        _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
-        return _C
-
-    def build_traceable_model(self, cfg, built_model=None):
-        if built_model is not None:
-            logger.warning("The given built_model will be modified")
-        else:
-            built_model = self.build_model(cfg, eval_only=True)
-            logger.info("Model:\n{}".format(built_model))
-
-        Caffe2ModelType = META_ARCH_CAFFE2_EXPORT_TYPE_MAP[cfg.MODEL.META_ARCHITECTURE]
-        return Caffe2ModelType(cfg, torch_model=built_model)
-
-    def build_caffe2_model(self, predict_net, init_net):
-        pb_model = ProtobufDetectionModel(predict_net, init_net)
-        pb_model.validate_cfg = partial(update_cfg_from_pb_model, model=pb_model)
-        return pb_model
+GeneralizedRCNNRunner = Detectron2GoRunner
