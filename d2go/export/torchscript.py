@@ -85,7 +85,7 @@ def trace_and_save_torchscript(
             iters = recursive_iterate(inputs)
             for x in iters:
                 if isinstance(x, torch.Tensor):
-                    iters.send(torch.zeros_like(x))
+                    iters.send(torch.zeros_like(x).contiguous())
             inputs = iters.value
             augment_model_with_bundled_inputs(liteopt_model, [inputs])
             liteopt_model.run_on_bundled_input(0)  # sanity check
