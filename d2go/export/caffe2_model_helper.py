@@ -3,6 +3,7 @@
 
 
 import logging
+from functools import partial
 
 from detectron2.export.caffe2_inference import ProtobufDetectionModel
 from d2go.config import temp_defrost
@@ -63,3 +64,12 @@ def update_cfg_from_pb_model(cfg, model):
         _update_if_true(cfg, "MODEL.KEYPOINT_ON", infer_keypoint_on(model))
         _update_if_true(cfg, "MODEL.DENSEPOSE_ON", infer_densepose_on(model))
     return cfg
+
+
+def _deprecated_build_caffe2_model(runner, predict_net, init_net):
+    if hasattr(runner, "_deprecated_build_caffe2_model"):
+        return runner._deprecated_build_caffe2_model(predict_net, init_net)
+
+    pb_model = ProtobufDetectionModel(predict_net, init_net)
+    pb_model.validate_cfg = partial(update_cfg_from_pb_model, model=pb_model)
+    return pb_model

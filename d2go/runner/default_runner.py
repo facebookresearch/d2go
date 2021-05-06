@@ -7,7 +7,7 @@ import logging
 import math
 import os
 from collections import OrderedDict
-from functools import lru_cache, partial
+from functools import lru_cache
 from typing import Type, Optional, List
 
 import d2go.utils.abnormal_checker as abnormal_checker
@@ -28,7 +28,6 @@ from d2go.data.utils import (
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
-from d2go.export.caffe2_model_helper import update_cfg_from_pb_model
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import (
@@ -61,7 +60,6 @@ from detectron2.evaluation import (
     print_csv_format,
     verify_results,
 )
-from detectron2.export.caffe2_inference import ProtobufDetectionModel
 from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
 from detectron2.modeling import GeneralizedRCNNWithTTA, build_model
 from detectron2.solver import (
@@ -201,12 +199,6 @@ class BaseRunner(object):
         - encode_additional_info: this allow editing exported predict_net/init_net.
         """
         return built_model
-
-    def build_caffe2_model(self, predict_net, init_net):
-        """
-        Return a nn.Module which should behave the same as a normal D2 model.
-        """
-        raise NotImplementedError()
 
     def do_test(self, *args, **kwargs):
         raise NotImplementedError()
@@ -693,8 +685,3 @@ class GeneralizedRCNNRunner(Detectron2GoRunner):
 
         Caffe2ModelType = META_ARCH_CAFFE2_EXPORT_TYPE_MAP[cfg.MODEL.META_ARCHITECTURE]
         return Caffe2ModelType(cfg, torch_model=built_model)
-
-    def build_caffe2_model(self, predict_net, init_net):
-        pb_model = ProtobufDetectionModel(predict_net, init_net)
-        pb_model.validate_cfg = partial(update_cfg_from_pb_model, model=pb_model)
-        return pb_model
