@@ -60,7 +60,6 @@ from detectron2.evaluation import (
     print_csv_format,
     verify_results,
 )
-from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
 from detectron2.modeling import GeneralizedRCNNWithTTA, build_model
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
@@ -189,16 +188,6 @@ class BaseRunner(object):
             model.eval()
 
         return model
-
-    def build_traceable_model(self, cfg, built_model=None):
-        """
-        Return a traceable model. The returned model has to be a
-        `Caffe2MetaArch` which provides the following two member methods:
-        - get_caffe2_inputs: it'll be called when exporting the model
-            to convert D2's batched_input to a list of Tensors.
-        - encode_additional_info: this allow editing exported predict_net/init_net.
-        """
-        return built_model
 
     def do_test(self, *args, **kwargs):
         raise NotImplementedError()
@@ -675,13 +664,3 @@ class GeneralizedRCNNRunner(Detectron2GoRunner):
         _C.EXPORT_CAFFE2 = CN()
         _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
         return _C
-
-    def build_traceable_model(self, cfg, built_model=None):
-        if built_model is not None:
-            logger.warning("The given built_model will be modified")
-        else:
-            built_model = self.build_model(cfg, eval_only=True)
-            logger.info("Model:\n{}".format(built_model))
-
-        Caffe2ModelType = META_ARCH_CAFFE2_EXPORT_TYPE_MAP[cfg.MODEL.META_ARCHITECTURE]
-        return Caffe2ModelType(cfg, torch_model=built_model)
