@@ -314,6 +314,10 @@ class DefaultTask(pl.LightningModule):
         )
 
     @staticmethod
+    def get_mapper(cfg, is_train):
+        return Detectron2GoRunner.get_mapper(cfg, is_train)
+
+    @staticmethod
     def build_detection_train_loader(cfg, *args, mapper=None, **kwargs):
         return Detectron2GoRunner.build_detection_train_loader(cfg, *args, **kwargs)
 
