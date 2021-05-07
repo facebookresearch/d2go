@@ -112,13 +112,13 @@ class TestD2GoDatasets(unittest.TestCase):
                 str(x)
                 for x in [
                     "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
-                    ["inj_ds"],
+                    ["inj_ds3"],
                     "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
                     [image_dir],
                     "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
                     [json_file],
                     "DATASETS.TEST",
-                    ("inj_ds",),
+                    ("inj_ds3",),
                     "D2GO_DATA.TEST.MAX_IMAGES",
                     1,
                 ]
