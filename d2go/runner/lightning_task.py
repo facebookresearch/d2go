@@ -22,7 +22,7 @@ from d2go.runner.default_runner import (
     Detectron2GoRunner,
     GeneralizedRCNNRunner,
 )
-from d2go.setup import setup_after_launch
+from d2go.setup import setup_after_lightning_launch
 from d2go.utils.ema_state import EMAState
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from detectron2.modeling import build_model
@@ -276,7 +276,7 @@ class DefaultTask(pl.LightningModule):
     # Runner methods
     # ---------------------------------------------------------------------------
     def setup(self, stage: str):
-        setup_after_launch(self.cfg, self.cfg.OUTPUT_DIR, runner=None)
+        setup_after_lightning_launch(self.cfg, self.cfg.OUTPUT_DIR)
 
     def register(self, cfg: CfgNode):
         inject_coco_datasets(cfg)
