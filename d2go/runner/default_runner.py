@@ -663,4 +663,9 @@ class GeneralizedRCNNRunner(Detectron2GoRunner):
         _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
         _C.EXPORT_CAFFE2 = CN()
         _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
+
+        _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
+        _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
+        _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
+
         return _C
