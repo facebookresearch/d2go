@@ -179,7 +179,7 @@ def prepare_for_launch(args):
     return cfg, output_dir, runner
 
 
-def setup_after_launch(cfg, output_dir, runner):
+def _setup_after_launch(cfg: CN, output_dir: str, runner):
     """
     Set things up after entering DDP, including
         - creating working directory
@@ -199,14 +199,20 @@ def setup_after_launch(cfg, output_dir, runner):
                 )
             )
             cfg.OUTPUT_DIR = output_dir
+    dump_cfg(cfg, os.path.join(output_dir, "config.yaml"))
+
+def setup_after_launch(cfg: CN, output_dir: str, runner):
+    _setup_after_launch(cfg, output_dir, runner)
     logger.info("Initializing runner ...")
     runner = initialize_runner(runner, cfg)
 
     log_info(cfg, runner)
-    dump_cfg(cfg, os.path.join(output_dir, "config.yaml"))
 
     auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
 
+def setup_after_lightning_launch(cfg: CN, output_dir: str):
+    _setup_after_launch(cfg, output_dir, runner=None)
+    log_info(cfg, runner=None)
 
 @run_once()
 def setup_loggers(output_dir, color=None):

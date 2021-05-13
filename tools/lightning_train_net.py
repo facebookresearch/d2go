@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
 import pytorch_lightning as pl  # type: ignore
-from d2go.config import CfgNode, temp_defrost
+from d2go.config import CfgNode, temp_defrost, auto_scale_world_size
 from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import (
     QuantizationAwareTraining,
@@ -139,7 +139,7 @@ def main(
     assert (
         num_processes == 1 or num_gpus == 0
     ), "Only set num_processes > 1 when training on CPUs"
-
+    auto_scale_world_size(cfg, num_machines * num_gpus)
     maybe_override_output_dir(cfg, output_dir)
 
     task = task_cls.from_config(cfg, eval_only)
