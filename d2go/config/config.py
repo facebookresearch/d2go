@@ -4,13 +4,12 @@
 
 import contextlib
 import logging
-import os
 
 import mock
 import yaml
+from d2go.utils.helper import reroute_config_path
 from detectron2.config import CfgNode as _CfgNode
 from fvcore.common.registry import Registry
-from d2go.utils.helper import reroute_config_path
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,7 @@ logger = logging.getLogger(__name__)
 def get_cfg_diff_table(cfg, original_cfg):
     # print out the differences
     from d2go.config import CfgNode
+
     def _find_all_keys(obj):
         assert isinstance(obj, CfgNode)
         ret = []
@@ -47,6 +47,7 @@ def get_cfg_diff_table(cfg, original_cfg):
             diff_table.append([full_key, old_value, new_value])
 
     from tabulate import tabulate
+
     table = tabulate(
         diff_table,
         tablefmt="pipe",
@@ -54,7 +55,17 @@ def get_cfg_diff_table(cfg, original_cfg):
     )
     return table
 
+
 class CfgNode(_CfgNode):
+    @classmethod
+    def cast_from_other_class(cls, other_cfg):
+        """Cast an instance of other CfgNode to D2Go's CfgNode (or its subclass)"""
+        new_cfg = CfgNode(other_cfg)
+        # copy all fields inside __dict__, this will preserve fields like __deprecated_keys__
+        for k, v in other_cfg.__dict__.items():
+            new_cfg.__dict__[k] = v
+        return new_cfg
+
     def merge_from_file(self, cfg_filename: str, *args, **kwargs):
         cfg_filename = reroute_config_path(cfg_filename)
         with reroute_load_yaml_with_base():
@@ -71,8 +82,11 @@ class CfgNode(_CfgNode):
         # TODO: remove this by end of 2020.
         if cfg_other.get("MODEL", {}).get("FBNET_V2", {}).get("ARCH_DEF", None) == "":
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.warning("Default value for MODEL.FBNET_V2.ARCH_DEF has changed to []")
+            logger.warning(
+                "Default value for MODEL.FBNET_V2.ARCH_DEF has changed to []"
+            )
             cfg_other.MODEL.FBNET_V2.ARCH_DEF = []
         return super().merge_from_other_cfg(cfg_other)
 

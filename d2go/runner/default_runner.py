@@ -15,7 +15,7 @@ import detectron2.utils.comm as comm
 import mock
 import torch
 from d2go.config import (
-    CfgNode as CN,
+    CfgNode,
     CONFIG_SCALING_METHOD_REGISTRY,
     temp_defrost,
     get_cfg_diff_table,
@@ -174,7 +174,15 @@ class BaseRunner(object):
         from detectron2.config import get_cfg as get_d2_cfg
 
         cfg = get_d2_cfg()
-        cfg = CN(cfg)  # upgrade from D2's CfgNode to D2Go's CfgNode
+        cfg = CfgNode.cast_from_other_class(cfg)  # upgrade from D2's CfgNode to D2Go's CfgNode
+
+        try:
+            from d2go.runner import get_unintentional_added_configs_during_runner_import
+            for key in get_unintentional_added_configs_during_runner_import():
+                cfg.register_deprecated_key(key)
+        except ImportError:
+            pass
+
         cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
         return cfg
 
@@ -661,7 +669,7 @@ class GeneralizedRCNNRunner(Detectron2GoRunner):
     @staticmethod
     def get_default_cfg():
         _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
-        _C.EXPORT_CAFFE2 = CN()
+        _C.EXPORT_CAFFE2 = CfgNode()
         _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
 
         _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
