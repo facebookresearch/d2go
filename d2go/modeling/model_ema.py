@@ -127,9 +127,7 @@ class EMAUpdater(object):
 
 
 def add_model_ema_configs(_C):
-    from d2go.config import CfgNode as CN
-
-    _C.MODEL_EMA = CN()
+    _C.MODEL_EMA = type(_C)()
     _C.MODEL_EMA.ENABLED = False
     _C.MODEL_EMA.DECAY = 0.999
     # use the same as MODEL.DEVICE when empty
