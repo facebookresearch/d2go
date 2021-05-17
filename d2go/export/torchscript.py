@@ -88,7 +88,7 @@ def trace_and_save_torchscript(
                     iters.send(torch.zeros_like(x).contiguous())
             inputs = iters.value
             augment_model_with_bundled_inputs(liteopt_model, [inputs])
-            liteopt_model.run_on_bundled_input(0)  # sanity check
+            liteopt_model(*liteopt_model.get_all_bundled_inputs()[0]) # sanity check
             name, ext = os.path.splitext(torchscript_filename)
             with _synced_local_file(name + "_bundled" + ext) as lite_path:
                 liteopt_model._save_for_lite_interpreter(lite_path)
