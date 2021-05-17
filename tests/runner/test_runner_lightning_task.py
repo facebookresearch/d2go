@@ -18,7 +18,6 @@ from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.utils.testing import meta_arch_helper as mah
 from d2go.utils.testing.helper import tempdir
 from detectron2.modeling import META_ARCH_REGISTRY
-from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 from detectron2.utils.events import EventStorage
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch import Tensor
