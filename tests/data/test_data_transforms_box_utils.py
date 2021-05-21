@@ -93,6 +93,20 @@ class TestDataTransformsBoxUtils(unittest.TestCase):
         )
         self.assertTrue(np.allclose(transformed_bboxs, expected_bboxs), err_msg)
 
+        boxes = np.array(
+            [[[91, 46], [144, 111]]],
+            dtype=np.float64,
+        )
+        transformed_bboxs = enlarge_box_tfm[1].apply_polygons(boxes)
+        expected_bboxs = np.array(
+            [[[85.7, 39.5], [149.3, 117.5]]],
+            dtype=np.float64,
+        )
+        err_msg = "transformed_bbox = {}, expected {}".format(
+            transformed_bboxs, expected_bboxs
+        )
+        self.assertTrue(np.allclose(transformed_bboxs, expected_bboxs), err_msg)
+
         dummy_data = np.array(
             [[91, 46, 144, 111]],
             dtype=np.float64,
@@ -104,3 +118,15 @@ class TestDataTransformsBoxUtils(unittest.TestCase):
         )
         err_msg = "Apply image failed"
         self.assertTrue(np.allclose(dummy_data_out, expected_out), err_msg)
+
+        default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [
+            'EnlargeBoundingBoxOp::{"fixed_pad": 20, "box_only": true}',
+        ]
+        enlarge_box_tfm = build_transform_gen(default_cfg, is_train=True)
+
+        boxes = np.array([[91, 46, 144, 111]])
+        transformed_bboxs = enlarge_box_tfm[0].apply_coords(boxes)
+        err_msg = "transformed_bbox = {}, expected {}".format(
+            transformed_bboxs, boxes
+        )
+        self.assertTrue(np.allclose(transformed_bboxs, boxes), err_msg)

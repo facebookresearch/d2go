@@ -14,7 +14,7 @@ from .build import TRANSFORM_OP_REGISTRY, _json_load
 
 
 def get_box_union(boxes: Boxes):
-    """ Merge all boxes into a single box """
+    """Merge all boxes into a single box"""
     if len(boxes) == 0:
         return boxes
     bt = boxes.tensor
@@ -137,9 +137,11 @@ def clip_box_xywh(bbox_xywh: torch.Tensor, image_size_hw: List[int]):
 
 
 class EnlargeBoundingBox(Transform):
-    """ Enlarge bounding box based on fixed padding or percentage """
+    """Enlarge bounding box based on fixed padding or percentage"""
 
-    def __init__(self, percentage: float = None, fixed_pad: int = None):
+    def __init__(
+        self, percentage: float = None, fixed_pad: int = None, box_only: bool = False
+    ):
         super().__init__()
         assert percentage is not None or fixed_pad is not None
         assert percentage is None or fixed_pad is None
@@ -154,12 +156,23 @@ class EnlargeBoundingBox(Transform):
             def xfn(x, c):
                 return [(np.sign(a - b) * fixed_pad + a) for a, b in zip(x, c)]
 
+        self.box_only = box_only
         self.xfm_fn = xfn
 
     def apply_image(self, img: torch.Tensor) -> np.ndarray:
         return img
 
+    def apply_box(self, coords: Any) -> Any:
+        # Takes boxes_xyxy
+        center = (np.array(coords[0, 0:2]) + np.array(coords[0, 2:])) / 2
+        new_coords = np.zeros_like(coords)
+        new_coords[0, 0:2] = self.xfm_fn(coords[0, 0:2], center)
+        new_coords[0, 2:] = self.xfm_fn(coords[0, 2:], center)
+        return new_coords
+
     def apply_coords(self, coords: Any) -> Any:
+        if self.box_only:
+            return coords
         assert coords.shape[1] == 2, "Supported 2d inputs only"
         center = np.mean(coords, axis=0)
         for index in range(coords.shape[0]):
@@ -171,7 +184,6 @@ class EnlargeBoundingBox(Transform):
 def EnlargeBoundingBoxOp(
     cfg: CfgNode, arg_str: str, is_train: bool
 ) -> List[Union[aug.Augmentation, Transform]]:
-    assert is_train
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [EnlargeBoundingBox(**kwargs)]
