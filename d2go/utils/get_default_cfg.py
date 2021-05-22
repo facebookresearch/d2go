@@ -59,6 +59,8 @@ def get_default_cfg(_C):
 
     # Set find_unused_parameters for DistributedDataParallel.
     _C.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
+    # Set FP16 gradient compression for DistributedDataParallel.
+    _C.MODEL.DDP_FP16_GRAD_COMPRESS = False
 
     # Set default optimizer
     _C.SOLVER.OPTIMIZER = "sgd"

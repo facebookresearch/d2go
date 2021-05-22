@@ -16,7 +16,7 @@ from d2go.setup import (
     setup_after_launch,
 )
 from d2go.utils.misc import print_metrics_table, dump_trained_model_configs
-from torch.nn.parallel import DistributedDataParallel
+from detectron2.engine.defaults import create_ddp_model
 
 
 logger = logging.getLogger("d2go.tools.train_net")
@@ -53,13 +53,13 @@ def main(
             "metrics": metrics,
         }
 
-    if comm.get_world_size() > 1:
-        model = DistributedDataParallel(
-            model,
-            device_ids=None if cfg.MODEL.DEVICE == "cpu" else [comm.get_local_rank()],
-            broadcast_buffers=False,
-            find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS,
-        )
+    model = create_ddp_model(
+        model,
+        fp16_compression=cfg.MODEL.DDP_FP16_GRAD_COMPRESS,
+        device_ids=None if cfg.MODEL.DEVICE == "cpu" else [comm.get_local_rank()],
+        broadcast_buffers=False,
+        find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS,
+    )
 
     trained_cfgs = runner.do_train(cfg, model, resume=resume)
     metrics = runner.do_test(cfg, model)
@@ -88,6 +88,7 @@ def run_with_cmdline_args(args):
         args=(cfg, output_dir, runner, args.eval_only, args.resume),
     )
 
+
 def cli():
     parser = basic_argument_parser(requires_output_dir=False)
     parser.add_argument(
@@ -99,6 +100,7 @@ def cli():
         help="whether to attempt to resume from the checkpoint directory",
     )
     run_with_cmdline_args(parser.parse_args())
+
 
 if __name__ == "__main__":
     cli()
