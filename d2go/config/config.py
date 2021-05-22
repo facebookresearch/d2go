@@ -4,7 +4,6 @@
 
 import contextlib
 import logging
-from typing import Optional, Any, Dict
 
 import mock
 import yaml
@@ -94,60 +93,6 @@ class CfgNode(_CfgNode):
     def __hash__(self):
         # dump follows alphabetical order, thus good for hash use
         return hash(self.dump())
-
-    def get_field_or_none(self, field_path: str) -> Optional[Any]:
-        """
-        Reads out a value from the cfg node is set otherwise returns None
-        The field path is the name of the parameter with all config groups
-        names prefixed with a "." separator.
-        e.g. if the config is
-            MODEL:
-              TEST:
-                SCORE_THRESHOLD: 0.7
-            Then to access the value of SCORE_THRESHOLD, this API should be called
-
-            >> score_threshold = cfg.get_field_or_none("MODEL.TEST.SCORE_THRESHOLD")
-        """
-        attributes = field_path.split(".")
-        path_to_last, last_attribute = attributes[:-1], attributes[-1]
-        cfg_node = self
-        for attribute in path_to_last:
-            if not isinstance(cfg_node, _CfgNode) or attribute not in cfg_node:
-                return None
-            cfg_node = cfg_node[attribute]
-
-        return (
-            cfg_node[last_attribute]
-            if isinstance(cfg_node, _CfgNode) and last_attribute in cfg_node
-            else None
-        )
-
-    def as_flattened_dict(self) -> Dict[str, Any]:
-        """
-        Returns all keys from config object as a flattened dict.
-        For example if the config is
-            MODEL:
-              TEST:
-                SCORE_THRESHOLD: 0.7
-                MIN_DIM_SIZE: 360
-        The returned dict would be
-          {
-            "MODEL.TEST.SCORE_THRESHOLD": 0.7,
-            "MODEL.TEST.MIN_DIM_SIZE": 360
-          }
-        """
-        return self._as_flattened_dict()
-
-    def _as_flattened_dict(self, prefix: str = "") -> Dict[str, Any]:
-        ret = {}
-        for key in sorted(self.keys()):
-            value = self[key]
-            key_path = f"{prefix}.{key}" if prefix else key
-            if isinstance(value, CfgNode):
-                ret.update(value._as_flattened_dict(key_path))
-            else:
-                ret[key_path] = value
-        return ret
 
 
 @contextlib.contextmanager
