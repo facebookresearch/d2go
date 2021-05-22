@@ -23,12 +23,11 @@ from d2go.setup import (
     prepare_for_launch,
     setup_after_launch,
 )
-from iopath.common.file_io import PathManager
-from iopath.fb.manifold import ManifoldPathHandler
+from iopath.common.file_io import PathManager, HTTPURLHandler
 from mobile_cv.common.misc.py import post_mortem_if_fail
 
 path_manager = PathManager()
-path_manager.register_handler(ManifoldPathHandler())
+path_manager.register_handler(HTTPURLHandler())
 
 
 logger = logging.getLogger("d2go.tools.export")
