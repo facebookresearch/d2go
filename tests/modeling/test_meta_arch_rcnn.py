@@ -21,23 +21,26 @@ patch_d2_meta_arch()
 
 class TestFBNetV3MaskRCNNNormal(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
+        super().setup_custom_test()
         self.cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3a_dsmask_C4.yaml")
 
     def test_inference(self):
         self._test_inference()
 
-    def test_export_torchscript_tracing(self):
-        self._test_export("torchscript@tracing", compare_match=True)
-
-    def test_export_torchscript_int8(self):
-        self._test_export("torchscript_int8", compare_match=False)
-
-    def test_export_torchscript_int8_tracing(self):
-        self._test_export("torchscript_int8@tracing", compare_match=False)
+    @RCNNBaseTestCases.expand_parameterized_test_export(
+        [
+            ["torchscript@tracing", True],
+            ["torchscript_int8", False],
+            ["torchscript_int8@tracing", False],
+        ]
+    )
+    def test_export(self, predictor_type, compare_match):
+        self._test_export(predictor_type, compare_match=compare_match)
 
 
 class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
+        super().setup_custom_test()
         self.cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3a_dsmask_C4.yaml")
         # enable QAT
         self.cfg.merge_from_list(
@@ -54,12 +57,18 @@ class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
     def test_inference(self):
         self._test_inference()
 
-    def test_export_torchscript_int8(self):
-        self._test_export("torchscript_int8", compare_match=False)  # TODO: fix mismatch
+    @RCNNBaseTestCases.expand_parameterized_test_export(
+        [
+            ["torchscript_int8", False],  # TODO: fix mismatch
+        ]
+    )
+    def test_export(self, predictor_type, compare_match):
+        self._test_export(predictor_type, compare_match=compare_match)
 
 
 class TestFBNetV3KeypointRCNNNormal(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
+        super().setup_custom_test()
         self.cfg.merge_from_file("detectron2go://keypoint_rcnn_fbnetv3a_dsmask_C4.yaml")
 
         # FIXME: have to use qnnpack due to follow error:
@@ -74,8 +83,13 @@ class TestFBNetV3KeypointRCNNNormal(RCNNBaseTestCases.TemplateTestCase):
     def test_inference(self):
         self._test_inference()
 
-    def test_export_torchscript_int8(self):
-        self._test_export("torchscript_int8", compare_match=False)
+    @RCNNBaseTestCases.expand_parameterized_test_export(
+        [
+            ["torchscript_int8", False],  # TODO: fix mismatch
+        ]
+    )
+    def test_export(self, predictor_type, compare_match):
+        self._test_export(predictor_type, compare_match=compare_match)
 
 
 class TestTorchVisionExport(unittest.TestCase):
