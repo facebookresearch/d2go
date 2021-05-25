@@ -30,6 +30,7 @@ requirements = [
     'torch',
     'pytorch_lightning',
     'opencv-python',
+    'parameterized',
 ]
 
 def d2go_gather_files(dst_module, file_path, extension="*") -> List[str]:

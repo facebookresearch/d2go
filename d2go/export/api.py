@@ -168,6 +168,7 @@ def _export_single_model(
         model_export_method_str = model_export_method
         model_export_method = ModelExportMethodRegistry.get(model_export_method)
     assert issubclass(model_export_method, ModelExportMethod), model_export_method
+    logger.info("Using model export method: {}".format(model_export_method))
 
     load_kwargs = model_export_method.export(
         model=model,
