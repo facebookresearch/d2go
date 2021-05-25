@@ -18,7 +18,7 @@ class TestLightningTrainNet(unittest.TestCase):
         # set distributed backend to none to avoid spawning child process,
         # which doesn't inherit the temporary dataset
         patcher = unittest.mock.patch(
-            "d2go.tools.lightning_train_net.get_accelerator", return_value=None
+            "d2go.tools.lightning_train_net._get_accelerator", return_value=None
         )
         self.addCleanup(patcher.stop)
         patcher.start()
@@ -28,7 +28,7 @@ class TestLightningTrainNet(unittest.TestCase):
 
     @tempdir
     def test_train_net_main(self, root_dir):
-        """ tests the main training entry point. """
+        """tests the main training entry point."""
         cfg = self._get_cfg(root_dir)
         # set distributed backend to none to avoid spawning child process,
         # which doesn't inherit the temporary dataset
@@ -36,7 +36,7 @@ class TestLightningTrainNet(unittest.TestCase):
 
     @tempdir
     def test_checkpointing(self, tmp_dir):
-        """ tests saving and loading from checkpoint. """
+        """tests saving and loading from checkpoint."""
         cfg = self._get_cfg(tmp_dir)
 
         out = main(cfg)
