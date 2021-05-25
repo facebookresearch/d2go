@@ -69,12 +69,12 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
         callbacks.append(QuantizationAwareTraining.from_config(cfg))
     return callbacks
 
-def _get_accelerator(use_gpu: bool) -> str:
-    return "ddp" if use_gpu else "ddp_cpu"
+def _get_accelerator(use_cpu: bool) -> str:
+    return "ddp_cpu" if use_cpu else "ddp"
 
 
 def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> Dict[str, Any]:
-    use_gpu = cfg.MODEL.DEVICE.lower() == "gpu"
+    use_cpu = cfg.MODEL.DEVICE.lower() == "cpu"
     return {
         # training loop is bounded by max steps, use a large max_epochs to make
         # sure max_steps is met first
@@ -84,9 +84,9 @@ def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> D
         if cfg.TEST.EVAL_PERIOD > 0
         else cfg.SOLVER.MAX_ITER,
         "num_nodes": num_machines,
-        "gpus": num_processes if use_gpu else None,
+        "gpus": None if use_cpu else num_processes,
         "num_processes": num_processes,
-        "accelerator": _get_accelerator(use_gpu),
+        "accelerator": _get_accelerator(use_cpu),
         "callbacks": _get_trainer_callbacks(cfg),
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
