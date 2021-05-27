@@ -2,11 +2,20 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from .config import (  # noqa, forward namespace
+# forward the namespace to avoid `d2go.config.config`
+from .config import (
     CONFIG_SCALING_METHOD_REGISTRY,
     CfgNode,
     auto_scale_world_size,
     reroute_config_path,
-    get_cfg_diff_table,
+    temp_defrost,
 )
-from .utils import temp_defrost  # noqa, forward namespace
+
+
+__all__ = [
+    "CONFIG_SCALING_METHOD_REGISTRY",
+    "CfgNode",
+    "auto_scale_world_size",
+    "reroute_config_path",
+    "temp_defrost",
+]

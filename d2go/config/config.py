@@ -14,48 +14,6 @@ from fvcore.common.registry import Registry
 logger = logging.getLogger(__name__)
 
 
-def get_cfg_diff_table(cfg, original_cfg):
-    # print out the differences
-    from d2go.config import CfgNode
-
-    def _find_all_keys(obj):
-        assert isinstance(obj, CfgNode)
-        ret = []
-        for key in sorted(obj.keys()):
-            value = obj[key]
-            if isinstance(value, CfgNode):
-                for sub_key in _find_all_keys(value):
-                    ret.append("{}.{}".format(key, sub_key))
-            else:
-                ret.append(key)
-        return ret
-
-    def _get_value(obj, full_key):
-        for k in full_key.split("."):
-            obj = obj[k]
-        return obj
-
-    all_old_keys = _find_all_keys(original_cfg)
-    all_new_keys = _find_all_keys(cfg)
-    assert all_old_keys == all_new_keys
-
-    diff_table = []
-    for full_key in all_new_keys:
-        old_value = _get_value(original_cfg, full_key)
-        new_value = _get_value(cfg, full_key)
-        if old_value != new_value:
-            diff_table.append([full_key, old_value, new_value])
-
-    from tabulate import tabulate
-
-    table = tabulate(
-        diff_table,
-        tablefmt="pipe",
-        headers=["config key", "old value", "new value"],
-    )
-    return table
-
-
 class CfgNode(_CfgNode):
     @classmethod
     def cast_from_other_class(cls, other_cfg):
@@ -76,23 +34,19 @@ class CfgNode(_CfgNode):
         with reroute_load_yaml_with_base():
             return _CfgNode.load_yaml_with_base(filename, *args, **kwargs)
 
-    def merge_from_other_cfg(self, cfg_other):
-        # NOTE: D24397488 changes default MODEL.FBNET_V2.ARCH_DEF from "" to [], change
-        # the value to be able to load old full configs.
-        # TODO: remove this by end of 2020.
-        if cfg_other.get("MODEL", {}).get("FBNET_V2", {}).get("ARCH_DEF", None) == "":
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                "Default value for MODEL.FBNET_V2.ARCH_DEF has changed to []"
-            )
-            cfg_other.MODEL.FBNET_V2.ARCH_DEF = []
-        return super().merge_from_other_cfg(cfg_other)
-
     def __hash__(self):
         # dump follows alphabetical order, thus good for hash use
         return hash(self.dump())
+
+
+@contextlib.contextmanager
+def temp_defrost(cfg):
+    is_frozen = cfg.is_frozen()
+    if is_frozen:
+        cfg.defrost()
+    yield cfg
+    if is_frozen:
+        cfg.freeze()
 
 
 @contextlib.contextmanager
@@ -160,6 +114,8 @@ def auto_scale_world_size(cfg, new_world_size):
 
     if frozen:
         cfg.freeze()
+
+    from d2go.config.utils import get_cfg_diff_table
 
     table = get_cfg_diff_table(cfg, original_cfg)
     logger.info("Auto-scaled the config according to the actual world size: \n" + table)
