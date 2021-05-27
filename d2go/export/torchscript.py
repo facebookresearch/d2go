@@ -73,7 +73,9 @@ def trace_and_save_torchscript(
             )
             torchscript_filename = mobile_optimization.torchscript_filename
             with _synced_local_file(torchscript_filename) as lite_path:
-                liteopt_model._save_for_lite_interpreter(lite_path)
+                liteopt_model._save_for_lite_interpreter(
+                    lite_path, _extra_files=_extra_files
+                )
             # liteopt_model(*inputs)  # sanity check
             op_names = torch.jit.export_opnames(liteopt_model)
             logger.info(
@@ -88,7 +90,7 @@ def trace_and_save_torchscript(
                     iters.send(torch.zeros_like(x).contiguous())
             inputs = iters.value
             augment_model_with_bundled_inputs(liteopt_model, [inputs])
-            liteopt_model(*liteopt_model.get_all_bundled_inputs()[0]) # sanity check
+            liteopt_model(*liteopt_model.get_all_bundled_inputs()[0])  # sanity check
             name, ext = os.path.splitext(torchscript_filename)
             with _synced_local_file(name + "_bundled" + ext) as lite_path:
                 liteopt_model._save_for_lite_interpreter(lite_path)
@@ -97,7 +99,7 @@ def trace_and_save_torchscript(
 
 
 class TorchscriptWrapper(nn.Module):
-    """"""
+    """ """
 
     def __init__(self, module, int8_backend=None):
         super().__init__()
