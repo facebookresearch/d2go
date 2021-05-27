@@ -274,5 +274,5 @@ def inject_gan_datasets(cfg):
             real_json_path,
             real_folder,
             real_src_path,
-            max_num=5000,
+            max_num=cfg.D2GO_DATA.DATASETS.GAN_INJECTION.MAX_TEST_IMAGES,
         )
