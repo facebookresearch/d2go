@@ -8,6 +8,12 @@ import os
 import unittest
 
 from d2go.config import auto_scale_world_size, reroute_config_path
+from d2go.config.utils import (
+    config_dict_to_list_str,
+    flatten_config_dict,
+    get_cfg_diff_table,
+    get_from_flattened_config_dict,
+)
 from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.helper import get_resource_path
 from mobile_cv.common.misc.file_utils import make_temp_directory
@@ -16,9 +22,9 @@ from mobile_cv.common.misc.file_utils import make_temp_directory
 logger = logging.getLogger(__name__)
 
 
-class TestConfigs(unittest.TestCase):
-    def test_configs_load(self):
-        """ Make sure configs are loadable """
+class TestConfig(unittest.TestCase):
+    def test_load_configs(self):
+        """Make sure configs are loadable"""
 
         for location in ["detectron2", "detectron2go"]:
             root_dir = os.path.abspath(reroute_config_path(f"{location}://."))
@@ -28,8 +34,8 @@ class TestConfigs(unittest.TestCase):
                 logger.info("Loading {}...".format(fn))
                 GeneralizedRCNNRunner().get_default_cfg().merge_from_file(fn)
 
-    def test_arch_def_loads(self):
-        """ Test arch def str-to-dict conversion compatible with merging """
+    def test_load_arch_defs(self):
+        """Test arch def str-to-dict conversion compatible with merging"""
         default_cfg = GeneralizedRCNNRunner().get_default_cfg()
         cfg = default_cfg.clone()
         cfg.merge_from_file(get_resource_path("arch_def_merging.yaml"))
@@ -68,6 +74,51 @@ class TestConfigs(unittest.TestCase):
             default_cfg.merge_from_list,
             ["QUANTIZATION.QAT.BACKEND", "fbgemm"],
         )
+
+
+class TestConfigUtils(unittest.TestCase):
+    """Test util functions in config/utils.py"""
+
+    def test_flatten_config_dict(self):
+        """Check flatten config dict to single layer dict"""
+        d = {"c0": {"c1": {"c2": 3}}, "b0": {"b1": "b2"}, "a0": "a1"}
+
+        # reorder=True
+        fdict = flatten_config_dict(d, reorder=True)
+        gt = {"a0": "a1", "b0.b1": "b2", "c0.c1.c2": 3}
+        self.assertEqual(fdict, gt)
+        self.assertEqual(list(fdict.keys()), list(gt.keys()))
+
+        # reorder=False
+        fdict = flatten_config_dict(d, reorder=False)
+        gt = {"c0.c1.c2": 3, "b0.b1": "b2", "a0": "a1"}
+        self.assertEqual(fdict, gt)
+        self.assertEqual(list(fdict.keys()), list(gt.keys()))
+
+    def test_config_dict_to_list_str(self):
+        """Check convert config dict to str list"""
+        d = {"a0": "a1", "b0": {"b1": "b2"}, "c0": {"c1": {"c2": 3}}}
+        str_list = config_dict_to_list_str(d)
+        gt = ["a0", "a1", "b0.b1", "b2", "c0.c1.c2", "3"]
+        self.assertEqual(str_list, gt)
+
+    def test_get_from_flattened_config_dict(self):
+        d = {"MODEL": {"MIN_DIM_SIZE": 360}}
+        self.assertEqual(
+            get_from_flattened_config_dict(d, "MODEL.MIN_DIM_SIZE"), 360
+        )  # exist
+        self.assertEqual(
+            get_from_flattened_config_dict(d, "MODEL.MODEL.INPUT_SIZE"), None
+        )  # non-exist
+
+    def test_get_cfg_diff_table(self):
+        """Check compare two dicts"""
+        d1 = {"a0": "a1", "b0": {"b1": "b2"}, "c0": {"c1": {"c2": 3}}}
+        d2 = {"a0": "a1", "b0": {"b1": "b3"}, "c0": {"c1": {"c2": 4}}}
+        table = get_cfg_diff_table(d1, d2)
+        self.assertTrue("a0" not in table)  # a0 are the same
+        self.assertTrue("b0.b1" in table)  # b0.b1 are different
+        self.assertTrue("c0.c1.c2" in table)  # c0.c1.c2 are different
 
 
 class TestAutoScaleWorldSize(unittest.TestCase):
