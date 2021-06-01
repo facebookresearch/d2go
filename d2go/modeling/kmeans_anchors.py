@@ -18,13 +18,13 @@ from detectron2.modeling.anchor_generator import (
 )
 from detectron2.modeling.proposal_generator.rpn import RPN
 from detectron2.structures.boxes import Boxes
-from d2go.config import temp_defrost, CfgNode as CN
+from d2go.config import temp_defrost
 
 logger = logging.getLogger(__name__)
 
 
 def add_kmeans_anchors_cfg(_C):
-    _C.MODEL.KMEANS_ANCHORS = CN()
+    _C.MODEL.KMEANS_ANCHORS = type(_C)()
     _C.MODEL.KMEANS_ANCHORS.KMEANS_ANCHORS_ON = False
     _C.MODEL.KMEANS_ANCHORS.NUM_CLUSTERS = 0
     _C.MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG = 0

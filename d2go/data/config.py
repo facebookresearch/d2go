@@ -2,10 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from d2go.config import CfgNode as CN
-
-
 def add_d2go_data_default_configs(_C):
+    CN = type(_C)
     _C.D2GO_DATA = CN()
 
     # Config for "detectron2go.data.extended_coco.extended_coco_load"

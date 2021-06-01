@@ -13,7 +13,6 @@ from torch.nn import functional as F
 from detectron2.layers import cat
 from detectron2.modeling import ROI_HEADS_REGISTRY, StandardROIHeads
 from detectron2.utils.registry import Registry
-from d2go.config import CfgNode as CN
 from d2go.data.dataset_mappers import (
     D2GO_DATA_MAPPER_REGISTRY,
     D2GoDatasetMapper,
@@ -27,7 +26,7 @@ SUBCLASS_FETCHER_REGISTRY = Registry("SUBCLASS_FETCHER")
 
 def add_subclass_configs(cfg):
     _C = cfg
-    _C.MODEL.SUBCLASS = CN()
+    _C.MODEL.SUBCLASS = type(_C)()
     _C.MODEL.SUBCLASS.SUBCLASS_ON = False
     _C.MODEL.SUBCLASS.NUM_SUBCLASSES = 0  # must be set
     _C.MODEL.SUBCLASS.NUM_LAYERS = 1

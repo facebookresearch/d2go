@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from d2go.config import CfgNode as CN
 from d2go.data.build import (
     add_weighted_training_sampler_default_configs,
 )
@@ -16,7 +15,7 @@ from d2go.modeling.subclass import add_subclass_configs
 
 
 def add_tensorboard_default_configs(_C):
-    _C.TENSORBOARD = CN()
+    _C.TENSORBOARD = type(_C)()
     # Output from dataloader will be written to tensorboard at this frequency
     _C.TENSORBOARD.TRAIN_LOADER_VIS_WRITE_PERIOD = 20
     # This controls max number of images over all batches, be considerate when
@@ -30,7 +29,7 @@ def add_tensorboard_default_configs(_C):
 
 
 def add_abnormal_checker_configs(_C):
-    _C.ABNORMAL_CHECKER = CN()
+    _C.ABNORMAL_CHECKER = type(_C)()
     # check and log the iteration with bad losses if enabled
     _C.ABNORMAL_CHECKER.ENABLED = False
 
