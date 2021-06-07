@@ -92,6 +92,7 @@ def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> D
         "num_sanity_val_steps": 0,
         "progress_bar_refresh_rate": 10,
         "terminate_on_nan": True,
+        "replace_sampler_ddp": False,
     }
 
 def do_train(
