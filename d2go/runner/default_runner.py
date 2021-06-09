@@ -36,7 +36,6 @@ from d2go.modeling.model_freezing_utils import (
 from d2go.modeling.quantization import (
     QATCheckpointer,
     setup_qat_model,
-    silicon_qat_build_model_context,
 )
 from d2go.optimizer import build_optimizer_mapper
 from d2go.utils.flop_calculator import add_print_flops_callback
@@ -151,7 +150,7 @@ class BaseRunner(object):
         torch._C._log_api_usage_once(identifier)
 
     def _initialize(self, cfg):
-        """ Runner should be initialized in the sub-process in ddp setting """
+        """Runner should be initialized in the sub-process in ddp setting"""
         if getattr(self, "_has_initialized", False):
             logger.warning("Runner has already been initialized, skip initialization.")
             return
@@ -174,10 +173,13 @@ class BaseRunner(object):
         from detectron2.config import get_cfg as get_d2_cfg
 
         cfg = get_d2_cfg()
-        cfg = CfgNode.cast_from_other_class(cfg)  # upgrade from D2's CfgNode to D2Go's CfgNode
+        cfg = CfgNode.cast_from_other_class(
+            cfg
+        )  # upgrade from D2's CfgNode to D2Go's CfgNode
 
         try:
             from d2go.runner import get_unintentional_added_configs_during_runner_import
+
             for key in get_unintentional_added_configs_during_runner_import():
                 cfg.register_deprecated_key(key)
         except ImportError:
@@ -242,10 +244,8 @@ class Detectron2GoRunner(BaseRunner):
         # build_model might modify the cfg, thus clone
         cfg = cfg.clone()
 
-        # silicon_qat_build_model_context is deprecated
-        with silicon_qat_build_model_context(cfg):
-            model = build_model(cfg)
-            model_ema.may_build_model_ema(cfg, model)
+        model = build_model(cfg)
+        model_ema.may_build_model_ema(cfg, model)
 
         if cfg.MODEL.FROZEN_LAYER_REG_EXP:
             set_requires_grad(model, cfg.MODEL.FROZEN_LAYER_REG_EXP, False)
