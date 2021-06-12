@@ -28,7 +28,8 @@ def add_detr_config(cfg):
     cfg.MODEL.DETR.L1_WEIGHT = 5.0
     cfg.MODEL.DETR.DEEP_SUPERVISION = True
     cfg.MODEL.DETR.NO_OBJECT_WEIGHT = 0.1
-
+    cfg.MODEL.DETR.WITH_BOX_REFINE = False
+    cfg.MODEL.DETR.TWO_STAGE = False
 
     # TRANSFORMER
     cfg.MODEL.DETR.NHEADS = 8

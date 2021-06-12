@@ -14,7 +14,7 @@ class DETRDatasetMapper(DetrDatasetMapper, D2GoDatasetMapper):
     def __init__(self, cfg, is_train=True, image_loader=None, tfm_gens=None):
         self.image_loader = None
         self.backfill_size = False
-        self.retry = 3 
+        self.retry = 3
         self.catch_exception = True
         self._error_count = 0
         self._total_counts = 0
@@ -52,8 +52,8 @@ class DETRRunner(GeneralizedRCNNRunner):
             memo.add(value)
             lr = cfg.SOLVER.BASE_LR
             weight_decay = cfg.SOLVER.WEIGHT_DECAY
-            if "backbone.0" in key:
-                lr = lr * 0.1 #cfg.SOLVER.BACKBONE_MULTIPLIER
+            if "backbone.0" in key or "reference_points" in key or "sampling_offsets" in key:
+                lr = lr * 0.1
             params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
 
         def maybe_add_full_model_gradient_clipping(optim):  # optim: the optimizer class
