@@ -6,7 +6,8 @@ import logging
 from functools import lru_cache
 
 from d2go.modeling.meta_arch.rcnn import GeneralizedRCNNPatch
-from detectron2.modeling import GeneralizedRCNN
+from d2go.modeling.meta_arch.semantic_seg import SemanticSegmentorPatch
+from detectron2.modeling import GeneralizedRCNN, SemanticSegmentor
 
 logger = logging.getLogger(__name__)
 
@@ -32,4 +33,5 @@ def patch_d2_meta_arch():
             _check_and_set(dst_cls, method_name, getattr(src_cls, method_name))
 
     _apply_patch(GeneralizedRCNN, GeneralizedRCNNPatch)
+    _apply_patch(SemanticSegmentor, SemanticSegmentorPatch)
     # TODO: patch other meta-archs defined in D2
