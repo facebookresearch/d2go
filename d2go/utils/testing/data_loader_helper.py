@@ -5,6 +5,7 @@
 import contextlib
 import itertools
 import json
+import math
 import os
 import uuid
 
@@ -22,7 +23,7 @@ ANN_FN = "annotation_file"
 def create_toy_dataset(
     image_generator, num_images, num_classes=-1, num_keypoints=0, is_rotated=False
 ):
-    """ given image_generator, create a dataset with toy annotations and catagories """
+    """given image_generator, create a dataset with toy annotations and catagories"""
     categories = []
     images = []
     annotations = []
@@ -47,28 +48,39 @@ def create_toy_dataset(
             else [width / 2, height / 2, width / 2, height / 2, 45]  # cXcYWHO_ABS
         )
 
+        keypoints = list(
+            itertools.chain.from_iterable(
+                [
+                    math.cos(2 * math.pi * x / num_keypoints) * width / 4 + width / 2,
+                    math.sin(2 * math.pi * x / num_keypoints) * height / 4 + height / 2,
+                    1,
+                ]
+                for x in range(num_keypoints)
+            )
+        )
+
+        no_pts = 10
+        segmentation = list(
+            itertools.chain.from_iterable(
+                [
+                    math.cos(2 * math.pi * x / no_pts) * width / 4 + width / 2,
+                    math.sin(2 * math.pi * x / no_pts) * height / 4 + height / 2,
+                ]
+                for x in range(no_pts)
+            )
+        )
+
         annotations.append(
             {
                 "image_id": i,
                 "category_id": i % num_classes,
                 "id": i,
                 "bbox": bbox,
-                "keypoints": list(
-                    itertools.chain.from_iterable(
-                        [
-                            (
-                                float(idx) / width / 2 + width / 4,
-                                float(idx) / height / 2 + height / 4,
-                                1,
-                            )
-                            for idx in range(num_keypoints)
-                        ]
-                    )
-                ),
+                "keypoints": keypoints,
                 "area": width * height,
                 "iscrowd": 0,
                 "ignore": 0,
-                "segmentation": [],
+                "segmentation": [segmentation],
             }
         )
 
