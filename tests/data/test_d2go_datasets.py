@@ -74,6 +74,74 @@ class TestD2GoDatasets(unittest.TestCase):
                 self.assertEqual(out_json["images"][0]["id"], exp_output[0])
                 self.assertEqual(out_json["annotations"][0]["image_id"], exp_output[1])
 
+    def test_annotation_rejection(self):
+        img_list = [
+            {"id": 0, "width": 50, "height": 50, "file_name": "a.png"},
+            {"id": 1, "width": 50, "height": 50, "file_name": "b.png"},
+        ]
+        ann_list = [
+            [
+                {
+                    "id": 0,
+                    "image_id": 0,
+                    "category_id": 0,
+                    "segmentation": [[0, 0, 10, 0, 10, 10, 0, 10]],
+                    "area": 100,
+                    "bbox": [0, 0, 10, 10],
+                },
+                {
+                    "id": 1,
+                    "image_id": 0,
+                    "category_id": 0,
+                    "segmentation": [[0, 0, 10, 0, 10, 10, 0, 10]],
+                    "area": 100,
+                    "bbox": [45, 45, 10, 10],
+                },
+                {
+                    "id": 2,
+                    "image_id": 0,
+                    "category_id": 0,
+                    "segmentation": [[0, 0, 10, 0, 10, 10, 0, 10]],
+                    "area": 100,
+                    "bbox": [-5, -5, 10, 10],
+                },
+                {
+                    "id": 3,
+                    "image_id": 0,
+                    "category_id": 0,
+                    "segmentation": [[0, 0, 10, 0, 10, 10, 0, 10]],
+                    "area": 0,
+                    "bbox": [5, 5, 0, 0],
+                },
+                {
+                    "id": 4,
+                    "image_id": 0,
+                    "category_id": 0,
+                    "segmentation": [[]],
+                    "area": 25,
+                    "bbox": [5, 5, 5, 5],
+                },
+            ],
+            [
+                {
+                    "id": 5,
+                    "image_id": 1,
+                    "category_id": 0,
+                    "segmentation": [[]],
+                    "area": 100,
+                    "bbox": [0, 0, 0, 0],
+                },
+            ]
+        ]
+
+        out_dict_list = extended_coco.convert_to_dict_list(
+            "",
+            [0],
+            img_list,
+            ann_list,
+        )
+        self.assertEqual(len(out_dict_list), 1)
+
     @tempdir
     def test_coco_injection(self, tmp_dir):
         image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)

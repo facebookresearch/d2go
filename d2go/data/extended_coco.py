@@ -125,8 +125,20 @@ def convert_coco_text_to_coco_detection_json(
     return coco_text_json
 
 
+def valid_bbox(bbox_xywh, img_w, img_h):
+    if (
+        bbox_xywh is None
+        or (bbox_xywh[3] == 0 or bbox_xywh[2] == 0)
+        or not (0 <= bbox_xywh[0] <= img_w - bbox_xywh[2])
+        or not (0 <= bbox_xywh[1] <= img_h - bbox_xywh[3])
+    ):
+        return False
+    return True
+
+
 def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
     num_instances_without_valid_segmentation = 0
+    num_instances_without_valid_bounding_box = 0
     dataset_dicts = []
     count_ignore_image_root_warning = 0
     for (img_dict, anno_dict_list) in zip(imgs, anns):
@@ -167,6 +179,11 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
                 if field in anno
             }
 
+            bbox_object = obj.get("bbox", None)
+            if not valid_bbox(bbox_object, record["width"], record["height"]):
+                num_instances_without_valid_bounding_box += 1
+                continue
+
             if obj.get("category_id", None) not in id_map:
                 continue
 
@@ -190,6 +207,8 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
                 obj["category_id"] = id_map[obj["category_id"]]
             objs.append(obj)
         record["annotations"] = objs
+        if len(objs) == 0:
+            continue
         if dataset_name is not None:
             record["dataset_name"] = dataset_name
         dataset_dicts.append(record)
@@ -208,6 +227,15 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
                 num_instances_without_valid_segmentation
             )
         )
+
+    if num_instances_without_valid_bounding_box > 0:
+        logger.warning(
+            "Filtered out {} instances without valid bounding boxes. "
+            "There might be issues in your dataset generation process.".format(
+                num_instances_without_valid_bounding_box
+            )
+        )
+
     return dataset_dicts
 
 
