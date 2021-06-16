@@ -18,6 +18,7 @@ from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling.model_freezing_utils import (
     set_requires_grad,
 )
+from d2go.modeling import build_model
 from d2go.modeling.quantization import (
     default_prepare_for_quant,
     default_prepare_for_quant_convert,
@@ -32,7 +33,6 @@ from d2go.setup import setup_after_lightning_launch
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import VisualizationEvaluator
-from detectron2.modeling import build_model
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
     build_optimizer as d2_build_optimizer,

@@ -5,3 +5,4 @@
 # NOTE: making necessary imports to register with Registery
 from . import backbone  # noqa
 from . import modeldef  # noqa
+from .meta_arch.build import build_model  # noqa

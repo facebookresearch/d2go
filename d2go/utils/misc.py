@@ -103,3 +103,10 @@ def mode(net: torch.nn.Module, training: bool) -> Iterator[torch.nn.Module]:
         yield net
     finally:
         net.train(istrain)
+
+def _log_api_usage(identifier: str):
+    """
+    Internal function used to log the usage of different d2go components
+    inside facebook's infra.
+    """
+    torch._C._log_api_usage_once("d2go." + identifier)
