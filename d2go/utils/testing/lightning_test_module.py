@@ -45,17 +45,17 @@ class TestModule(LightningModule):
     def training_step(self, batch, batch_idx):
         output = self.forward(batch)
         loss = self.loss(batch, output)
-        return {"output": output, "loss": loss, "checkpoint_on": loss}
+        return {"output": output.detach(), "loss": loss, "checkpoint_on": loss.detach()}
 
     def validation_step(self, batch, batch_idx):
         output = self.forward(batch)
         loss = self.loss(batch, output)
-        return {"output": output, "loss": loss, "checkpoint_on": loss}
+        return {"output": output.detach(), "loss": loss, "checkpoint_on": loss.detach()}
 
     def test_step(self, batch, batch_idx):
         output = self.forward(batch)
         loss = self.loss(batch, output)
-        return {"output": output, "loss": loss}
+        return {"output": output.detach(), "loss": loss}
 
     def training_epoch_end(self, outputs) -> None:
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
