@@ -180,7 +180,7 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
             }
 
             bbox_object = obj.get("bbox", None)
-            if not valid_bbox(bbox_object, record["width"], record["height"]):
+            if "width" in record and "height" in record and (not valid_bbox(bbox_object, record["width"], record["height"])):
                 num_instances_without_valid_bounding_box += 1
                 continue
 
