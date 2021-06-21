@@ -2,9 +2,13 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import copy
+import os
 import logging
 
 import detectron2.utils.comm as comm
+from detectron2.utils.file_io import PathManager
+from detectron2.utils.analysis import FlopCountAnalysis
+from fvcore.nn import flop_count_table, flop_count_str
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
 from d2go.utils.helper import run_once
 
@@ -12,17 +16,56 @@ from d2go.utils.helper import run_once
 logger = logging.getLogger(__name__)
 
 
-def print_flops(model, first_batch):
+def dump_flops_info(model, inputs, output_dir):
+    """
+    Dump flops information about model, using the given model inputs.
+    Information are dumped to output_dir using various flop counting tools
+    in different formats. Only a simple table is printed to terminal.
+    """
+    if not comm.is_main_process():
+        return
     logger.info("Evaluating model's number of parameters and FLOPS")
-    model_flops = copy.deepcopy(model)
-    model_flops.eval()
-    fest = flops_utils.FlopsEstimation(model_flops)
-    with fest.enable():
-        model_flops(first_batch)
-        fest.add_flops_info()
-        model_str = str(model_flops)
-        logger.info(model_str)
-    return model_str
+    model = copy.deepcopy(model)
+    model.eval()
+
+    # 1. using mobile_cv flop counter
+    try:
+        fest = flops_utils.FlopsEstimation(model)
+        with fest.enable():
+            model(inputs)
+            fest.add_flops_info()
+            model_str = str(model)
+        output_file = os.path.join(output_dir, "flops_str_mobilecv.txt")
+        with PathManager.open(output_file, "w") as f:
+            f.write(model_str)
+            logger.info(f"Flops info written to {output_file}")
+    except Exception:
+        logger.exception("Failed to estimate flops using mobile_cv's FlopsEstimation")
+
+
+    # 2. using d2/fvcore's flop counter
+    try:
+        flops = FlopCountAnalysis(model, inputs)
+
+        # 2.1: dump as model str
+        model_str = flop_count_str(flops)
+        output_file = os.path.join(output_dir, "flops_str_fvcore.txt")
+        with PathManager.open(output_file, "w") as f:
+            f.write(model_str)
+            logger.info(f"Flops info written to {output_file}")
+
+        # 2.2: dump as table
+        flops_table = flop_count_table(flops, max_depth=10)
+        output_file = os.path.join(output_dir, "flops_table_fvcore.txt")
+        with PathManager.open(output_file, "w") as f:
+            f.write(flops_table)
+            logger.info(f"Flops table written to {output_file}")
+
+        # 2.3: print a table with a shallow depth
+        flops_table = flop_count_table(flops, max_depth=3)
+        logger.info("Flops table:\n" + flops_table)
+    except Exception:
+        logger.exception("Failed to estimate flops using detectron2's FlopCountAnalysis")
 
 
 # NOTE: the logging can be too long and messsy when printing flops multiple
