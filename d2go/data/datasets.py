@@ -7,8 +7,8 @@ import importlib
 import logging
 import os
 
-from d2go.data.fb.adhoc_hive_dataset import COCOHiveLoaderConfig
 from d2go.utils.helper import get_dir_path
+from d2go.utils.misc import fb_overwritable
 from detectron2.data import DatasetCatalog, MetadataCatalog
 
 from .extended_coco import coco_text_load, extended_coco_load
@@ -48,11 +48,16 @@ def _register_extended_coco(dataset_name, split_dict):
     meta_data = split_dict.get("meta_data", {})
     MetadataCatalog.get(dataset_name).set(
         evaluator_type=evaluator_type,
-        auto_hive_loader_config=COCOHiveLoaderConfig,
         json_file=json_file,
         image_root=image_root,
-        **meta_data
+        **meta_data,
     )
+    _add_additional_extended_coco_metadata(dataset_name)
+
+
+@fb_overwritable()
+def _add_additional_extended_coco_metadata(dataset_name):
+    pass
 
 
 def _register_extended_lvis(dataset_name, split_dict):
