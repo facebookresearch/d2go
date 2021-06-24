@@ -63,12 +63,18 @@ class DETR(nn.Module):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
 
+        # src shape (B, C, H, W)
+        # mask shape (B, H, W)
         src, mask = features[-1].decompose()
         assert mask is not None
+        # hs shape (NUM_LAYER, B, S, hidden_dim)
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
-
+        # shape (NUM_LAYER, B, S, NUM_CLASS + 1)
         outputs_class = self.class_embed(hs)
+        # shape (NUM_LAYER, B, S, 4)
         outputs_coord = self.bbox_embed(hs).sigmoid()
+        # pred_logits shape (B, S, NUM_CLASS + 1)
+        # pred_boxes shape (B, S, 4)
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)

@@ -39,10 +39,18 @@ class SetCriterion(nn.Module):
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
         assert 'pred_logits' in outputs
+        # shape (batch_size, num_queries, NUM_CLASS + 1)
         src_logits = outputs['pred_logits']
-
+        # idx = (batch_idx, src_idx)
+        #    batch_idx shape [\sum_b num_match_b]
+        #    src_idx shape [\sum_b num_match_b]
         idx = self._get_src_permutation_idx(indices)
+        # targets: List[Dict[str, torch.Tensor]]. Keys
+        #   "labels": [NUM_BOX,]
+        #   "boxes": [NUM_BOX, 4]
+        # target_classes_o shape [batch_size * num_match]
         target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
+        # shape (batch_size, num_queries)
         target_classes = torch.full(src_logits.shape[:2], self.num_classes,
                                     dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
@@ -76,7 +84,9 @@ class SetCriterion(nn.Module):
         """
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
+        # shape [\sum_b num_matches_b, 4]
         src_boxes = outputs['pred_boxes'][idx]
+        # shape [\sum_b num_matches_b, 4]
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
         loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
@@ -121,14 +131,14 @@ class SetCriterion(nn.Module):
 
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
-        batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
-        src_idx = torch.cat([src for (src, _) in indices])
+        batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])  # shape [\sum_b num_match_b]
+        src_idx = torch.cat([src for (src, _) in indices]) # shape [\sum_b num_match_b]
         return batch_idx, src_idx
 
     def _get_tgt_permutation_idx(self, indices):
         # permute targets following indices
-        batch_idx = torch.cat([torch.full_like(tgt, i) for i, (_, tgt) in enumerate(indices)])
-        tgt_idx = torch.cat([tgt for (_, tgt) in indices])
+        batch_idx = torch.cat([torch.full_like(tgt, i) for i, (_, tgt) in enumerate(indices)])  # shape [\sum_b num_match_b]
+        tgt_idx = torch.cat([tgt for (_, tgt) in indices])  # shape [\sum_b num_match_b]
         return batch_idx, tgt_idx
 
     def get_loss(self, loss, outputs, targets, indices, num_boxes, **kwargs):
@@ -148,9 +158,12 @@ class SetCriterion(nn.Module):
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
+        # "pred_logits" shape (B, S, NUM_CLASS + 1)
+        # "pred_boxes" shape (B, S, 4)
         outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
 
         # Retrieve the matching between the outputs of the last layer and the targets
+        # A list where each item is [row_indices, col_indices]
         indices = self.matcher(outputs_without_aux, targets)
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
@@ -378,5 +391,3 @@ class FocalLossSetCriterion(nn.Module):
                 losses.update(l_dict)
 
         return losses
-
-

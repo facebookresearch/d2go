@@ -128,6 +128,7 @@ class Joiner(nn.Sequential):
         for x in out:
             pos.append(self[1](x).to(x.tensors.dtype))
 
+        # shape a list of tensors, each tensor shape (B, C, H, W)
         return out, pos
 
 

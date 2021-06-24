@@ -47,17 +47,25 @@ class Transformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, src, mask, query_embed, pos_embed):
+        # src shape (B, C, H, W)
+        # mask shape (B, H, W)
+        # query_embed shape (M, C)
+        # pos_embed shape (B, C, H, W)
+
         # flatten NxCxHxW to HWxNxC
         bs, c, h, w = src.shape
-        src = src.flatten(2).permute(2, 0, 1)
-        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
-        query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)
-        mask = mask.flatten(1)
+        src = src.flatten(2).permute(2, 0, 1)  # shape (L, B, C)
+        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)  # shape (L, B, C)
+        query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # shape (M, B, C)
+        mask = mask.flatten(1)  # shape (B, HxW)
 
         tgt = torch.zeros_like(query_embed)
+        # memory shape (L, B, C)
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
+        # hs shape (NUM_LEVEL, S, B, C)
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
+        # return shape (NUM_LEVEL, B, S, C) and (B, C, H, W)
         return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
 
 
@@ -74,7 +82,8 @@ class TransformerEncoder(nn.Module):
                 src_key_padding_mask: Optional[Tensor] = None,
                 pos: Optional[Tensor] = None):
         output = src
-
+        # mask, shape (L, L)
+        # src_key_padding_mask, shape (B, L)
         for layer in self.layers:
             output = layer(output, src_mask=mask,
                            src_key_padding_mask=src_key_padding_mask, pos=pos)
@@ -104,7 +113,11 @@ class TransformerDecoder(nn.Module):
         output = tgt
 
         intermediate = []
-
+        # tgt shape (L, B, C)
+        # tgt_mask shape (L, L)
+        # tgt_key_padding_mask shape (B, L)
+        # memory_mask shape (L, S)
+        # memory_key_padding_mask shape (B, S)
         for layer in self.layers:
             output = layer(output, memory, tgt_mask=tgt_mask,
                            memory_mask=memory_mask,
@@ -122,7 +135,7 @@ class TransformerDecoder(nn.Module):
 
         if self.return_intermediate:
             return torch.stack(intermediate)
-
+        # return shape (NUM_LAYER, L, B, C)
         return output.unsqueeze(0)
 
 
@@ -153,7 +166,9 @@ class TransformerEncoderLayer(nn.Module):
                      src_mask: Optional[Tensor] = None,
                      src_key_padding_mask: Optional[Tensor] = None,
                      pos: Optional[Tensor] = None):
-        q = k = self.with_pos_embed(src, pos)
+        q = k = self.with_pos_embed(src, pos)  # shape (L, B, D)
+        # src mask, shape (L, L)
+        # src_key_padding_mask: shape (B, L)
         src2 = self.self_attn(q, k, src, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
         src = src + self.dropout1(src2)
@@ -218,11 +233,17 @@ class TransformerDecoderLayer(nn.Module):
                      memory_key_padding_mask: Optional[Tensor] = None,
                      pos: Optional[Tensor] = None,
                      query_pos: Optional[Tensor] = None):
+        # tgt shape (L, B, C)
+        # tgt_mask shape (L, L)
+        # tgt_key_padding_mask shape (B, L)
         q = k = self.with_pos_embed(tgt, query_pos)
         tgt2 = self.self_attn(q, k, tgt, attn_mask=tgt_mask,
                               key_padding_mask=tgt_key_padding_mask)[0]
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)
+        # memory_mask shape (L, S)
+        # memory_key_padding_mask shape (B, S)
+        # query_pos shape (L, B, C)
         tgt2 = self.multihead_attn(self.with_pos_embed(tgt, query_pos),
                                    self.with_pos_embed(memory, pos),
                                    memory, attn_mask=memory_mask,
@@ -232,6 +253,7 @@ class TransformerDecoderLayer(nn.Module):
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
         tgt = tgt + self.dropout3(tgt2)
         tgt = self.norm3(tgt)
+        # return tgt shape (L, B, C)
         return tgt
 
     def forward_pre(self, tgt, memory,
