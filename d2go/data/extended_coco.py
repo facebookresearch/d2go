@@ -175,11 +175,13 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
             obj = {
                 field: anno[field]
                 # NOTE: maybe use MetadataCatalog for this
-                for field in ["iscrowd", "bbox", "keypoints", "category_id", "extras"]
+                for field in ["iscrowd", "bbox", "bbox_mode", "keypoints", "category_id", "extras"]
                 if field in anno
             }
 
             bbox_object = obj.get("bbox", None)
+            if bbox_object is not None and "bbox_mode" in obj:
+                bbox_object = BoxMode.convert(bbox_object, obj["bbox_mode"], BoxMode.XYWH_ABS)
             if "width" in record and "height" in record and (not valid_bbox(bbox_object, record["width"], record["height"])):
                 num_instances_without_valid_bounding_box += 1
                 continue
@@ -199,10 +201,11 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
                         continue  # ignore this instance
                 obj["segmentation"] = segm
 
-            if len(obj["bbox"]) == 5:
-                obj["bbox_mode"] = BoxMode.XYWHA_ABS
-            else:
-                obj["bbox_mode"] = BoxMode.XYWH_ABS
+            if "bbox_mode" not in obj:
+                if len(obj["bbox"]) == 5:
+                    obj["bbox_mode"] = BoxMode.XYWHA_ABS
+                else:
+                    obj["bbox_mode"] = BoxMode.XYWH_ABS
             if id_map:
                 obj["category_id"] = id_map[obj["category_id"]]
             objs.append(obj)
