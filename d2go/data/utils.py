@@ -7,6 +7,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import shutil
 import tempfile
 from collections import defaultdict
@@ -229,6 +230,11 @@ class COCOSubsetWithGivenImages(AdhocCOCODataset):
 
 class COCOWithClassesToUse(AdhocCOCODataset):
     def __init__(self, src_ds_name, classes_to_use):
+        # check if name is already a derived class and try to reverse it
+        res = re.match("(?P<src>.+)@(?P<num>[0-9]+)classes", src_ds_name)
+        if res is not None:
+            src_ds_name = res['src']
+
         super().__init__(
             src_ds_name=src_ds_name,
             new_ds_name="{}@{}classes".format(src_ds_name, len(classes_to_use)),
