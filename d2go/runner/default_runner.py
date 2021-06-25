@@ -31,6 +31,7 @@ from d2go.data.utils import (
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import (
+    freeze_matched_bn,
     set_requires_grad,
 )
 from d2go.modeling.quantization import (
@@ -249,6 +250,7 @@ class Detectron2GoRunner(BaseRunner):
 
         if cfg.MODEL.FROZEN_LAYER_REG_EXP:
             set_requires_grad(model, cfg.MODEL.FROZEN_LAYER_REG_EXP, False)
+            model = freeze_matched_bn(model, cfg.MODEL.FROZEN_LAYER_REG_EXP)
 
         if cfg.QUANTIZATION.QAT.ENABLED:
             # Disable fake_quant and observer so that the model will be trained normally
