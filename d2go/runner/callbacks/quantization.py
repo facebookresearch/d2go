@@ -54,18 +54,14 @@ def rhasattr(obj: Any, attr: str, *args) -> bool:
 
 
 def _deepcopy(pl_module: LightningModule) -> LightningModule:
-    """Copy a LightningModule. Some properties need to be ignored. """
-    # Remove _result before call to deepcopy since it store non-leaf Tensors.
-    # If not removed, you'll see this error on deepcopy() attempts: P150283141.
-    if hasattr(pl_module, "_results"):
-        result = pl_module._results
-        delattr(pl_module, "_results")
+    """Copy a LightningModule. Some properties need to be ignored."""
+    # Remove trainer reference.
+    trainer = pl_module.trainer
+    try:
+        pl_module.trainer = None
         copy = deepcopy(pl_module)
-
-        # Set back.
-        pl_module._results = result
-    else:
-        copy = deepcopy(pl_module)
+    finally:
+        pl_module.trainer = trainer
     return copy
 
 
