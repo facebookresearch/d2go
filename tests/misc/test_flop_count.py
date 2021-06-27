@@ -14,7 +14,7 @@ class TestFlopCount(RCNNBaseTestCases.TemplateTestCase):
         size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
         h, w = size_divisibility, size_divisibility * 2
         with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
-            inputs = next(iter(data_loader))
+            inputs = (next(iter(data_loader)),)
 
         with tempfile.TemporaryDirectory(prefix="d2go_test") as output_dir:
             dump_flops_info(self.test_model, inputs, output_dir)

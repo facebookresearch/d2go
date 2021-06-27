@@ -39,7 +39,7 @@ from d2go.modeling.quantization import (
     setup_qat_model,
 )
 from d2go.optimizer import build_optimizer_mapper
-from d2go.utils.flop_calculator import add_print_flops_callback
+from d2go.utils.flop_calculator import add_flop_printing_hook
 from d2go.utils.get_default_cfg import get_default_cfg
 from d2go.utils.helper import TensorboardXWriter, D2Trainer
 from d2go.utils.misc import get_tensorboard_log_dir
@@ -307,7 +307,7 @@ class Detectron2GoRunner(BaseRunner):
                 dataset_name,
             )
 
-        add_print_flops_callback(cfg, model, disable_after_callback=True)
+        add_flop_printing_hook(model, cfg.OUTPUT_DIR)
 
         results = OrderedDict()
         results[model_tag] = OrderedDict()
@@ -406,7 +406,9 @@ class Detectron2GoRunner(BaseRunner):
         return results
 
     def do_train(self, cfg, model, resume):
-        add_print_flops_callback(cfg, model, disable_after_callback=True)
+        # Note that flops at the beginning of training is often inaccurate,
+        # if a model has input-dependent logic
+        add_flop_printing_hook(model, cfg.OUTPUT_DIR)
 
         optimizer = self.build_optimizer(cfg, model)
         scheduler = self.build_lr_scheduler(cfg, optimizer)

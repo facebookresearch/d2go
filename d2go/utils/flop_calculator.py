@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import copy
+import torch
 import os
 import logging
 
@@ -16,23 +17,32 @@ from d2go.utils.helper import run_once
 logger = logging.getLogger(__name__)
 
 
-def dump_flops_info(model, inputs, output_dir):
+@torch.no_grad()
+def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
     """
     Dump flops information about model, using the given model inputs.
     Information are dumped to output_dir using various flop counting tools
     in different formats. Only a simple table is printed to terminal.
+
+    Args:
+        inputs: a tuple of positional arguments used to call model with.
+        use_eval_mode: turn the model into eval mode for flop counting. Otherwise,
+            will use the original mode. It's recommended to use eval mode, because
+            training mode typically follows a different codepath.
     """
     if not comm.is_main_process():
         return
     logger.info("Evaluating model's number of parameters and FLOPS")
     model = copy.deepcopy(model)
-    model.eval()
+    if use_eval_mode:
+        model.eval()
+    inputs = copy.deepcopy(inputs)
 
     # 1. using mobile_cv flop counter
     try:
         fest = flops_utils.FlopsEstimation(model)
         with fest.enable():
-            model(inputs)
+            model(*inputs)
             fest.add_flops_info()
             model_str = str(model)
         output_file = os.path.join(output_dir, "flops_str_mobilecv.txt")
@@ -59,18 +69,38 @@ def dump_flops_info(model, inputs, output_dir):
         output_file = os.path.join(output_dir, "flops_table_fvcore.txt")
         with PathManager.open(output_file, "w") as f:
             f.write(flops_table)
-            logger.info(f"Flops table written to {output_file}")
+            logger.info(f"Flops table (full version) written to {output_file}")
 
         # 2.3: print a table with a shallow depth
         flops_table = flop_count_table(flops, max_depth=3)
         logger.info("Flops table:\n" + flops_table)
     except Exception:
         logger.exception("Failed to estimate flops using detectron2's FlopCountAnalysis")
+    return flops
+
+
+def add_flop_printing_hook(
+        model,
+        output_dir: str,
+    ):
+    """
+    Add a pytorch module forward hook that will print/save flops of the whole model
+    at the first time the model is called.
+
+    Args:
+        output_dir: directory to save more detailed flop info
+    """
+    def hook(module, input):
+        handle.remove()
+        dump_flops_info(module, input, output_dir)
+        return input
+
+    handle = model.register_forward_pre_hook(hook)
 
 
 # NOTE: the logging can be too long and messsy when printing flops multiple
 # times, especially when running eval during training, thus using `run_once`
-# to limit it. TODO: log the flops more concisely.
+# to limit it. `dump_flops_info` can log flops more concisely.
 @run_once()
 def add_print_flops_callback(cfg, model, disable_after_callback=True):
     def _print_flops_callback(self, model, model_data):
