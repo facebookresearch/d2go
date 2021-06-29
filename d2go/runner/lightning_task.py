@@ -153,7 +153,7 @@ class DefaultTask(pl.LightningModule):
         if cfg.MODEL.WEIGHTS:
             # only load model weights from checkpoint
             logger.info(f"Load model weights from checkpoint: {cfg.MODEL.WEIGHTS}.")
-            task = cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg)
+            task = cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg, strict=False)
         else:
             task = cls(cfg)
 
