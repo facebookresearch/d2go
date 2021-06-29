@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
-
-import torch
 import itertools
 from typing import Any, Dict, List, Optional, Set
+
+import torch
+from detectron2.solver.build import (
+    maybe_add_gradient_clipping as d2_maybe_add_gradient_clipping,
+)
 from detectron2.utils.registry import Registry
-from detectron2.solver.build import maybe_add_gradient_clipping as d2_maybe_add_gradient_clipping
 
 D2GO_OPTIM_MAPPER_REGISTRY = Registry("D2GO_OPTIM_MAPPER")
+
 
 def get_default_optimizer_params(
     model: torch.nn.Module,
@@ -51,7 +53,7 @@ def get_default_optimizer_params(
     )
     params: List[Dict[str, Any]] = []
     memo: Set[torch.nn.parameter.Parameter] = set()
-    for module in model.modules():
+    for module_name, module in model.named_modules():
         for module_param_name, value in module.named_parameters(recurse=False):
             if not value.requires_grad:
                 continue
@@ -77,9 +79,9 @@ def get_default_optimizer_params(
                 schedule_params.update(overrides[module_param_name])
             if lr_multipliers_overwrite is not None:
                 for kname, mult in lr_multipliers_overwrite.items():
-                    if kname in module_param_name:
+                    if kname in module_name:
                         # apply multiplier for the params containing kname, e.g. backbone
-                        schedule_params['lr'] = schedule_params['lr'] * mult
+                        schedule_params["lr"] = schedule_params["lr"] * mult
             params += [
                 {
                     "params": [value],
@@ -110,12 +112,14 @@ def maybe_add_gradient_clipping(cfg, optim):  # optim: the optimizer class
         return FullModelGradientClippingOptimizer
     return d2_maybe_add_gradient_clipping(cfg, optim)
 
+
 def _merge_dict(in_dict):
     ret_dict = {}
     assert all(isinstance(x, dict) for x in in_dict)
     for dic in in_dict:
         ret_dict.update(dic)
     return ret_dict
+
 
 @D2GO_OPTIM_MAPPER_REGISTRY.register()
 def sgd(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
@@ -132,7 +136,10 @@ def sgd(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
     )
     return maybe_add_gradient_clipping(cfg, torch.optim.SGD)(
-        params, cfg.SOLVER.BASE_LR, momentum=cfg.SOLVER.MOMENTUM, nesterov=cfg.SOLVER.NESTEROV
+        params,
+        cfg.SOLVER.BASE_LR,
+        momentum=cfg.SOLVER.MOMENTUM,
+        nesterov=cfg.SOLVER.NESTEROV,
     )
 
 
@@ -151,7 +158,8 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
     )
     return maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
-        params, cfg.SOLVER.BASE_LR)
+        params, cfg.SOLVER.BASE_LR
+    )
 
 
 def build_optimizer_mapper(cfg, model):
