@@ -200,7 +200,7 @@ class DefaultTask(pl.LightningModule):
             for idx, evaluator in enumerate(evaluators):
                 dataset_name = self.cfg.DATASETS.TEST[idx]
                 res[dataset_name] = evaluator.evaluate()
-            nested_res[tag.value] = res
+            nested_res[tag.lower()] = res
 
         self.eval_res = nested_res
         flattened = pl.loggers.LightningLoggerBase._flatten_dict(nested_res)
