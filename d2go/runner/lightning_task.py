@@ -129,7 +129,7 @@ class DefaultTask(pl.LightningModule):
             self.model_ema = deepcopy(self.model)
             self.dataset_evaluators[ModelTag.EMA] = []
 
-    def _build_model(self):
+    def _build_model(self) -> torch.nn.Module:
         model = build_model(self.cfg)
 
         if self.cfg.MODEL.FROZEN_LAYER_REG_EXP:
