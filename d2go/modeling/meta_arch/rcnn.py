@@ -168,10 +168,21 @@ def _fx_quant_prepare(self, cfg):
     self.backbone = prep_fn(
         self.backbone,
         qconfig,
-        {"preserved_attributes": ["size_divisibility"]},
+        prepare_custom_config_dict={"preserved_attributes": ["size_divisibility"],
+          # keep the output of backbone quantized, to avoid
+          # redundant dequant
+          # TODO: output of backbone is a dict and currently this will keep all output
+          # quantized, when we fix the implementation of "output_quantized_idxs"
+          # we'll need to change this
+         "output_quantized_idxs": [0]},
     )
     self.proposal_generator.rpn_head.rpn_feature = prep_fn(
-        self.proposal_generator.rpn_head.rpn_feature, qconfig
+        self.proposal_generator.rpn_head.rpn_feature, qconfig,
+        prepare_custom_config_dict={
+            # rpn_feature expecting quantized input, this is used to avoid redundant
+            # quant
+            "input_quantized_idxs": [0]
+        }
     )
     self.proposal_generator.rpn_head.rpn_regressor.cls_logits = prep_fn(
         self.proposal_generator.rpn_head.rpn_regressor.cls_logits, qconfig
@@ -180,14 +191,27 @@ def _fx_quant_prepare(self, cfg):
         self.proposal_generator.rpn_head.rpn_regressor.bbox_pred, qconfig
     )
     self.roi_heads.box_head.roi_box_conv = prep_fn(
-        self.roi_heads.box_head.roi_box_conv, qconfig
+        self.roi_heads.box_head.roi_box_conv, qconfig,
+        prepare_custom_config_dict={
+            "output_quantized_idxs": [0],
+        },
     )
-    self.roi_heads.box_head.avgpool = prep_fn(self.roi_heads.box_head.avgpool, qconfig)
+    self.roi_heads.box_head.avgpool = prep_fn(
+        self.roi_heads.box_head.avgpool, qconfig,
+        prepare_custom_config_dict={
+            "input_quantized_idxs": [0]
+        })
     self.roi_heads.box_predictor.cls_score = prep_fn(
-        self.roi_heads.box_predictor.cls_score, qconfig
+        self.roi_heads.box_predictor.cls_score, qconfig,
+        prepare_custom_config_dict={
+            "input_quantized_idxs": [0]
+        }
     )
     self.roi_heads.box_predictor.bbox_pred = prep_fn(
-        self.roi_heads.box_predictor.bbox_pred, qconfig
+        self.roi_heads.box_predictor.bbox_pred, qconfig,
+        prepare_custom_config_dict={
+            "input_quantized_idxs": [0]
+        }
     )
 
 
