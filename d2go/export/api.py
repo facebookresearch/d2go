@@ -27,9 +27,14 @@ NOTE:
 import json
 import logging
 import os
+import sys
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, NamedTuple, Optional, Union
-from typing import final
+
+if sys.version_info >= (3, 8):
+    from typing import final
+else:
+    from typing_extensions import final
 
 import torch
 import torch.nn as nn
