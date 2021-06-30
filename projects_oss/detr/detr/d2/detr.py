@@ -382,11 +382,9 @@ class Detr(nn.Module):
             result = Instances(image_size)
             boxes = box_cxcywh_to_xyxy(box_pred_per_image)
             if self.use_focal_loss:
-                boxes = torch.gather(
-                    boxes.unsqueeze(0), 1, topk_boxes.unsqueeze(-1).repeat(1, 1, 4)
-                ).squeeze()
-            result.pred_boxes = Boxes(boxes)
+                boxes = torch.gather(boxes, 0, topk_boxes[i].unsqueeze(-1).repeat(1, 4))
 
+            result.pred_boxes = Boxes(boxes)
             result.pred_boxes.scale(scale_x=image_size[1], scale_y=image_size[0])
             if self.mask_on:
                 mask = F.interpolate(
