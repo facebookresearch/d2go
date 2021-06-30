@@ -433,7 +433,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
             callback.transforms.append(
                 ModelTransform(
                     interval=qat.UPDATE_OBSERVER_STATS_PERIOD,
-                    fb=observer_update_stat,
+                    fn=observer_update_stat,
                     message="Updating observers.",
                 )
             )
