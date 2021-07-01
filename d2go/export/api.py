@@ -27,9 +27,18 @@ NOTE:
 import json
 import logging
 import os
+import sys
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, NamedTuple, Optional, Union
-from typing import final
+
+if sys.version_info >= (3, 8):
+    from typing import final
+else:
+    # If final decorator not available when using older python version, replace with the
+    # dummy implementation that does nothing.
+    def final(func):
+        return func
+
 
 import torch
 import torch.nn as nn
