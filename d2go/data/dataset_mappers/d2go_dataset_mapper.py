@@ -122,7 +122,7 @@ class D2GoDatasetMapper(object):
                     image.shape[:2],
                     np.random.choice(dataset_dict["annotations"]),
                 )
-                image = crop_tfm.apply_image(image)
+                inputs.image = crop_tfm.apply_image(image)
             transforms = AugmentationList(self.tfm_gens)(inputs)
             image = inputs.image
             if self.crop_gen:
