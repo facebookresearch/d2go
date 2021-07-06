@@ -175,7 +175,16 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
             obj = {
                 field: anno[field]
                 # NOTE: maybe use MetadataCatalog for this
-                for field in ["iscrowd", "bbox", "bbox_mode", "keypoints", "category_id", "extras"]
+                for field in [
+                    "iscrowd",
+                    "bbox",
+                    "bbox_mode"
+                    "keypoints",
+                    "category_id",
+                    "extras",
+                    "point_coords",
+                    "point_labels",
+                ]
                 if field in anno
             }
 
