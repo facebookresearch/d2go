@@ -22,6 +22,7 @@ from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.plugins import DDPPlugin
 from torch.distributed import get_rank
 
 
@@ -75,6 +76,11 @@ def _get_accelerator(use_cpu: bool) -> str:
 
 def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> Dict[str, Any]:
     use_cpu = cfg.MODEL.DEVICE.lower() == "cpu"
+    accelerator = _get_accelerator(use_cpu)
+    plugins = []
+    if accelerator:
+        plugins.append(DDPPlugin(find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS))
+
     return {
         # training loop is bounded by max steps, use a large max_epochs to make
         # sure max_steps is met first
@@ -86,13 +92,14 @@ def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> D
         "num_nodes": num_machines,
         "gpus": None if use_cpu else num_processes,
         "num_processes": num_processes,
-        "accelerator": _get_accelerator(use_cpu),
+        "accelerator": accelerator,
         "callbacks": _get_trainer_callbacks(cfg),
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
         "progress_bar_refresh_rate": 10,
         "terminate_on_nan": True,
         "replace_sampler_ddp": False,
+        "plugins": plugins,
     }
 
 def do_train(
