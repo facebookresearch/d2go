@@ -178,7 +178,7 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
                 for field in [
                     "iscrowd",
                     "bbox",
-                    "bbox_mode"
+                    "bbox_mode",
                     "keypoints",
                     "category_id",
                     "extras",
