@@ -92,7 +92,11 @@ class PredictorExportConfig(NamedTuple):
 
 
 def convert_and_export_predictor(
-    cfg, pytorch_model, predictor_type, output_dir, data_loader
+    cfg,
+    pytorch_model,
+    predictor_type,
+    output_dir,
+    data_loader,
 ):
     """
     Entry point for convert and export model. This involves two steps:
@@ -101,6 +105,7 @@ def convert_and_export_predictor(
         - export: exporting the converted `pytorch_model` to predictor. This step
             should not alter the behaviour of model.
     """
+
     if "int8" in predictor_type:
         if not cfg.QUANTIZATION.QAT.ENABLED:
             logger.info(
@@ -111,14 +116,15 @@ def convert_and_export_predictor(
             # only check bn exists in ptq as qat still has bn inside fused ops
             assert not fuse_utils.check_bn_exist(pytorch_model)
         logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
+
         if cfg.QUANTIZATION.EAGER_MODE:
-            # TODO(future diff): move this logic to prepare_for_quant_convert
+            # TODO(T93870278): move this logic to prepare_for_quant_convert
             pytorch_model = torch.quantization.convert(pytorch_model, inplace=False)
         else:  # FX graph mode quantization
             if hasattr(pytorch_model, "prepare_for_quant_convert"):
                 pytorch_model = pytorch_model.prepare_for_quant_convert(cfg)
             else:
-                # TODO(future diff): move this to a default function
+                # TODO(T93870381): move this to a default function
                 pytorch_model = torch.quantization.quantize_fx.convert_fx(pytorch_model)
 
         logger.info("Quantized Model:\n{}".format(pytorch_model))

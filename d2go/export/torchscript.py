@@ -169,7 +169,14 @@ def tracing_adapter_wrap_load(old_f):
 @ModelExportMethodRegistry.register("torchscript_mobile_int8")
 class DefaultTorchscriptExport(ModelExportMethod):
     @classmethod
-    def export(cls, model, input_args, save_path, export_method, **export_kwargs):
+    def export(
+        cls,
+        model: nn.Module,
+        input_args: Tuple[Tuple[torch.Tensor]],
+        save_path: str,
+        export_method: Optional[str],
+        **export_kwargs
+    ):
         if export_method is not None:
             # update export_kwargs based on export_method
             assert isinstance(export_method, str)

@@ -57,7 +57,11 @@ def main(
         pytorch_model = copy.deepcopy(model)
         try:
             predictor_path = convert_and_export_predictor(
-                cfg, pytorch_model, typ, output_dir, data_loader
+                cfg,
+                pytorch_model,
+                typ,
+                output_dir,
+                data_loader,
             )
             logger.info(f"Predictor type {typ} has been exported to {predictor_path}")
             predictor_paths[typ] = predictor_path
@@ -112,8 +116,10 @@ def get_parser():
     )
     return parser
 
+
 def cli():
     run_with_cmdline_args(get_parser().parse_args())
+
 
 if __name__ == "__main__":
     cli()
