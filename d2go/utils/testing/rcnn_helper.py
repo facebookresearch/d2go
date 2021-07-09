@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
-
 import copy
 import shutil
 import tempfile
@@ -312,17 +310,21 @@ class RCNNBaseTestCases:
                 )
 
                 predictor = create_predictor(predictor_path)
-                predicotr_outputs = predictor(inputs)
-                _validate_outputs(inputs, predicotr_outputs)
+                # This check is needed for models with unsupported backends.
+                # For these, predictor.model_or_models will be None -- as the
+                # model can't be loaded or run. (e.g. BoltNN).
+                if predictor.model_or_models is not None:
+                    predictor_outputs = predictor(inputs)
+                    _validate_outputs(inputs, predictor_outputs)
 
-                if compare_match:
-                    with torch.no_grad():
-                        pytorch_outputs = self.test_model(inputs)
+                    if compare_match:
+                        with torch.no_grad():
+                            pytorch_outputs = self.test_model(inputs)
 
-                    assert_instances_allclose(
-                        predicotr_outputs[0]["instances"],
-                        pytorch_outputs[0]["instances"],
-                    )
+                        assert_instances_allclose(
+                            predictor_outputs[0]["instances"],
+                            pytorch_outputs[0]["instances"],
+                        )
 
             return predictor_path
 
