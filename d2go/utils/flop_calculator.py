@@ -33,7 +33,13 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
     if not comm.is_main_process():
         return
     logger.info("Evaluating model's number of parameters and FLOPS")
-    model = copy.deepcopy(model)
+
+    try:
+        model = copy.deepcopy(model)
+    except Exception:
+        logger.info("Failed to deepcopy the model and skip FlopsEstimation.")
+        return
+
     if use_eval_mode:
         model.eval()
     inputs = copy.deepcopy(inputs)
