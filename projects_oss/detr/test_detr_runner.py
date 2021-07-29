@@ -6,7 +6,7 @@ import os
 import tempfile
 import unittest
 
-from detr import runner as oss_runner
+import d2go.projects.detr.runner as oss_runner
 import d2go.runner.default_runner as default_runner
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 

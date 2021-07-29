@@ -5,6 +5,8 @@ from d2go.data.dataset_mappers.build import D2GO_DATA_MAPPER_REGISTRY
 from d2go.data.dataset_mappers.d2go_dataset_mapper import D2GoDatasetMapper
 from d2go.runner import GeneralizedRCNNRunner
 from detr.d2 import DetrDatasetMapper, add_detr_config
+from detr.backbone.deit import add_deit_backbone_config
+from detr.backbone.pit import add_pit_backbone_config
 
 
 @D2GO_DATA_MAPPER_REGISTRY.register()
@@ -30,5 +32,6 @@ class DETRRunner(GeneralizedRCNNRunner):
     def get_default_cfg(self):
         _C = super().get_default_cfg()
         add_detr_config(_C)
-        _C.MODEL.DETR = CN(_C.MODEL.DETR)
+        add_deit_backbone_config(_C)
+        add_pit_backbone_config(_C)
         return _C

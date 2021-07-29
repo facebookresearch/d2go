@@ -120,4 +120,5 @@ class DetrDatasetMapper:
             ]
             instances = utils.annotations_to_instances(annos, image_shape)
             dataset_dict["instances"] = utils.filter_empty_instances(instances)
+
         return dataset_dict

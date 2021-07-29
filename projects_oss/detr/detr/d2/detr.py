@@ -76,11 +76,10 @@ class ResNetMaskedBackbone(nn.Module):
         return masks
 
 
-class FBNetMaskedBackbone(nn.Module):
-    """This is a thin wrapper around D2's backbone to provide padding masking"""
-
+class FBNetMaskedBackbone(ResNetMaskedBackbone):
+    """ This is a thin wrapper around D2's backbone to provide padding masking"""
     def __init__(self, cfg):
-        super().__init__()
+        nn.Module.__init__(self)
         self.backbone = build_backbone(cfg)
         self.out_features = cfg.MODEL.FBNET_V2.OUT_FEATURES
         self.feature_strides = list(self.backbone._out_feature_strides.values())
@@ -105,22 +104,32 @@ class FBNetMaskedBackbone(nn.Module):
                 ret_features[k] = NestedTensor(features[k], masks[i])
         return ret_features
 
-    def mask_out_padding(self, feature_shapes, image_sizes, device):
-        masks = []
-        assert len(feature_shapes) == len(self.feature_strides)
-        for idx, shape in enumerate(feature_shapes):
-            N, _, H, W = shape
-            masks_per_feature_level = torch.ones(
-                (N, H, W), dtype=torch.bool, device=device
-            )
-            for img_idx, (h, w) in enumerate(image_sizes):
-                masks_per_feature_level[
-                    img_idx,
-                    : int(np.ceil(float(h) / self.feature_strides[idx])),
-                    : int(np.ceil(float(w) / self.feature_strides[idx])),
-                ] = 0
-            masks.append(masks_per_feature_level)
-        return masks
+class SimpleSingleStageBackbone(ResNetMaskedBackbone):
+    """This is a simple wrapper for single stage backbone,
+    please set the required configs:
+    cfg.MODEL.BACKBONE.SIMPLE == True,
+    cfg.MODEL.BACKBONE.STRIDE, cfg.MODEL.BACKBONE.CHANNEL
+    """
+    def __init__(self, cfg):
+        nn.Module.__init__(self)
+        self.backbone = build_backbone(cfg)
+        self.out_features = ['out']
+        assert cfg.MODEL.BACKBONE.SIMPLE is True
+        self.feature_strides = [cfg.MODEL.BACKBONE.STRIDE]
+        self.num_channels = [cfg.MODEL.BACKBONE.CHANNEL]
+        self.strides = [cfg.MODEL.BACKBONE.STRIDE]
+
+    def forward(self, images):
+        y = self.backbone(images.tensor)
+        masks = self.mask_out_padding(
+            [y.shape],
+            images.image_sizes,
+            images.tensor.device,
+        )
+        assert len(masks) == 1
+        ret_features = {}
+        ret_features[self.out_features[0]] = NestedTensor(y, masks[0])
+        return ret_features
 
 
 @META_ARCH_REGISTRY.register()
@@ -158,8 +167,10 @@ class Detr(nn.Module):
         N_steps = hidden_dim // 2
         if "resnet" in cfg.MODEL.BACKBONE.NAME.lower():
             d2_backbone = ResNetMaskedBackbone(cfg)
-        elif "fbnet" in cfg.MODEL.BACKBONE.NAME.lower():
+        elif 'fbnet' in cfg.MODEL.BACKBONE.NAME.lower():
             d2_backbone = FBNetMaskedBackbone(cfg)
+        elif cfg.MODEL.BACKBONE.SIMPLE:
+            d2_backbone = SimpleSingleStageBackbone(cfg)
         else:
             raise NotImplementedError
 

@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from detectron2.config import CfgNode as CN
+from d2go.config import CfgNode as CN
 
 
 def add_detr_config(cfg):
@@ -11,6 +11,9 @@ def add_detr_config(cfg):
     """
     cfg.MODEL.DETR = CN()
     cfg.MODEL.DETR.NUM_CLASSES = 80
+    cfg.MODEL.BACKBONE.SIMPLE = False
+    cfg.MODEL.BACKBONE.STRIDE = 1
+    cfg.MODEL.BACKBONE.CHANNEL = 0
 
     # FBNet
     cfg.MODEL.FBNET_V2.OUT_FEATURES = ["trunk3"]
