@@ -25,7 +25,6 @@ from ..util.misc import (
     get_world_size,
     interpolate,
     is_dist_avail_and_initialized,
-    inverse_sigmoid,
 )
 from .backbone import build_backbone
 from .deformable_transformer import build_deforamble_transformer
@@ -119,6 +118,7 @@ class DeformableDETR(nn.Module):
         self.class_embed.bias.data = torch.ones(num_classes) * bias_value
         nn.init.constant_(self.bbox_embed.layers[-1].weight.data, 0)
         nn.init.constant_(self.bbox_embed.layers[-1].bias.data, 0)
+
         for proj in self.input_proj:
             nn.init.xavier_uniform_(proj[0].weight, gain=1)
             nn.init.constant_(proj[0].bias, 0)
@@ -132,6 +132,7 @@ class DeformableDETR(nn.Module):
         if with_box_refine:
             self.class_embed = _get_clones(self.class_embed, num_pred)
             self.bbox_embed = _get_clones(self.bbox_embed, num_pred)
+            # initialize the box scale height/width at the 1st scale to be 0.1
             nn.init.constant_(self.bbox_embed[0].layers[-1].bias.data[2:], -2.0)
             # hack implementation for iterative bounding box refinement
             self.transformer.decoder.bbox_embed = self.bbox_embed
@@ -197,6 +198,7 @@ class DeformableDETR(nn.Module):
                 else:
                     src = self.input_proj[l](srcs[-1])
                 b, _, h, w = src.size()
+                # mask shape (batch_size, h_l, w_l)
                 mask = F.interpolate(sample_mask, size=src.shape[-2:]).to(torch.bool)[0]
                 pos_l = self.backbone[1](NestedTensor(src, mask)).to(src.dtype)
                 srcs.append(src)
@@ -209,7 +211,7 @@ class DeformableDETR(nn.Module):
             query_embeds = self.query_embed.weight
 
         # hs shape: (num_layers, batch_size, num_queries, c)
-        # init_reference shape: (num_queries, 2)
+        # init_reference shape: (batch_size, num_queries, 2)
         # inter_references shape: (num_layers, bs, num_queries, num_levels, 2)
         (
             hs,
@@ -222,20 +224,14 @@ class DeformableDETR(nn.Module):
         outputs_classes = []
         outputs_coords = []
         for lvl in range(hs.shape[0]):
+            # reference shape: (num_queries, 2)
             if lvl == 0:
                 reference = init_reference
             else:
                 reference = inter_references[lvl - 1]
-            # reference shape: (num_queries, 2)
-            reference = inverse_sigmoid(reference)
             # shape (batch_size, num_queries, num_classes)
             outputs_class = self.class_embed[lvl](hs[lvl])
             # shape (batch_size, num_queries, 4). 4-tuple (cx, cy, w, h)
-
-            assert not torch.any(
-                torch.isnan(hs[lvl])
-            ), f"lvl {lvl}, NaN hs[lvl] {hs[lvl]}"
-
             tmp = self.bbox_embed[lvl](hs[lvl])
             if reference.shape[-1] == 4:
                 tmp += reference
@@ -243,14 +239,7 @@ class DeformableDETR(nn.Module):
                 assert reference.shape[-1] == 2
                 tmp[..., :2] += reference
             # shape (batch_size, num_queries, 4). 4-tuple (cx, cy, w, h)
-
-            assert not torch.any(torch.isnan(tmp)), f"NaN tmp {tmp}"
-
             outputs_coord = tmp.sigmoid()
-
-            assert not torch.any(
-                torch.isnan(outputs_coord)
-            ), f"NaN outputs_coord {outputs_coord}"
 
             outputs_classes.append(outputs_class)
             outputs_coords.append(outputs_coord)
@@ -332,6 +321,13 @@ class MLP(nn.Module):
         self.layers = nn.ModuleList(
             nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim])
         )
+        # initialize FC weights and bias
+        for i, layer in enumerate(self.layers):
+            if i < num_layers - 1:
+                nn.init.kaiming_uniform_(layer.weight, a=1)
+            else:
+                nn.init.constant_(layer.weight, 0)
+            nn.init.constant_(layer.bias, 0)
 
     def forward(self, x):
         for i, layer in enumerate(self.layers):

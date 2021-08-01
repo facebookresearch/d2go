@@ -16,7 +16,6 @@ from torch import nn
 from torch.nn.init import xavier_uniform_, constant_, normal_
 
 from ..modules import MSDeformAttn
-from ..util.misc import inverse_sigmoid
 
 
 class DeformableTransformer(nn.Module):
@@ -259,7 +258,6 @@ class DeformableTransformer(nn.Module):
             output_memory, output_proposals = self.gen_encoder_output_proposals(
                 memory, mask_flatten, spatial_shapes
             )
-
             # hack implementation for two-stage Deformable DETR
             # shape (bs, K, num_classes)
             enc_outputs_class = self.decoder.class_embed[self.decoder.num_layers](
@@ -270,7 +268,6 @@ class DeformableTransformer(nn.Module):
                 self.decoder.bbox_embed[self.decoder.num_layers](output_memory)
                 + output_proposals
             )
-
             topk = self.two_stage_num_proposals
             # topk_proposals: indices of top items. Shape (bs, top_k)
             # TODO (zyan3): use a standalone class_embed layer with 2 output channels?
@@ -280,9 +277,7 @@ class DeformableTransformer(nn.Module):
                 enc_outputs_coord_unact, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, 4)
             )
             topk_coords_unact = topk_coords_unact.detach()
-            # reference_points shape (bs, top_k, 4). value \in (0, 1)
-            reference_points = topk_coords_unact.sigmoid()
-            init_reference_out = reference_points
+            init_reference_out = reference_points_unact = topk_coords_unact
             # shape (bs, top_k, C=512)
             pos_trans_out = self.pos_trans_norm(
                 self.pos_trans(self.get_proposal_pos_embed(topk_coords_unact))
@@ -297,16 +292,17 @@ class DeformableTransformer(nn.Module):
             query_embed = query_embed.unsqueeze(0).expand(bs, -1, -1)
             # tgt shape: (batch_size, num_queries, c)
             tgt = tgt.unsqueeze(0).expand(bs, -1, -1)
-            # reference_points shape: (batch_size, num_queries, 2), value \in (0, 1)
-            reference_points = self.reference_points(query_embed).sigmoid()
-            init_reference_out = reference_points
+            # init_reference_out shape: (batch_size, num_queries, 2), value \in (0, 1)
+            init_reference_out = self.reference_points(query_embed)
+            # block gradient backpropagation here to stabilize optimization
+            reference_points_unact = init_reference_out.detach()
 
         # decoder
         # hs shape: (num_layers, batch_size, num_queries, c)
         # inter_references shape: (num_layers, batch_size, num_queries, num_levels, 2)
         hs, inter_references = self.decoder(
             tgt,
-            reference_points,
+            reference_points_unact,
             memory,
             spatial_shapes,
             level_start_index,
@@ -562,7 +558,7 @@ class DeformableTransformerDecoder(nn.Module):
     def forward(
         self,
         tgt,
-        reference_points,
+        reference_points_unact,
         src,
         src_spatial_shapes,
         src_level_start_index,
@@ -573,7 +569,7 @@ class DeformableTransformerDecoder(nn.Module):
         """
         Args:
             tgt: tensor, shape (batch_size, num_queries, c)
-            reference_points: tensor, shape (batch_size, num_queries, 2 or 4).
+            reference_points_unact: tensor, shape (batch_size, num_queries, 2 or 4).
                 values \in (0, 1)
             src: tensor, shape (batch_size, K, c) where K = \sum_l H_l * w_l
             src_spatial_shapes: tensor, shape (num_levels, 2)
@@ -587,6 +583,8 @@ class DeformableTransformerDecoder(nn.Module):
         intermediate = []
         intermediate_reference_points = []
         for lid, layer in enumerate(self.layers):
+            reference_points = reference_points_unact.sigmoid()
+
             if reference_points.shape[-1] == 4:
                 # shape: (bs, num_queries, 1, 4) * (bs, 1, num_levels, 4) = (bs, num_queries, num_levels, 4)
                 reference_points_input = (
@@ -609,35 +607,34 @@ class DeformableTransformerDecoder(nn.Module):
                 src_level_start_index,
                 src_padding_mask,
             )
-            assert not torch.any(torch.isnan(output)), f"NaN, lid {lid}, {output}"
-
             # hack implementation for iterative bounding box refinement
             if self.bbox_embed is not None:
                 tmp = self.bbox_embed[lid](output)
                 if reference_points.shape[-1] == 4:
-                    new_reference_points = tmp + inverse_sigmoid(reference_points)
-                    new_reference_points = new_reference_points.sigmoid()
+                    new_reference_points_unact = tmp + reference_points_unact
                 else:
                     assert reference_points.shape[-1] == 2
-                    new_reference_points = tmp
-                    new_reference_points[..., :2] = tmp[..., :2] + inverse_sigmoid(
-                        reference_points
+                    new_reference_points_unact = tmp
+                    new_reference_points_unact[..., :2] = (
+                        tmp[..., :2] + reference_points_unact
                     )
-                    new_reference_points = new_reference_points.sigmoid()
                 # block gradient backpropagation here to stabilize optimization
-                reference_points = new_reference_points.detach()
+                new_reference_points_unact = new_reference_points_unact.detach()
+                reference_points_unact = new_reference_points_unact
+            else:
+                new_reference_points_unact = reference_points_unact
 
             if self.return_intermediate:
                 intermediate.append(output)
-                intermediate_reference_points.append(reference_points)
+                intermediate_reference_points.append(new_reference_points_unact)
 
         if self.return_intermediate:
             # shape 1: (num_layers, batch_size, num_queries, c)
             # shape 2: (num_layers, bs, num_queries, num_levels, 2)
             return torch.stack(intermediate), torch.stack(intermediate_reference_points)
         # output shape: (batch_size, num_queries, c)
-        # reference_points shape: (bs, num_queries, num_levels, 2)
-        return output, reference_points
+        # new_reference_points_unact shape: (bs, num_queries, num_levels, 2)
+        return output, new_reference_points_unact
 
 
 def _get_clones(module, N):

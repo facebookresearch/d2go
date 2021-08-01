@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import numpy as np
 import torch
 import torch.nn.functional as F
-from detectron2.layers import ShapeSpec
 from detectron2.modeling import META_ARCH_REGISTRY, build_backbone, detector_postprocess
 from detectron2.structures import Boxes, ImageList, Instances, BitMasks
 from detr.datasets.coco import convert_coco_poly_to_mask
