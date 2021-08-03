@@ -44,6 +44,7 @@ def get_num_processes_per_machine():
     return _NUM_PROCESSES_PER_MACHINE
 
 
+# TODO: merge with d2.engine.launch
 def launch(
     main_func,
     num_processes_per_machine,
