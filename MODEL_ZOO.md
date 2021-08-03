@@ -49,7 +49,7 @@ FBNet series are efficient mobile backbones discovered via neural architecture s
 | ------------------------------------------------------------ | ------ | ------- | --------- | ------------------------------------------------------------ |
 | [Mask-RCNN-FBNetV3A](./configs/mask_rcnn_fbnetv3a_C4.yaml)   | 23.05  | 20.71   | 268421013 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268421013/model_final.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268421013/metrics.json) |
 | [Mask-RCNN-FBNetV3A-dsmask](./configs/mask_rcnn_fbnetv3a_dsmask_C4.yaml) | 21.76  | 19.97   | 268412271 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268412271/model_0499999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/268412271/metrics.json) |
-| [Mask-RCNN-FBNetV3G-FPN](./configs/mask_rcnn_fbnetv3g_fpn.yaml) | 43.88  | 39.25   | 250376154 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250376154/model_0404999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/250376154/metrics.json) |
+| [Mask-RCNN-FBNetV3G-FPN](./configs/mask_rcnn_fbnetv3g_fpn.yaml) | 43.31  | 39.24   | 287445123 | [model](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/287445123/model_0409999.pth) \|[metrics](https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/287445123/metrics.json) |
 
 ### COCO Person Keypoint Detection
 
