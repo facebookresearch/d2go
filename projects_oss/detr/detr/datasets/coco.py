@@ -6,21 +6,31 @@ COCO dataset which returns image_id for evaluation.
 
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
+import os
 from pathlib import Path
+from PIL import Image
 
 import torch
 import torch.utils.data
 import torchvision
 from pycocotools import mask as coco_mask
 
+from detectron2.utils.file_io import PathManager
 import detr.datasets.transforms as T
 
 
 class CocoDetection(torchvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
+        ann_file = PathManager.get_local_path(ann_file)
         super(CocoDetection, self).__init__(img_folder, ann_file)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks)
+
+    def _load_image(self, id: int) -> Image.Image:
+        path = self.coco.loadImgs(id)[0]["file_name"]
+        with PathManager.open(os.path.join(self.root, path), "rb") as f:
+            image = Image.open(f).convert("RGB")
+        return image
 
     def __getitem__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
@@ -147,13 +157,20 @@ def make_coco_transforms(image_set):
 
 
 def build(image_set, args):
-    root = Path(args.coco_path)
-    assert root.exists(), f'provided COCO path {root} does not exist'
-    mode = 'instances'
-    PATHS = {
-        "train": (root / "train2017", root / "annotations" / f'{mode}_train2017.json'),
-        "val": (root / "val2017", root / "annotations" / f'{mode}_val2017.json'),
-    }
+    if "manifold" in args.coco_path:
+        root = args.coco_path
+        PATHS = {
+            "train": (os.path.join(root, "coco_train2017"), "manifold://fair_vision_data/tree/detectron2/json_dataset_annotations/coco/instances_train2017.json"),
+            "val": (os.path.join(root, "coco_val2017"), "manifold://fair_vision_data/tree/detectron2/json_dataset_annotations/coco/instances_val2017.json"),
+        }
+    else:
+        root = Path(args.coco_path)
+        assert root.exists(), f'provided COCO path {root} does not exist'
+        mode = 'instances'
+        PATHS = {
+            "train": (root / "train2017", root / "annotations" / f'{mode}_train2017.json'),
+            "val": (root / "val2017", root / "annotations" / f'{mode}_val2017.json'),
+        }
 
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks)
