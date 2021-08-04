@@ -3,6 +3,7 @@
 from d2go.config import CfgNode as CN
 from d2go.data.build import (
     add_weighted_training_sampler_default_configs,
+    add_random_subset_training_sampler_default_configs,
 )
 from d2go.data.config import add_d2go_data_default_configs
 from d2go.modeling.backbone.fbnet_cfg import (
@@ -52,6 +53,8 @@ def get_default_cfg(_C):
     add_quantization_default_configs(_C)
     # _C.DATASETS.TRAIN_REPEAT_FACTOR
     add_weighted_training_sampler_default_configs(_C)
+    # _C.DATALOADER.RANDOM_SUBSET_RATIO
+    add_random_subset_training_sampler_default_configs(_C)
     # _C.ABNORMAL_CHECKER
     add_abnormal_checker_configs(_C)
     # _C.MODEL.SUBCLASS
