@@ -386,6 +386,10 @@ class Detectron2GoRunner(BaseRunner):
         return results
 
     def do_test(self, cfg, model, train_iter=None):
+        """ do_test does not load the weights of the model.
+        If you want to use it outside the regular training routine,
+        you will have to load the weights through a checkpointer.
+        """
         results = OrderedDict()
         with maybe_subsample_n_images(cfg) as new_cfg:
             # default model
