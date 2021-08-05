@@ -136,12 +136,6 @@ def _distributed_worker(
     except Exception as e:
         logger.error("Process group URL: {}".format(dist_url))
         raise e
-    # synchronize is needed here to prevent a possible timeout after calling
-    # init_process_group
-    # See: https://github.com/facebookresearch/maskrcnn-benchmark/issues/172
-    comm.synchronize()
-    if backend in ["NCCL"]:
-        torch.cuda.set_device(local_rank)
 
     # Setup the local process group (which contains ranks within the same machine)
     assert comm._LOCAL_PROCESS_GROUP is None
@@ -153,6 +147,14 @@ def _distributed_worker(
         pg = dist.new_group(ranks_on_i)
         if i == machine_rank:
             comm._LOCAL_PROCESS_GROUP = pg
+
+    # synchronize is needed here to prevent a possible timeout after calling
+    # init_process_group
+    # See: https://github.com/facebookresearch/maskrcnn-benchmark/issues/172
+    comm.synchronize()
+    if backend in ["NCCL"]:
+        torch.cuda.set_device(local_rank)
+
 
     ret = main_func(*args)
     if global_rank == 0:
