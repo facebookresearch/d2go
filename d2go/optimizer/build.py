@@ -17,6 +17,7 @@ def get_default_optimizer_params(
     base_lr,
     weight_decay,
     weight_decay_norm,
+    weight_decay_embed,
     bias_lr_factor=1.0,
     weight_decay_bias=None,
     overrides: Optional[Dict[str, Dict[str, float]]] = None,
@@ -75,6 +76,8 @@ def get_default_optimizer_params(
                 # weights.
                 schedule_params["lr"] = base_lr * bias_lr_factor
                 schedule_params["weight_decay"] = weight_decay_bias
+            if isinstance(module, torch.nn.Embedding):
+                schedule_params["weight_decay"] = weight_decay_embed
             if overrides is not None and module_param_name in overrides:
                 schedule_params.update(overrides[module_param_name])
             if lr_multipliers_overwrite is not None:
@@ -131,6 +134,7 @@ def sgd(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         base_lr=cfg.SOLVER.BASE_LR,
         weight_decay=cfg.SOLVER.WEIGHT_DECAY,
         weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
         bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
         lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
@@ -153,6 +157,7 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         base_lr=cfg.SOLVER.BASE_LR,
         weight_decay=cfg.SOLVER.WEIGHT_DECAY,
         weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
         bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
         lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),

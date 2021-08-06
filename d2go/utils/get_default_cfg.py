@@ -68,6 +68,7 @@ def get_default_cfg(_C):
     # Set default optimizer
     _C.SOLVER.OPTIMIZER = "sgd"
     _C.SOLVER.LR_MULTIPLIER_OVERWRITE = []
+    _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
 
     # Default world size in D2 is 0, which means scaling is not applied. For D2Go
     # auto scale is encouraged, setting it to 8
