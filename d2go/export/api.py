@@ -114,7 +114,8 @@ def convert_and_export_predictor(
             )
             pytorch_model = post_training_quantize(cfg, pytorch_model, data_loader)
             # only check bn exists in ptq as qat still has bn inside fused ops
-            assert not fuse_utils.check_bn_exist(pytorch_model)
+            if fuse_utils.check_bn_exist(pytorch_model):
+                logger.warn(f"Post training quantized model has bn inside fused ops")
         logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
 
         if cfg.QUANTIZATION.EAGER_MODE:

@@ -288,6 +288,9 @@ def post_training_quantize(cfg, model, data_loader):
 
     calibration_iters = cfg.QUANTIZATION.PTQ.CALIBRATION_NUM_IMAGES
     for idx, inputs in enumerate(data_loader):
+        # Setting CALIBRATION_NUM_IMAGES to 0 allows skipping calibration
+        if idx == calibration_iters:
+            break
         logger.info("Running calibration iter: {}/{}".format(idx, calibration_iters))
 
         if calibration_force_on_gpu:
@@ -299,8 +302,6 @@ def post_training_quantize(cfg, model, data_loader):
 
         with torch.no_grad():
             model(inputs)
-        if idx + 1 == calibration_iters:
-            break
     else:
         logger.warning("Can't run enough calibration iterations")
 
