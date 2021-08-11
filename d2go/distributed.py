@@ -148,12 +148,12 @@ def _distributed_worker(
         if i == machine_rank:
             comm._LOCAL_PROCESS_GROUP = pg
 
+    if backend in ["NCCL"]:
+        torch.cuda.set_device(local_rank)
     # synchronize is needed here to prevent a possible timeout after calling
     # init_process_group
     # See: https://github.com/facebookresearch/maskrcnn-benchmark/issues/172
     comm.synchronize()
-    if backend in ["NCCL"]:
-        torch.cuda.set_device(local_rank)
 
 
     ret = main_func(*args)
