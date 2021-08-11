@@ -16,12 +16,22 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
+from torch.cuda.amp.autocast_mode import custom_bwd, custom_fwd
 
 from detr import _C as MSDA
 
 
 class MSDeformAttnFunction(Function):
+
+    # The @custom_fwd and @custom_bwd decorators are used in this case to allow enabling of
+    # Automatic Mixed Precision when we do not have implementations of custom CUDA kernels for
+    # all the precision types.
+    #
+    # TODO: After implementing `ms_deform_attn` CUDA kernels for FP16, we can remove the
+    # custom_fwd and custom_bwd decorators
+
     @staticmethod
+    @custom_fwd(cast_inputs=torch.float32)
     def forward(ctx, value, value_spatial_shapes, value_level_start_index, sampling_locations, attention_weights, im2col_step):
         ctx.im2col_step = im2col_step
         output = MSDA.ms_deform_attn_forward(
@@ -31,6 +41,7 @@ class MSDeformAttnFunction(Function):
 
     @staticmethod
     @once_differentiable
+    @custom_bwd
     def backward(ctx, grad_output):
         value, value_spatial_shapes, value_level_start_index, sampling_locations, attention_weights = ctx.saved_tensors
         grad_value, grad_sampling_loc, grad_attn_weight = \
