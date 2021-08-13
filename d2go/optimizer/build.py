@@ -12,6 +12,40 @@ from detectron2.utils.registry import Registry
 D2GO_OPTIM_MAPPER_REGISTRY = Registry("D2GO_OPTIM_MAPPER")
 
 
+def reduce_param_groups(
+    param_groups: List[Dict[str, Any]]
+):
+    # The number of parameter groups needs to be as small as possible in order
+    # to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
+    # of using a parameter_group per single parameter, we group all the params
+    # with the same lr and weight_decay in a single group. This approach speeds
+    # up optimizer step significantly.
+
+    dict_new_groups: Dict[str, Dict[str, Any]] = {}
+
+    for param_group in param_groups:
+        # value is a list of parameters from the previous group
+        value = param_group["params"]
+
+        # lr and weight_decay are floating point values
+        lr = param_group["lr"]
+        weight_decay = param_group["weight_decay"]
+
+        # Create the new groups using combinations of lr and weight_decay
+        group_key = (lr, weight_decay)
+        if group_key not in dict_new_groups:
+            dict_new_groups[group_key] = {
+                "params": value,
+                "lr": lr,
+                "weight_decay": weight_decay,
+            }
+        else:
+            # Add elements from an existing group to the new larger group
+            dict_new_groups[group_key]["params"].extend(value)
+
+    return list(dict_new_groups.values())
+
+
 def get_default_optimizer_params(
     model: torch.nn.Module,
     base_lr,
@@ -20,6 +54,7 @@ def get_default_optimizer_params(
     weight_decay_embed,
     bias_lr_factor=1.0,
     weight_decay_bias=None,
+    use_param_group_reduction=False,
     overrides: Optional[Dict[str, Dict[str, float]]] = None,
     lr_multipliers_overwrite: Optional[Dict[str, float]] = None,
 ):
@@ -36,6 +71,10 @@ def get_default_optimizer_params(
             containing certain keys. For example, if lr_multipliers_overwrite={'backbone': 0.1},
             the LR for the parameters whose names containing 'backbone' will be scaled to 0.1x.
             Set lr_multipliers_overwrite={} if no multipliers required.
+        use_param_group_reduction:
+            if set to `False` we will have a parameter group for each parameter which makes
+            the optimizer very slow. This option should be used when using checkpoints of models
+            that were created using a parameter group for each param.
     """
     if weight_decay_bias is None:
         weight_decay_bias = weight_decay
@@ -92,6 +131,10 @@ def get_default_optimizer_params(
                     "weight_decay": schedule_params["weight_decay"],
                 }
             ]
+
+    if use_param_group_reduction:
+        # Reduce number of param groups to speed-up optimizer step
+        return reduce_param_groups(params)
 
     return params
 
@@ -163,6 +206,30 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
     )
     return maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
+        params, cfg.SOLVER.BASE_LR
+    )
+
+
+@D2GO_OPTIM_MAPPER_REGISTRY.register()
+def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
+    """
+    Build a multi_tensor adamw optimizer that works significantly faster.
+    This version is expected to be the default implementation for adamw
+    optimizer by end of H1'21. To benefit from the speedup, the number
+    of parameter groups needs to be reduced using `reduce_param_groups`.
+    """
+    params = get_default_optimizer_params(
+        model,
+        base_lr=cfg.SOLVER.BASE_LR,
+        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
+        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
+        use_param_group_reduction=True,
+        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
+        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
+    )
+    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.AdamW)(
         params, cfg.SOLVER.BASE_LR
     )
 
