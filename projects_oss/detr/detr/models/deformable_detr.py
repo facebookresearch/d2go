@@ -72,6 +72,7 @@ class DeformableDETR(nn.Module):
         self.num_queries = num_queries
         self.transformer = transformer
         hidden_dim = transformer.d_model
+        # We will use sigmoid activation and focal loss
         self.class_embed = nn.Linear(hidden_dim, num_classes)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.num_feature_levels = num_feature_levels
@@ -116,19 +117,14 @@ class DeformableDETR(nn.Module):
         prior_prob = 0.01
         bias_value = -math.log((1 - prior_prob) / prior_prob)
         self.class_embed.bias.data = torch.ones(num_classes) * bias_value
-        nn.init.constant_(self.bbox_embed.layers[-1].weight.data, 0)
-        nn.init.constant_(self.bbox_embed.layers[-1].bias.data, 0)
+        nn.init.constant_(self.bbox_embed.layers[-1].weight, 0)
+        nn.init.constant_(self.bbox_embed.layers[-1].bias, 0)
 
         for proj in self.input_proj:
             nn.init.xavier_uniform_(proj[0].weight, gain=1)
             nn.init.constant_(proj[0].bias, 0)
 
-        # if two-stage, the last class_embed and bbox_embed is for region proposal generation
-        num_pred = (
-            (transformer.decoder.num_layers + 1)
-            if two_stage
-            else transformer.decoder.num_layers
-        )
+        num_pred = transformer.decoder.num_layers
         if with_box_refine:
             self.class_embed = _get_clones(self.class_embed, num_pred)
             self.bbox_embed = _get_clones(self.bbox_embed, num_pred)
@@ -145,9 +141,12 @@ class DeformableDETR(nn.Module):
             self.transformer.decoder.bbox_embed = None
         if two_stage:
             # hack implementation for two-stage
-            self.transformer.decoder.class_embed = self.class_embed
-            for box_embed in self.bbox_embed:
-                nn.init.constant_(box_embed.layers[-1].bias.data[2:], 0.0)
+            # We only predict foreground/background at the output of encoder
+            class_embed = nn.Linear(hidden_dim, 1)
+            class_embed.bias.data = torch.ones(1) * bias_value
+            nn.init.normal_(class_embed.weight, mean=0.0, std=0.01)
+            self.transformer.encoder.class_embed = class_embed
+            self.transformer.encoder.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
 
     def forward(self, samples: NestedTensor):
         """The forward expects a NestedTensor, which consists of:
@@ -177,7 +176,13 @@ class DeformableDETR(nn.Module):
             # src shape: (N, C, H_l, W_l)
             # mask shape: (N, H_l, W_l)
             src, mask = feat.decompose()
+
+            assert not torch.any(torch.isnan(src)), f"l {l}, src {src}"
+
             srcs.append(self.input_proj[l](src))
+
+            assert not torch.any(torch.isnan(srcs[-1])), f"l {l}, srcs[-1] {srcs[-1]}"
+
             masks.append(mask)
             assert mask is not None
 
@@ -231,13 +236,37 @@ class DeformableDETR(nn.Module):
                 reference = inter_references[lvl - 1]
             # shape (batch_size, num_queries, num_classes)
             outputs_class = self.class_embed[lvl](hs[lvl])
+
+            assert not torch.any(
+                torch.isnan(hs[lvl])
+            ), f"lvl {lvl}, NaN hs[lvl] {hs[lvl]}"
+
+            for lid in range(3):
+                assert not torch.any(
+                    torch.isnan(self.bbox_embed[lvl].layers[lid].weight.data)
+                ), f"lvl {lvl}, lid {lid}, NaN self.bbox_embed[lvl].layers[lid].weight.data {self.bbox_embed[lvl].layers[lid].weight.data}"
+
             # shape (batch_size, num_queries, 4). 4-tuple (cx, cy, w, h)
             tmp = self.bbox_embed[lvl](hs[lvl])
+
+            assert not torch.any(
+                torch.isnan(tmp)
+            ), f"lvl {lvl}, after bbox_embed, NaN tmp {tmp}"
+
+            assert not torch.any(
+                torch.isnan(reference)
+            ), f"lvl {lvl}, NaN reference {reference}"
+
             if reference.shape[-1] == 4:
                 tmp += reference
             else:
                 assert reference.shape[-1] == 2
                 tmp[..., :2] += reference
+
+            assert not torch.any(
+                torch.isnan(tmp)
+            ), f"lvl {lvl}, after add reference, NaN tmp {tmp}"
+
             # shape (batch_size, num_queries, 4). 4-tuple (cx, cy, w, h)
             outputs_coord = tmp.sigmoid()
 

@@ -178,7 +178,18 @@ class DeformableTransformer(nn.Module):
             memory_padding_mask.unsqueeze(-1), float(0)
         )
         output_memory = output_memory.masked_fill(~output_proposals_valid, float(0))
-        output_memory = self.enc_output_norm(self.enc_output(output_memory))
+
+        assert not torch.any(
+            torch.isnan(output_memory)
+        ), f"output_memory {output_memory}"
+
+        output_memory = self.enc_output(output_memory)
+
+        assert not torch.any(
+            torch.isnan(output_memory)
+        ), f"output_memory {output_memory}"
+
+        output_memory = self.enc_output_norm(output_memory)
         return output_memory, output_proposals
 
     def get_valid_ratio(self, mask):
@@ -239,6 +250,12 @@ class DeformableTransformer(nn.Module):
         # valid_ratios shape: (bs, num_levels, 2)
         valid_ratios = torch.stack([self.get_valid_ratio(m) for m in masks], 1)
 
+        assert not torch.any(torch.isnan(src_flatten)), f"src_flatten {src_flatten}"
+        assert not torch.any(
+            torch.isnan(lvl_pos_embed_flatten)
+        ), f"lvl_pos_embed_flatten {lvl_pos_embed_flatten}"
+        assert not torch.any(torch.isnan(mask_flatten)), f"mask_flatten {mask_flatten}"
+
         # encoder
         # memory shape (bs, K, C) where K = \sum_l H_l * w_l
         memory = self.encoder(
@@ -253,35 +270,60 @@ class DeformableTransformer(nn.Module):
         # prepare input for decoder
         bs, _, c = memory.shape
         if self.two_stage:
+
+            assert not torch.any(torch.isnan(memory)), f"memory {memory}"
+
             # output_memory shape (bs, K, C)
             # output_proposals shape (bs, K, 4)
             output_memory, output_proposals = self.gen_encoder_output_proposals(
                 memory, mask_flatten, spatial_shapes
             )
+
+            assert not torch.any(
+                torch.isnan(output_memory)
+            ), f"output_memory {output_memory}"
+
+            assert not torch.any(
+                torch.isnan(output_proposals)
+            ), f"output_proposals {output_proposals}"
+
             # hack implementation for two-stage Deformable DETR
-            # shape (bs, K, num_classes)
-            enc_outputs_class = self.decoder.class_embed[self.decoder.num_layers](
-                output_memory
-            )
+            # shape (bs, K, 1)
+            enc_outputs_class = self.encoder.class_embed(output_memory)
             # shape (bs, K, 4)
             enc_outputs_coord_unact = (
-                self.decoder.bbox_embed[self.decoder.num_layers](output_memory)
-                + output_proposals
+                self.encoder.bbox_embed(output_memory) + output_proposals
             )
+
+            assert not torch.any(
+                torch.isnan(enc_outputs_coord_unact)
+            ), f"enc_outputs_coord_unact {enc_outputs_coord_unact}"
+
             topk = self.two_stage_num_proposals
             # topk_proposals: indices of top items. Shape (bs, top_k)
-            # TODO (zyan3): use a standalone class_embed layer with 2 output channels?
             topk_proposals = torch.topk(enc_outputs_class[..., 0], topk, dim=1)[1]
+
             # topk_coords_unact shape (bs, top_k, 4)
             topk_coords_unact = torch.gather(
                 enc_outputs_coord_unact, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, 4)
             )
+
             topk_coords_unact = topk_coords_unact.detach()
             init_reference_out = reference_points_unact = topk_coords_unact
+
+            assert not torch.any(
+                torch.isnan(topk_coords_unact)
+            ), f"topk_coords_unact {topk_coords_unact}"
+
             # shape (bs, top_k, C=512)
             pos_trans_out = self.pos_trans_norm(
                 self.pos_trans(self.get_proposal_pos_embed(topk_coords_unact))
             )
+
+            assert not torch.any(
+                torch.isnan(pos_trans_out)
+            ), f"pos_trans_out {pos_trans_out}"
+
             # query_embed shape (bs, top_k, c)
             # tgt shape (bs, top_k, c)
             query_embed, tgt = torch.split(pos_trans_out, c, dim=2)
@@ -292,6 +334,11 @@ class DeformableTransformer(nn.Module):
             query_embed = query_embed.unsqueeze(0).expand(bs, -1, -1)
             # tgt shape: (batch_size, num_queries, c)
             tgt = tgt.unsqueeze(0).expand(bs, -1, -1)
+
+            assert not torch.any(
+                torch.isnan(self.reference_points.weight.data)
+            ), f"NaN reference_points.weight.data {self.reference_points.weight.data}"
+
             # init_reference_out shape: (batch_size, num_queries, 2), value \in (0, 1)
             init_reference_out = self.reference_points(query_embed)
             # block gradient backpropagation here to stabilize optimization
@@ -553,7 +600,6 @@ class DeformableTransformerDecoder(nn.Module):
         self.return_intermediate = return_intermediate
         # hack implementation for iterative bounding box refinement and two-stage Deformable DETR
         self.bbox_embed = None
-        self.class_embed = None
 
     def forward(
         self,
