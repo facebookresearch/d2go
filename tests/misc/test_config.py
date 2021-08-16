@@ -28,7 +28,10 @@ class TestConfig(unittest.TestCase):
 
         for location in ["detectron2", "detectron2go"]:
             root_dir = os.path.abspath(reroute_config_path(f"{location}://."))
-            files = glob.glob(os.path.join(root_dir, "**/*.yaml"), recursive=True)
+            files = glob.glob(
+                os.path.join(root_dir, "**/*.yaml"),
+                recursive=True)
+            files = [f for f in files if "fbnas" not in f]
             self.assertGreater(len(files), 0)
             for fn in sorted(files):
                 logger.info("Loading {}...".format(fn))
