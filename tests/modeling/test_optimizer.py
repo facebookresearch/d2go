@@ -35,12 +35,12 @@ def _test_each_optimizer(cfg):
 
 class TestOptimizer(unittest.TestCase):
 
-    def test_all_optimiers(self):
+    def test_all_optimizers(self):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
         multipliers = [None, [{'conv': 0.1}]]
 
-        for optimizer_name in ["SGD", "AdamW"]:
+        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT"]:
             for mult in multipliers:
                 cfg.SOLVER.OPTIMIZER = optimizer_name
                 cfg.SOLVER.MULTIPLIERS = mult
@@ -50,10 +50,9 @@ class TestOptimizer(unittest.TestCase):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
 
-        for optimizer_name in ["SGD", "AdamW"]:
+        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT"]:
             cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE = 0.2
             cfg.SOLVER.CLIP_GRADIENTS.ENABLED = True
             cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE = "full_model"
             cfg.SOLVER.OPTIMIZER = optimizer_name
             _test_each_optimizer(cfg)
-

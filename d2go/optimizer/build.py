@@ -211,6 +211,33 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
 
 
 @D2GO_OPTIM_MAPPER_REGISTRY.register()
+def sgd_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
+    """
+    Build a multi_tensor SGD optimizer that works significantly faster.
+    This version is expected to be the default implementation for SGD
+    optimizer by end of H1'21. To benefit from the speedup, the number
+    of parameter groups needs to be reduced using `reduce_param_groups`.
+    """
+    params = get_default_optimizer_params(
+        model,
+        base_lr=cfg.SOLVER.BASE_LR,
+        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
+        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
+        use_param_group_reduction=True,
+        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
+        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
+    )
+    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.SGD)(
+        params,
+        cfg.SOLVER.BASE_LR,
+        momentum=cfg.SOLVER.MOMENTUM,
+        nesterov=cfg.SOLVER.NESTEROV,
+    )
+
+
+@D2GO_OPTIM_MAPPER_REGISTRY.register()
 def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     """
     Build a multi_tensor adamw optimizer that works significantly faster.
