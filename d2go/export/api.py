@@ -8,12 +8,9 @@ deployable format and predefined functions as glue code. The exported predictor 
 generate same output as the original pytorch model. (See predictor/api.py for details of
 predictor)
 
-This API defines two customizable methods for the pytorch model:
+This API defines customizable methods for the pytorch model:
     prepare_for_export (required by the default export_predictor): returns
         PredictorExportConfig which tells information about how export the predictor.
-    export_predictor (optional): the implementation of export process. The default
-        implementation is provided to cover the majority of use cases where the
-        individual model(s) can be exported in standard way.
 
 NOTE:
     1: There's a difference between predictor type and model type. model type
@@ -158,15 +155,9 @@ def export_predictor(cfg, pytorch_model, predictor_type, output_dir, data_loader
         predictor_path (str): the directory of exported predictor, a sub-directory of
             "output_dir"
     """
-    # predictor exporting can be customized by implement "export_predictor" of meta-arch
-    if hasattr(pytorch_model, "export_predictor"):
-        return pytorch_model.export_predictor(
-            cfg, predictor_type, output_dir, data_loader
-        )
-    else:
-        return default_export_predictor(
-            cfg, pytorch_model, predictor_type, output_dir, data_loader
-        )
+    return default_export_predictor(
+        cfg, pytorch_model, predictor_type, output_dir, data_loader
+    )
 
 
 def _export_single_model(
