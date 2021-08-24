@@ -16,8 +16,8 @@ class _ModelZooUrls(object):
         "faster_rcnn_fbnetv3a_C4.yaml": "268421013/model_final.pth",
         "faster_rcnn_fbnetv3a_dsmask_C4.yaml": "268412271/model_0499999.pth",
         "faster_rcnn_fbnetv3g_fpn.yaml": "250356938/model_0374999.pth",
-        "mask_rcnn_fbnetv3a_C4.yaml": "250355374/model_0479999.pth",
-        "mask_rcnn_fbnetv3a_dsmask_C4.yaml": "250414867/model_0399999.pth",
+        "mask_rcnn_fbnetv3a_C4.yaml": "268421013/model_final.pth",
+        "mask_rcnn_fbnetv3a_dsmask_C4.yaml": "268412271/model_0499999.pth",
         "mask_rcnn_fbnetv3g_fpn.yaml": "287445123/model_0409999.pth",
         "keypoint_rcnn_fbnetv3a_dsmask_C4.yaml": "250430934/model_0389999.pth",
     }
