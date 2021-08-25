@@ -204,7 +204,10 @@ class DefaultTask(pl.LightningModule):
 
         self.eval_res = nested_res
         flattened = pl.loggers.LightningLoggerBase._flatten_dict(nested_res)
-        self.log_dict(flattened)
+
+        if self.trainer.global_rank:
+            assert len(flattened) == 0, "evaluation results should have been reduced on rank 0."
+        self.log_dict(flattened, rank_zero_only=True)
 
     def test_epoch_end(self, _outputs) -> None:
         self._evaluation_epoch_end()
