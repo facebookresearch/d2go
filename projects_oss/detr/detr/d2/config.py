@@ -33,7 +33,7 @@ def add_detr_config(cfg):
     cfg.MODEL.DETR.NO_OBJECT_WEIGHT = 0.1
     cfg.MODEL.DETR.WITH_BOX_REFINE = False
     cfg.MODEL.DETR.TWO_STAGE = False
-
+    cfg.MODEL.DETR.DECODER_BLOCK_GRAD = True
     # TRANSFORMER
     cfg.MODEL.DETR.NHEADS = 8
     cfg.MODEL.DETR.DROPOUT = 0.1

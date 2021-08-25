@@ -72,6 +72,7 @@ class DeformableDETR(nn.Module):
         self.num_queries = num_queries
         self.transformer = transformer
         hidden_dim = transformer.d_model
+        # We will use sigmoid activation and focal loss
         self.class_embed = nn.Linear(hidden_dim, num_classes)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.num_feature_levels = num_feature_levels
@@ -116,19 +117,12 @@ class DeformableDETR(nn.Module):
         prior_prob = 0.01
         bias_value = -math.log((1 - prior_prob) / prior_prob)
         self.class_embed.bias.data = torch.ones(num_classes) * bias_value
-        nn.init.constant_(self.bbox_embed.layers[-1].weight.data, 0)
-        nn.init.constant_(self.bbox_embed.layers[-1].bias.data, 0)
 
         for proj in self.input_proj:
             nn.init.xavier_uniform_(proj[0].weight, gain=1)
             nn.init.constant_(proj[0].bias, 0)
 
-        # if two-stage, the last class_embed and bbox_embed is for region proposal generation
-        num_pred = (
-            (transformer.decoder.num_layers + 1)
-            if two_stage
-            else transformer.decoder.num_layers
-        )
+        num_pred = transformer.decoder.num_layers
         if with_box_refine:
             self.class_embed = _get_clones(self.class_embed, num_pred)
             self.bbox_embed = _get_clones(self.bbox_embed, num_pred)
@@ -145,9 +139,15 @@ class DeformableDETR(nn.Module):
             self.transformer.decoder.bbox_embed = None
         if two_stage:
             # hack implementation for two-stage
-            self.transformer.decoder.class_embed = self.class_embed
+            # We only predict foreground/background at the output of encoder
+            class_embed = nn.Linear(hidden_dim, 1)
+            class_embed.bias.data = torch.ones(1) * bias_value
+            self.transformer.encoder.class_embed = class_embed
+
             for box_embed in self.bbox_embed:
                 nn.init.constant_(box_embed.layers[-1].bias.data[2:], 0.0)
+
+            self.transformer.encoder.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
 
     def forward(self, samples: NestedTensor):
         """The forward expects a NestedTensor, which consists of:

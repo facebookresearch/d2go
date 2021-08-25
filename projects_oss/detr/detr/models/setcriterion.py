@@ -15,6 +15,16 @@ from ..util.misc import (
 from .segmentation import dice_loss, sigmoid_focal_loss
 
 
+def _reduce_num_boxes(targets, device):
+    # Compute the average number of target boxes accross all nodes, for normalization purposes
+    num_boxes = sum(len(t["labels"]) for t in targets)
+    num_boxes = torch.as_tensor([num_boxes], dtype=torch.float, device=device)
+    if is_dist_avail_and_initialized():
+        torch.distributed.all_reduce(num_boxes)
+    num_boxes = torch.clamp(num_boxes / get_world_size(), min=1).item()
+    return num_boxes
+
+
 class SetCriterion(nn.Module):
     """This class computes the loss for DETR.
     The process happens in two steps:
@@ -77,6 +87,50 @@ class SetCriterion(nn.Module):
             # TODO this should probably be a separate loss, not hacked in this one here
             losses["class_error"] = 100 - accuracy(src_logits[idx], target_classes_o)[0]
         return losses
+
+    def forground_background_loss_labels(
+        self, outputs, targets, indices, num_boxes, log=True
+    ):
+        assert "pred_logits" in outputs
+        # shape (batch_size, num_queries, 1)
+        src_logits = outputs["pred_logits"]
+
+        batch_size, num_queries = src_logits.shape[:2]
+
+        assert src_logits.shape[2] == 1, f"expect 1 class {src_logits.shape[2]}"
+        idx = self._get_src_permutation_idx(indices)
+
+        target_classes_o = torch.cat(
+            [t["labels"][J] for t, (_, J) in zip(targets, indices)]
+        )
+        target_classes = torch.full(
+            src_logits.shape[:2],
+            1,
+            dtype=torch.int64,
+            device=src_logits.device,
+        )
+        target_classes[idx] = target_classes_o
+
+        target_classes_onehot = torch.zeros(
+            [src_logits.shape[0], src_logits.shape[1], 2],
+            dtype=src_logits.dtype,
+            layout=src_logits.layout,
+            device=src_logits.device,
+        )
+        target_classes_onehot.scatter_(2, target_classes.unsqueeze(-1), 1)
+        target_classes_onehot = target_classes_onehot[:, :, :-1]
+
+        loss_ce = (
+            sigmoid_focal_loss(
+                src_logits,
+                target_classes_onehot,
+                num_boxes,
+                alpha=self.focal_alpha,
+                gamma=2,
+            )
+            * src_logits.shape[1]
+        )
+        return {"loss_ce": loss_ce}
 
     @torch.no_grad()
     def loss_cardinality(self, outputs, targets, indices, num_boxes):
@@ -181,21 +235,24 @@ class SetCriterion(nn.Module):
         assert loss in loss_map, f"do you really want to compute {loss} loss?"
         return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
 
+    def get_foreground_background_loss(
+        self, loss, outputs, targets, indices, num_boxes, **kwargs
+    ):
+        loss_map = {
+            "labels": self.forground_background_loss_labels,
+            "cardinality": self.loss_cardinality,
+            "boxes": self.loss_boxes,
+        }
+        assert loss in loss_map, f"do you really want to compute {loss} loss?"
+        return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
+
     def _forward(self, outputs, outputs_without_aux, targets):
 
         # Retrieve the matching between the outputs of the last layer and the targets
         # A list where each item is [row_indices, col_indices]
         indices = self.matcher(outputs_without_aux, targets)
 
-        # Compute the average number of target boxes accross all nodes, for normalization purposes
-        num_boxes = sum(len(t["labels"]) for t in targets)
-        num_boxes = torch.as_tensor(
-            [num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device
-        )
-        if is_dist_avail_and_initialized():
-            torch.distributed.all_reduce(num_boxes)
-        num_boxes = torch.clamp(num_boxes / get_world_size(), min=1).item()
-
+        num_boxes = _reduce_num_boxes(targets, next(iter(outputs.values())).device)
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:
@@ -257,6 +314,7 @@ class FocalLossSetCriterion(SetCriterion):
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
         assert "pred_logits" in outputs
+        # shape (batch_size, num_queries, num_classes)
         src_logits = outputs["pred_logits"]
 
         idx = self._get_src_permutation_idx(indices)
@@ -313,8 +371,7 @@ class FocalLossSetCriterion(SetCriterion):
         losses = self._forward(outputs, outputs_without_aux, targets)
 
         if "enc_outputs" in outputs:
-            num_boxes = sum(len(t["labels"]) for t in targets)
-
+            num_boxes = _reduce_num_boxes(targets, next(iter(outputs.values())).device)
             enc_outputs = outputs["enc_outputs"]
             bin_targets = copy.deepcopy(targets)
             for bt in bin_targets:
@@ -328,7 +385,7 @@ class FocalLossSetCriterion(SetCriterion):
                 if loss == "labels":
                     # Logging is enabled only for the last layer
                     kwargs["log"] = False
-                l_dict = self.get_loss(
+                l_dict = self.get_foreground_background_loss(
                     loss, enc_outputs, bin_targets, indices, num_boxes, **kwargs
                 )
                 l_dict = {k + "_enc": v for k, v in l_dict.items()}

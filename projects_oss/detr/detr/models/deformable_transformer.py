@@ -16,6 +16,11 @@ from torch import nn
 from torch.nn.init import xavier_uniform_, constant_, normal_
 
 from ..modules import MSDeformAttn
+from ..util.misc import inverse_sigmoid
+
+
+# we do not use float("-inf") to avoid potential NaN during training
+NEG_INF = -10000.0
 
 
 class DeformableTransformer(nn.Module):
@@ -34,6 +39,7 @@ class DeformableTransformer(nn.Module):
         enc_n_points=4,
         two_stage=False,
         two_stage_num_proposals=300,
+        decoder_block_grad=True,
     ):
         super().__init__()
 
@@ -63,7 +69,10 @@ class DeformableTransformer(nn.Module):
             dec_n_points,
         )
         self.decoder = DeformableTransformerDecoder(
-            decoder_layer, num_decoder_layers, return_intermediate_dec
+            decoder_layer,
+            num_decoder_layers,
+            return_intermediate_dec,
+            decoder_block_grad,
         )
 
         self.level_embed = nn.Parameter(torch.Tensor(num_feature_levels, d_model))
@@ -81,13 +90,13 @@ class DeformableTransformer(nn.Module):
     def _reset_parameters(self):
         for p in self.parameters():
             if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
+                xavier_uniform_(p)
         for m in self.modules():
             if isinstance(m, MSDeformAttn):
                 m._reset_parameters()
         if not self.two_stage:
-            xavier_uniform_(self.reference_points.weight.data, gain=1.0)
-            constant_(self.reference_points.bias.data, 0.0)
+            xavier_uniform_(self.reference_points.weight, gain=1.0)
+            constant_(self.reference_points.bias, 0.0)
         normal_(self.level_embed)
 
     def get_proposal_pos_embed(self, proposals):
@@ -163,14 +172,8 @@ class DeformableTransformer(nn.Module):
         output_proposals_valid = (
             (output_proposals > 0.01) & (output_proposals < 0.99)
         ).all(-1, keepdim=True)
-        # inverse sigmoid
-        output_proposals = torch.log(output_proposals / (1 - output_proposals))
-        output_proposals = output_proposals.masked_fill(
-            memory_padding_mask.unsqueeze(-1), float("inf")
-        )
-        output_proposals = output_proposals.masked_fill(
-            ~output_proposals_valid, float("inf")
-        )
+
+        output_proposals = inverse_sigmoid(output_proposals)
         # memory: shape (bs, K, C)
         output_memory = memory
         # memory_padding_mask: shape (bs, K)
@@ -179,7 +182,7 @@ class DeformableTransformer(nn.Module):
         )
         output_memory = output_memory.masked_fill(~output_proposals_valid, float(0))
         output_memory = self.enc_output_norm(self.enc_output(output_memory))
-        return output_memory, output_proposals
+        return output_memory, output_proposals, output_proposals_valid
 
     def get_valid_ratio(self, mask):
         _, H, W = mask.shape
@@ -226,7 +229,7 @@ class DeformableTransformer(nn.Module):
         src_flatten = torch.cat(src_flatten, 1)
         # mask_flatten shape: (bs, K)
         mask_flatten = torch.cat(mask_flatten, 1)
-        # mask_flatten shape: (bs, K, c)
+        # lvl_pos_embed_flatten shape: (bs, K, c)
         lvl_pos_embed_flatten = torch.cat(lvl_pos_embed_flatten, 1)
         # spatial_shapes shape: (num_levels, 2)
         spatial_shapes = torch.as_tensor(
@@ -238,7 +241,6 @@ class DeformableTransformer(nn.Module):
         )
         # valid_ratios shape: (bs, num_levels, 2)
         valid_ratios = torch.stack([self.get_valid_ratio(m) for m in masks], 1)
-
         # encoder
         # memory shape (bs, K, C) where K = \sum_l H_l * w_l
         memory = self.encoder(
@@ -255,29 +257,34 @@ class DeformableTransformer(nn.Module):
         if self.two_stage:
             # output_memory shape (bs, K, C)
             # output_proposals shape (bs, K, 4)
-            output_memory, output_proposals = self.gen_encoder_output_proposals(
-                memory, mask_flatten, spatial_shapes
-            )
+            # output_proposals_valid shape (bs, K, 1)
+            (
+                output_memory,
+                output_proposals,
+                output_proposals_valid,
+            ) = self.gen_encoder_output_proposals(memory, mask_flatten, spatial_shapes)
             # hack implementation for two-stage Deformable DETR
-            # shape (bs, K, num_classes)
-            enc_outputs_class = self.decoder.class_embed[self.decoder.num_layers](
-                output_memory
-            )
+            # shape (bs, K, 1)
+            enc_outputs_class = self.encoder.class_embed(output_memory)
+            # fill in -inf foreground logit at invalid positions so that we will never pick
+            # top-scored proposals at those positions
+            enc_outputs_class.masked_fill(mask_flatten.unsqueeze(-1), NEG_INF)
+            enc_outputs_class.masked_fill(~output_proposals_valid, NEG_INF)
             # shape (bs, K, 4)
             enc_outputs_coord_unact = (
-                self.decoder.bbox_embed[self.decoder.num_layers](output_memory)
-                + output_proposals
+                self.encoder.bbox_embed(output_memory) + output_proposals
             )
             topk = self.two_stage_num_proposals
             # topk_proposals: indices of top items. Shape (bs, top_k)
-            # TODO (zyan3): use a standalone class_embed layer with 2 output channels?
             topk_proposals = torch.topk(enc_outputs_class[..., 0], topk, dim=1)[1]
+
             # topk_coords_unact shape (bs, top_k, 4)
             topk_coords_unact = torch.gather(
                 enc_outputs_coord_unact, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, 4)
             )
             topk_coords_unact = topk_coords_unact.detach()
-            init_reference_out = reference_points_unact = topk_coords_unact
+
+            init_reference_out = topk_coords_unact
             # shape (bs, top_k, C=512)
             pos_trans_out = self.pos_trans_norm(
                 self.pos_trans(self.get_proposal_pos_embed(topk_coords_unact))
@@ -292,17 +299,15 @@ class DeformableTransformer(nn.Module):
             query_embed = query_embed.unsqueeze(0).expand(bs, -1, -1)
             # tgt shape: (batch_size, num_queries, c)
             tgt = tgt.unsqueeze(0).expand(bs, -1, -1)
-            # init_reference_out shape: (batch_size, num_queries, 2), value \in (0, 1)
+            # init_reference_out shape: (batch_size, num_queries, 2)
             init_reference_out = self.reference_points(query_embed)
-            # block gradient backpropagation here to stabilize optimization
-            reference_points_unact = init_reference_out.detach()
 
         # decoder
         # hs shape: (num_layers, batch_size, num_queries, c)
         # inter_references shape: (num_layers, batch_size, num_queries, num_levels, 2)
         hs, inter_references = self.decoder(
             tgt,
-            reference_points_unact,
+            init_reference_out,
             memory,
             spatial_shapes,
             level_start_index,
@@ -546,14 +551,16 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
 
 class DeformableTransformerDecoder(nn.Module):
-    def __init__(self, decoder_layer, num_layers, return_intermediate=False):
+    def __init__(
+        self, decoder_layer, num_layers, return_intermediate=False, block_grad=True
+    ):
         super().__init__()
         self.layers = _get_clones(decoder_layer, num_layers)
         self.num_layers = num_layers
         self.return_intermediate = return_intermediate
         # hack implementation for iterative bounding box refinement and two-stage Deformable DETR
         self.bbox_embed = None
-        self.class_embed = None
+        self.block_grad = block_grad
 
     def forward(
         self,
@@ -619,7 +626,9 @@ class DeformableTransformerDecoder(nn.Module):
                         tmp[..., :2] + reference_points_unact
                     )
                 # block gradient backpropagation here to stabilize optimization
-                new_reference_points_unact = new_reference_points_unact.detach()
+                if self.block_grad:
+                    new_reference_points_unact = new_reference_points_unact.detach()
+
                 reference_points_unact = new_reference_points_unact
             else:
                 new_reference_points_unact = reference_points_unact
