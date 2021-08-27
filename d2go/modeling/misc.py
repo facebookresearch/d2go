@@ -15,8 +15,6 @@ class SplitAndConcat(nn.Module):
     @param split_dim from which axis the data will be chunk
     @param concat_dim to which axis the data will be concatenated
     @param chunk size of the data to be chunk/concatenated
-
-    copied: oculus/face/social_eye/lib/model/resnet_backbone.py
     """
 
     def __init__(self, split_dim: int = 1, concat_dim: int = 0, chunk: int = 2):
