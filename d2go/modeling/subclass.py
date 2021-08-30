@@ -72,7 +72,7 @@ class SubclassDatasetMapper(D2GoDatasetMapper):
         super().__init__(cfg, is_train=is_train, tfm_gens=tfm_gens)
         if subclass_fetcher is None:
             fetcher_name = cfg.MODEL.SUBCLASS.SUBCLASS_ID_FETCHER
-            self.subclass_fetcher = SUBCLASS_FETCHER_REGISTRY.get(fetcher_name)()
+            self.subclass_fetcher = SUBCLASS_FETCHER_REGISTRY.get(fetcher_name)(cfg)
             logger.info(
                 f"Initialized {self.__class__.__name__} with "
                 f"subclass fetcher '{self.subclass_fetcher.__class__.__name__}'"
