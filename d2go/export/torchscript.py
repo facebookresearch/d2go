@@ -23,6 +23,8 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 
 logger = logging.getLogger(__name__)
 
+TORCHSCRIPT_FILENAME_KEY: str = "torchscript_filename"
+
 
 class MobileOptimizationConfig(NamedTuple):
     # optimize_for_mobile
@@ -191,7 +193,7 @@ class DefaultTorchscriptExport(ModelExportMethod):
         torchscript_filename = trace_and_save_torchscript(
             model, input_args, save_path, **export_kwargs
         )
-        return {"torchscript_filename": torchscript_filename}
+        return {TORCHSCRIPT_FILENAME_KEY: torchscript_filename}
 
     @classmethod
     def load(cls, save_path, *, torchscript_filename="model.jit"):

@@ -19,7 +19,7 @@ from mobile_cv.common.misc.file_utils import make_temp_directory
 patch_d2_meta_arch()
 
 
-class TestFBNetV3MaskRCNNNormal(RCNNBaseTestCases.TemplateTestCase):
+class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
         super().setup_custom_test()
         self.cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3a_dsmask_C4.yaml")
@@ -66,7 +66,7 @@ class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
         self._test_export(predictor_type, compare_match=compare_match)
 
 
-class TestFBNetV3KeypointRCNNNormal(RCNNBaseTestCases.TemplateTestCase):
+class TestFBNetV3KeypointRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
         super().setup_custom_test()
         self.cfg.merge_from_file("detectron2go://keypoint_rcnn_fbnetv3a_dsmask_C4.yaml")
