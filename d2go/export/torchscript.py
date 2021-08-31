@@ -142,8 +142,8 @@ def tracing_adapter_wrap_export(old_f):
 
 def tracing_adapter_wrap_load(old_f):
     def new_f(cls, save_path, **load_kwargs):
-        assert "inputs_schema" in load_kwargs
-        assert "outputs_schema" in load_kwargs
+        assert "inputs_schema" in load_kwargs, load_kwargs.keys()
+        assert "outputs_schema" in load_kwargs, load_kwargs.keys()
         inputs_schema = instantiate(load_kwargs.pop("inputs_schema"))
         outputs_schema = instantiate(load_kwargs.pop("outputs_schema"))
         traced_model = old_f(cls, save_path, **load_kwargs)
