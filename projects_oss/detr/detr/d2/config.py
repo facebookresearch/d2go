@@ -40,6 +40,7 @@ def add_detr_config(cfg):
     cfg.MODEL.DETR.DIM_FEEDFORWARD = 2048
     cfg.MODEL.DETR.ENC_LAYERS = 6
     cfg.MODEL.DETR.DEC_LAYERS = 6
+    cfg.MODEL.DETR.BBOX_EMBED_NUM_LAYERS = 3
     cfg.MODEL.DETR.PRE_NORM = False
 
     cfg.MODEL.DETR.HIDDEN_DIM = 256

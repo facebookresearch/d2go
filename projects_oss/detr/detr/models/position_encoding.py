@@ -29,7 +29,9 @@ class PositionEmbeddingSine(nn.Module):
         self.centered = centered
 
     def forward(self, tensor_list: NestedTensor):
+        # x shape (B, C, H, W)
         x = tensor_list.tensors
+        # mask shape (B, H, W)
         mask = tensor_list.mask
         assert mask is not None
         not_mask = ~mask

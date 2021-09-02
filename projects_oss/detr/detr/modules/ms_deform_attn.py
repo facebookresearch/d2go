@@ -65,7 +65,7 @@ class MSDeformAttn(nn.Module):
         constant_(self.sampling_offsets.weight.data, 0.)
         # shape (num_heads,)
         thetas = torch.arange(self.n_heads, dtype=torch.float32) * (2.0 * math.pi / self.n_heads)
-        # shape (2 * num_heads)
+        # shape (num_heads, 2)
         grid_init = torch.stack([thetas.cos(), thetas.sin()], -1)
         # shape (num_heads, num_levels, num_points, 2)
         grid_init = (grid_init / grid_init.abs().max(-1, keepdim=True)[0]).view(self.n_heads, 1, 1, 2).repeat(1, self.n_levels, self.n_points, 1)

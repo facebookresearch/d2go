@@ -128,7 +128,10 @@ class Joiner(nn.Sequential):
         for x in out:
             pos.append(self[1](x).to(x.tensors.dtype))
 
-        # shape a list of tensors, each tensor shape (B, C, H, W)
+        # out: a list of NestedTensor
+        #   each tensor has shape (B, C, H, W)
+        #   each mask has shape (B, H, W)
+        # pos: a list of tensors, each has shape (B, C, H, W)
         return out, pos
 
 

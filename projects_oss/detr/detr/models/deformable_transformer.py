@@ -6,7 +6,6 @@
 # Modified from DETR (https://github.com/facebookresearch/detr)
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 # ------------------------------------------------------------------------
-
 import copy
 import math
 
@@ -17,7 +16,6 @@ from torch.nn.init import xavier_uniform_, constant_, normal_
 
 from ..modules import MSDeformAttn
 from ..util.misc import inverse_sigmoid
-
 
 # we do not use float("-inf") to avoid potential NaN during training
 NEG_INF = -10000.0
@@ -432,8 +430,9 @@ class DeformableTransformerEncoder(nn.Module):
         reference_points = torch.cat(reference_points_list, 1)
         # reference_points
         #   shape (N, K, 1, 2) * (N, 1, num_levels, 2) = (N, K, num_levels, 2)
-        #   value should be <1
+        #   ideally, value should be <1. In practice, value coule be >= 1. Thus, clamp max to 1
         reference_points = reference_points[:, :, None] * valid_ratios[:, None]
+        reference_points = reference_points.clamp(max=1.0)
         return reference_points
 
     def forward(

@@ -56,6 +56,7 @@ class DeformableDETR(nn.Module):
         aux_loss=True,
         with_box_refine=False,
         two_stage=False,
+        bbox_embed_num_layers=3,
     ):
         """Initializes the model.
         Parameters:
@@ -67,6 +68,7 @@ class DeformableDETR(nn.Module):
             aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.
             with_box_refine: iterative bounding box refinement
             two_stage: two-stage Deformable DETR
+            bbox_embed_num_layers: number of FC layers in bbox_embed MLP
         """
         super().__init__()
         self.num_queries = num_queries
@@ -74,7 +76,7 @@ class DeformableDETR(nn.Module):
         hidden_dim = transformer.d_model
         # We will use sigmoid activation and focal loss
         self.class_embed = nn.Linear(hidden_dim, num_classes)
-        self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
+        self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, bbox_embed_num_layers)
         self.num_feature_levels = num_feature_levels
         if not two_stage:
             self.query_embed = nn.Embedding(num_queries, hidden_dim * 2)
@@ -147,7 +149,7 @@ class DeformableDETR(nn.Module):
             for box_embed in self.bbox_embed:
                 nn.init.constant_(box_embed.layers[-1].bias.data[2:], 0.0)
 
-            self.transformer.encoder.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
+            self.transformer.encoder.bbox_embed = MLP(hidden_dim, hidden_dim, 4, bbox_embed_num_layers)
 
     def forward(self, samples: NestedTensor):
         """The forward expects a NestedTensor, which consists of:
