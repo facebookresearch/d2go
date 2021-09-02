@@ -56,6 +56,7 @@ from detectron2.evaluation import (
     COCOEvaluator,
     RotatedCOCOEvaluator,
     DatasetEvaluators,
+    LVISEvaluator,
     inference_on_dataset,
     print_csv_format,
     verify_results,
@@ -534,10 +535,17 @@ class Detectron2GoRunner(BaseRunner):
                 dataset_name,
                 output_dir=output_folder,
                 kpt_oks_sigmas=cfg.TEST.KEYPOINT_OKS_SIGMAS,
+                max_dets_per_image=cfg.TEST.DETECTIONS_PER_IMAGE,
             )
         elif evaluator_type in ["rotated_coco"]:
             dataset_evaluators = DatasetEvaluators(
                 [RotatedCOCOEvaluator(dataset_name, cfg, True, output_folder)]
+            )
+        elif evaluator_type in ["lvis"]:
+            dataset_evaluators = LVISEvaluator(
+                dataset_name,
+                output_dir=output_folder,
+                max_dets_per_image=cfg.TEST.DETECTIONS_PER_IMAGE,
             )
         else:
             dataset_evaluators = D2Trainer.build_evaluator(
