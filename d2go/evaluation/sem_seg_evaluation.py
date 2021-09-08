@@ -71,14 +71,12 @@ class MultiSemSegEvaluator(DatasetEvaluator):
             tmp_dataset_name = "__AUTOGEN__{}@{}".format(
                 self.dataset_name, superclass_name
             )
-            from d2go.datasets.builtin_dataset_people_ai_person_segmentation import (
-                _register_person_sem_seg,
-            )
+            from d2go.data.fb.semantic_seg import register_sem_seg
 
             if tmp_dataset_name not in MetadataCatalog:
-                _register_person_sem_seg(
+                register_sem_seg(
                     tmp_dataset_name,
-                    metadata.mcs_metadata[superclass_name],
+                    metadata=metadata.mcs_metadata[superclass_name],
                     image_root=metadata.image_root,
                     sem_seg_root=metadata.sem_seg_root,
                     instances_json=metadata.json_file,
@@ -156,6 +154,7 @@ class MultiSemSegEvaluator(DatasetEvaluator):
                 results[name] = result["sem_seg"]
         return results
 
+
 class MultiSemSegVidEvaluator(MultiSemSegEvaluator):
     """
     Evaluate semantic segmentation results for video clips. MultiSemSegVidEvaluator
@@ -164,18 +163,18 @@ class MultiSemSegVidEvaluator(MultiSemSegEvaluator):
         {"file_names": Tensor},
     ]
     """
+
     def process(self, inputs, outputs):
         assert "file_names" in inputs[0]
         inputs_ = []
         for batch_id in range(len(inputs)):
             for frame_i in range(len(inputs[batch_id]["file_names"])):
-                inputs_.append(
-                    {"file_name": inputs[batch_id]["file_names"][frame_i]}
-                )
+                inputs_.append({"file_name": inputs[batch_id]["file_names"][frame_i]})
         for name in outputs[0].keys():
             # convert the output to SemSegEvaluator's format
             outputs_ = [outp[name] for outp in outputs]
             self.evaluators["sem_seg_{}".format(name)].process(inputs_, outputs_)
+
 
 @contextmanager
 def all_logging_disabled(highest_level=logging.CRITICAL):
