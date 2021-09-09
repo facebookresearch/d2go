@@ -9,6 +9,7 @@ from typing import List
 
 import torch
 import torch.nn as nn
+from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from detectron2.layers import ShapeSpec
 from detectron2.modeling import (
     BACKBONE_REGISTRY,
@@ -20,7 +21,6 @@ from detectron2.modeling.backbone.fpn import FPN, LastLevelMaxPool, LastLevelP6P
 from detectron2.modeling.roi_heads import box_head, keypoint_head, mask_head
 from detectron2.utils.logger import log_first_n
 from mobile_cv.arch.fbnet_v2 import fbnet_builder as mbuilder
-from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from mobile_cv.arch.utils.helper import format_dict_expanding_list_values
 
 from .modules import (
@@ -49,7 +49,9 @@ def _get_builder_norm_args(cfg):
 
 def _merge_fbnetv2_arch_def(cfg):
     arch_def = {}
-    assert all(isinstance(x, dict) for x in cfg.MODEL.FBNET_V2.ARCH_DEF), cfg.MODEL.FBNET_V2.ARCH_DEF
+    assert all(
+        isinstance(x, dict) for x in cfg.MODEL.FBNET_V2.ARCH_DEF
+    ), cfg.MODEL.FBNET_V2.ARCH_DEF
     for dic in cfg.MODEL.FBNET_V2.ARCH_DEF:
         arch_def.update(dic)
     return arch_def
@@ -58,16 +60,17 @@ def _merge_fbnetv2_arch_def(cfg):
 def _parse_arch_def(cfg):
     arch = cfg.MODEL.FBNET_V2.ARCH
     arch_def = cfg.MODEL.FBNET_V2.ARCH_DEF
-    assert (arch != "" and not arch_def) ^ (not arch and arch_def != []), (
-        "Only allow one unset node between MODEL.FBNET_V2.ARCH ({}) and MODEL.FBNET_V2.ARCH_DEF ({})"
-        .format(arch, arch_def)
+    assert (arch != "" and not arch_def) ^ (
+        not arch and arch_def != []
+    ), "Only allow one unset node between MODEL.FBNET_V2.ARCH ({}) and MODEL.FBNET_V2.ARCH_DEF ({})".format(
+        arch, arch_def
     )
     arch_def = FBNetV2ModelArch.get(arch) if arch else _merge_fbnetv2_arch_def(cfg)
     # NOTE: arch_def is a dictionary describing the CNN architecture for creating
     # the detection model. It can describe a wide range of models including the
     # original FBNet. Each key-value pair expresses either a sub part of the model
     # like trunk or head, or stores other meta information.
-    message = "Using un-unified arch_def for ARCH \"{}\" (without scaling):\n{}".format(
+    message = 'Using un-unified arch_def for ARCH "{}" (without scaling):\n{}'.format(
         arch, format_dict_expanding_list_values(arch_def)
     )
     log_first_n(logging.INFO, message, n=1, key="message")
@@ -129,13 +132,15 @@ def _get_stride_per_stage(blocks):
 
 
 def fbnet_identifier_checker(func):
-    """ Can be used to decorate _load_from_state_dict """
+    """Can be used to decorate _load_from_state_dict"""
+
     def wrapper(self, state_dict, prefix, *args, **kwargs):
         possible_keys = [k for k in state_dict.keys() if k.startswith(prefix)]
         if not all(FBNET_BUILDER_IDENTIFIER in k for k in possible_keys):
             logger.warning(
-                "Couldn't match FBNetV2 pattern given prefix {}, possible keys: \n{}"
-                .format(prefix, "\n".join(possible_keys))
+                "Couldn't match FBNetV2 pattern given prefix {}, possible keys: \n{}".format(
+                    prefix, "\n".join(possible_keys)
+                )
             )
             if any("xif" in k for k in possible_keys):
                 raise RuntimeError(
@@ -146,6 +151,7 @@ def fbnet_identifier_checker(func):
                     " still found, see D19477651 as example."
                 )
         return func(self, state_dict, prefix, *args, **kwargs)
+
     return wrapper
 
 
@@ -183,8 +189,9 @@ def build_fbnet(cfg, name, in_channels):
     arch_def = mbuilder.unify_arch_def(raw_arch_def, [name])
     arch_def = {name: arch_def[name]}
     logger.info(
-        "Build FBNet using unified arch_def:\n{}"
-        .format(format_dict_expanding_list_values(arch_def))
+        "Build FBNet using unified arch_def:\n{}".format(
+            format_dict_expanding_list_values(arch_def)
+        )
     )
     arch_def_blocks = arch_def[name]
 
@@ -192,15 +199,19 @@ def build_fbnet(cfg, name, in_channels):
     trunk_stride_per_stage = _get_stride_per_stage(arch_def_blocks)
     shape_spec_per_stage = []
     for i, stride_i in enumerate(trunk_stride_per_stage):
-        stages.append(builder.build_blocks(
-            arch_def_blocks,
-            stage_indices=[i],
-            prefix_name=FBNET_BUILDER_IDENTIFIER + "_",
-        ))
-        shape_spec_per_stage.append(ShapeSpec(
-            channels=builder.last_depth,
-            stride=stride_i,
-        ))
+        stages.append(
+            builder.build_blocks(
+                arch_def_blocks,
+                stage_indices=[i],
+                prefix_name=FBNET_BUILDER_IDENTIFIER + "_",
+            )
+        )
+        shape_spec_per_stage.append(
+            ShapeSpec(
+                channels=builder.last_depth,
+                stride=stride_i,
+            )
+        )
     return FBNetModule(*stages), shape_spec_per_stage
 
 
@@ -226,9 +237,7 @@ class FBNetV2Backbone(Backbone):
     def __init__(self, cfg):
         super(FBNetV2Backbone, self).__init__()
         stages, shape_specs = build_fbnet(
-            cfg,
-            name="trunk",
-            in_channels=cfg.MODEL.FBNET_V2.STEM_IN_CHANNELS
+            cfg, name="trunk", in_channels=cfg.MODEL.FBNET_V2.STEM_IN_CHANNELS
         )
 
         self._trunk_stage_names = []
@@ -338,9 +347,7 @@ class FBNetV2RpnHead(nn.Module):
         num_cell_anchors = num_cell_anchors[0]
 
         self.rpn_feature, shape_specs = build_fbnet(
-            cfg,
-            name="rpn",
-            in_channels=in_channels
+            cfg, name="rpn", in_channels=in_channels
         )
         self.rpn_regressor = RPNHeadConvRegressor(
             in_channels=shape_specs[-1].channels,
@@ -359,9 +366,7 @@ class FBNetV2RoIBoxHead(nn.Module):
         super(FBNetV2RoIBoxHead, self).__init__()
 
         self.roi_box_conv, shape_specs = build_fbnet(
-            cfg,
-            name="bbox",
-            in_channels=input_shape.channels
+            cfg, name="bbox", in_channels=input_shape.channels
         )
         self._out_channels = shape_specs[-1].channels
 
@@ -388,9 +393,7 @@ class FBNetV2RoIKeypointHead(keypoint_head.BaseKeypointRCNNHead):
         )
 
         self.feature_extractor, shape_specs = build_fbnet(
-            cfg,
-            name="kpts",
-            in_channels=input_shape.channels
+            cfg, name="kpts", in_channels=input_shape.channels
         )
 
         self.predictor = KeypointRCNNPredictor(
@@ -462,7 +465,9 @@ class FBNetV2RoIKeypointHeadKPRCNNConvUpsamplePredictorNoUpscale(
     keypoint_head.BaseKeypointRCNNHead,
 ):
     def __init__(self, cfg, input_shape: ShapeSpec):
-        super(FBNetV2RoIKeypointHeadKPRCNNConvUpsamplePredictorNoUpscale, self).__init__(
+        super(
+            FBNetV2RoIKeypointHeadKPRCNNConvUpsamplePredictorNoUpscale, self
+        ).__init__(
             cfg=cfg,
             input_shape=input_shape,
         )

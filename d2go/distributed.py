@@ -155,7 +155,6 @@ def _distributed_worker(
     # See: https://github.com/facebookresearch/maskrcnn-benchmark/issues/172
     comm.synchronize()
 
-
     ret = main_func(*args)
     if global_rank == 0:
         logger.info(

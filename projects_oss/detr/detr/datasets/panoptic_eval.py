@@ -25,7 +25,9 @@ class PanopticEvaluator(object):
 
     def update(self, predictions):
         for p in predictions:
-            with PathManager.open(os.path.join(self.output_dir, p["file_name"]), "wb") as f:
+            with PathManager.open(
+                os.path.join(self.output_dir, p["file_name"]), "wb"
+            ) as f:
                 f.write(p.pop("png_string"))
 
         self.predictions += predictions
@@ -43,5 +45,10 @@ class PanopticEvaluator(object):
             predictions_json = os.path.join(self.output_dir, "predictions.json")
             with PathManager.open(predictions_json, "w") as f:
                 f.write(json.dumps(json_data))
-            return pq_compute(self.gt_json, predictions_json, gt_folder=self.gt_folder, pred_folder=self.output_dir)
+            return pq_compute(
+                self.gt_json,
+                predictions_json,
+                gt_folder=self.gt_folder,
+                pred_folder=self.output_dir,
+            )
         return None

@@ -12,9 +12,7 @@ from detectron2.utils.registry import Registry
 D2GO_OPTIM_MAPPER_REGISTRY = Registry("D2GO_OPTIM_MAPPER")
 
 
-def reduce_param_groups(
-    param_groups: List[Dict[str, Any]]
-):
+def reduce_param_groups(param_groups: List[Dict[str, Any]]):
     # The number of parameter groups needs to be as small as possible in order
     # to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
     # of using a parameter_group per single parameter, we group all the params

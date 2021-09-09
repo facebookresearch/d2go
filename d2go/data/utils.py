@@ -233,7 +233,7 @@ class COCOWithClassesToUse(AdhocCOCODataset):
         # check if name is already a derived class and try to reverse it
         res = re.match("(?P<src>.+)@(?P<num>[0-9]+)classes", src_ds_name)
         if res is not None:
-            src_ds_name = res['src']
+            src_ds_name = res["src"]
 
         super().__init__(
             src_ds_name=src_ds_name,

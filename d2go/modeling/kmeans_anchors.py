@@ -3,11 +3,12 @@
 
 
 import logging
-import numpy as np
-import torch
 from typing import List
 
 import detectron2.utils.comm as comm
+import numpy as np
+import torch
+from d2go.config import temp_defrost, CfgNode as CN
 from detectron2.engine import hooks
 from detectron2.layers import ShapeSpec
 from detectron2.modeling import GeneralizedRCNN
@@ -18,7 +19,6 @@ from detectron2.modeling.anchor_generator import (
 )
 from detectron2.modeling.proposal_generator.rpn import RPN
 from detectron2.structures.boxes import Boxes
-from d2go.config import temp_defrost, CfgNode as CN
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def compute_kmeans_anchors_hook(runner, cfg):
 
 @ANCHOR_GENERATOR_REGISTRY.register()
 class KMeansAnchorGenerator(DefaultAnchorGenerator):
-    """ Generate anchors using pre-computed KMEANS_ANCHORS.COMPUTED_ANCHORS """
+    """Generate anchors using pre-computed KMEANS_ANCHORS.COMPUTED_ANCHORS"""
 
     def __init__(self, cfg, input_shape: List[ShapeSpec]):
         torch.nn.Module.__init__(self)
@@ -106,8 +106,9 @@ class KMeansAnchorGenerator(DefaultAnchorGenerator):
 
 def collect_boxes_size_stats(data_loader, max_num_imgs, _legacy_plus_one=False):
     logger.info(
-        "Collecting size of boxes, loading up to {} images from data loader ..."
-        .format(max_num_imgs)
+        "Collecting size of boxes, loading up to {} images from data loader ...".format(
+            max_num_imgs
+        )
     )
     # data_loader might be infinite length, thus can't loop all images, using
     # max_num_imgs == 0 stands for 0 images instead of whole dataset
@@ -140,8 +141,9 @@ def collect_boxes_size_stats(data_loader, max_num_imgs, _legacy_plus_one=False):
             percentage = 100.0 * i / estimated_iters
             logger.info(
                 "Processed batch {} ({:.2f}%) from data_loader, got {} boxes,"
-                " remaining number of images: {}/{}"
-                .format(i, percentage, len(box_sizes), remaining_num_imgs, max_num_imgs)
+                " remaining number of images: {}/{}".format(
+                    i, percentage, len(box_sizes), remaining_num_imgs, max_num_imgs
+                )
             )
         if remaining_num_imgs <= 0:
             assert remaining_num_imgs == 0
@@ -149,21 +151,17 @@ def collect_boxes_size_stats(data_loader, max_num_imgs, _legacy_plus_one=False):
 
     box_sizes = np.array(box_sizes)
     logger.info(
-        "Collected {} boxes from {} images"
-        .format(len(box_sizes), max_num_imgs)
+        "Collected {} boxes from {} images".format(len(box_sizes), max_num_imgs)
     )
     return box_sizes
 
 
 def compute_kmeans_anchors(
-    cfg,
-    data_loader,
-    sort_by_area=True,
-    _stride=0,
-    _legacy_plus_one=False
+    cfg, data_loader, sort_by_area=True, _stride=0, _legacy_plus_one=False
 ):
-    assert cfg.MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG > 0, \
-        "Please provide positive MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG"
+    assert (
+        cfg.MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG > 0
+    ), "Please provide positive MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG"
 
     num_training_img = cfg.MODEL.KMEANS_ANCHORS.NUM_TRAINING_IMG
     div_i, mod_i = divmod(num_training_img, comm.get_world_size())
@@ -179,9 +177,11 @@ def compute_kmeans_anchors(
     box_sizes = np.concatenate(all_box_sizes)
     logger.info("Collected {} boxes from all gpus".format(len(box_sizes)))
 
-    assert cfg.MODEL.KMEANS_ANCHORS.NUM_CLUSTERS > 0, \
-        "Please provide positive MODEL.KMEANS_ANCHORS.NUM_CLUSTERS"
+    assert (
+        cfg.MODEL.KMEANS_ANCHORS.NUM_CLUSTERS > 0
+    ), "Please provide positive MODEL.KMEANS_ANCHORS.NUM_CLUSTERS"
     from sklearn.cluster import KMeans  # delayed import
+
     default_anchors = (
         KMeans(
             n_clusters=cfg.MODEL.KMEANS_ANCHORS.NUM_CLUSTERS,
@@ -214,12 +214,15 @@ def compute_kmeans_anchors(
         anchors = anchors[indices]
         sqrt_areas = sqrt_areas[indices].tolist()
 
-    display_str = "\n".join([
-        s + "\t sqrt area: {:.2f}".format(a)
-        for s, a in zip(str(anchors).split("\n"), sqrt_areas)
-    ])
+    display_str = "\n".join(
+        [
+            s + "\t sqrt area: {:.2f}".format(a)
+            for s, a in zip(str(anchors).split("\n"), sqrt_areas)
+        ]
+    )
     logger.info(
-        "Compuated kmeans anchors (sorted by area: {}):\n{}"
-        .format(sort_by_area, display_str)
+        "Compuated kmeans anchors (sorted by area: {}):\n{}".format(
+            sort_by_area, display_str
+        )
     )
     return anchors

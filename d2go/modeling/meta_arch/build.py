@@ -2,8 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from detectron2.modeling import build_model as d2_build_model
 from d2go.utils.misc import _log_api_usage
+from detectron2.modeling import build_model as d2_build_model
 
 
 def build_model(cfg):

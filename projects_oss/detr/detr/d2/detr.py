@@ -75,7 +75,8 @@ class ResNetMaskedBackbone(nn.Module):
 
 
 class FBNetMaskedBackbone(ResNetMaskedBackbone):
-    """ This is a thin wrapper around D2's backbone to provide padding masking"""
+    """This is a thin wrapper around D2's backbone to provide padding masking"""
+
     def __init__(self, cfg):
         nn.Module.__init__(self)
         self.backbone = build_backbone(cfg)
@@ -102,16 +103,18 @@ class FBNetMaskedBackbone(ResNetMaskedBackbone):
                 ret_features[k] = NestedTensor(features[k], masks[i])
         return ret_features
 
+
 class SimpleSingleStageBackbone(ResNetMaskedBackbone):
     """This is a simple wrapper for single stage backbone,
     please set the required configs:
     cfg.MODEL.BACKBONE.SIMPLE == True,
     cfg.MODEL.BACKBONE.STRIDE, cfg.MODEL.BACKBONE.CHANNEL
     """
+
     def __init__(self, cfg):
         nn.Module.__init__(self)
         self.backbone = build_backbone(cfg)
-        self.out_features = ['out']
+        self.out_features = ["out"]
         assert cfg.MODEL.BACKBONE.SIMPLE is True
         self.feature_strides = [cfg.MODEL.BACKBONE.STRIDE]
         self.num_channels = [cfg.MODEL.BACKBONE.CHANNEL]
@@ -165,7 +168,7 @@ class Detr(nn.Module):
         N_steps = hidden_dim // 2
         if "resnet" in cfg.MODEL.BACKBONE.NAME.lower():
             d2_backbone = ResNetMaskedBackbone(cfg)
-        elif 'fbnet' in cfg.MODEL.BACKBONE.NAME.lower():
+        elif "fbnet" in cfg.MODEL.BACKBONE.NAME.lower():
             d2_backbone = FBNetMaskedBackbone(cfg)
         elif cfg.MODEL.BACKBONE.SIMPLE:
             d2_backbone = SimpleSingleStageBackbone(cfg)

@@ -1,8 +1,9 @@
+import os
 import tempfile
-from d2go.utils.testing.rcnn_helper import RCNNBaseTestCases
+
 from d2go.utils.flop_calculator import dump_flops_info
 from d2go.utils.testing.data_loader_helper import create_fake_detection_data_loader
-import os
+from d2go.utils.testing.rcnn_helper import RCNNBaseTestCases
 
 
 class TestFlopCount(RCNNBaseTestCases.TemplateTestCase):
@@ -19,6 +20,10 @@ class TestFlopCount(RCNNBaseTestCases.TemplateTestCase):
         with tempfile.TemporaryDirectory(prefix="d2go_test") as output_dir:
             dump_flops_info(self.test_model, inputs, output_dir)
 
-            for fname in ["flops_str_mobilecv", "flops_str_fvcore", "flops_table_fvcore"]:
+            for fname in [
+                "flops_str_mobilecv",
+                "flops_str_fvcore",
+                "flops_table_fvcore",
+            ]:
                 outf = os.path.join(output_dir, fname + ".txt")
                 self.assertTrue(os.path.isfile(outf))

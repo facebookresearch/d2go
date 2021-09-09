@@ -126,7 +126,5 @@ class TestDataTransformsBoxUtils(unittest.TestCase):
 
         boxes = np.array([[91, 46, 144, 111]])
         transformed_bboxs = enlarge_box_tfm[0].apply_coords(boxes)
-        err_msg = "transformed_bbox = {}, expected {}".format(
-            transformed_bboxs, boxes
-        )
+        err_msg = "transformed_bbox = {}, expected {}".format(transformed_bboxs, boxes)
         self.assertTrue(np.allclose(transformed_bboxs, boxes), err_msg)

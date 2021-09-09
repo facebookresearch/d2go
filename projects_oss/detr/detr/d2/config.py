@@ -19,7 +19,7 @@ def add_detr_config(cfg):
     cfg.MODEL.FBNET_V2.OUT_FEATURES = ["trunk3"]
 
     # For Segmentation
-    cfg.MODEL.DETR.FROZEN_WEIGHTS = ''
+    cfg.MODEL.DETR.FROZEN_WEIGHTS = ""
 
     # LOSS
     cfg.MODEL.DETR.DEFORMABLE = False

@@ -7,9 +7,9 @@ import logging
 
 import numpy as np
 import torch
+from d2go.data.dataset_mappers.d2go_dataset_mapper import D2GoDatasetMapper
 from detectron2.data import detection_utils as utils, transforms as T
 from detectron2.structures import BoxMode, Instances, RotatedBoxes
-from d2go.data.dataset_mappers.d2go_dataset_mapper import D2GoDatasetMapper
 
 from .build import D2GO_DATA_MAPPER_REGISTRY
 

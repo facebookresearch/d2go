@@ -59,7 +59,7 @@ class AugInput:
 
 
 class Tensor2Array(Transform):
-    """ Convert image tensor (CHW) to np array (HWC) """
+    """Convert image tensor (CHW) to np array (HWC)"""
 
     def __init__(self):
         super().__init__()
@@ -82,7 +82,7 @@ class Tensor2Array(Transform):
 
 
 class Array2Tensor(Transform):
-    """ Convert image np array (HWC) to torch tensor (CHW) """
+    """Convert image np array (HWC) to torch tensor (CHW)"""
 
     def __init__(self):
         super().__init__()

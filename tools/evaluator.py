@@ -6,9 +6,9 @@ Binary to evaluate predictor-based model (consist of models in deployable format
 torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, etc).
 """
 
-import torch
 import logging
 
+import torch
 from d2go.distributed import launch
 from d2go.setup import (
     basic_argument_parser,

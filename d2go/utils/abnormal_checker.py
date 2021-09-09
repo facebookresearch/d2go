@@ -31,8 +31,8 @@ def get_rel_loss_checker(rel_thres=1.0):
 
 class TrainImageWriter(object):
     def __init__(self, cfg, tbx_writer, max_count=5):
-        """ max_count: max number of data written to tensorboard, additional call
-              will be ignored
+        """max_count: max number of data written to tensorboard, additional call
+        will be ignored
         """
         self.visualizer = VisualizerWrapper(cfg)
         self.writer = tbx_writer
@@ -58,8 +58,8 @@ class TrainImageWriter(object):
 
 class FileWriter(object):
     def __init__(self, output_dir, max_count=5):
-        """ max_count: max number of data written to tensorboard, additional call
-              will be ignored
+        """max_count: max number of data written to tensorboard, additional call
+        will be ignored
         """
         self.output_dir = output_dir
         self.max_count = max_count

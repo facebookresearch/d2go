@@ -2,16 +2,16 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import copy
-import torch
-import os
 import logging
+import os
 
 import detectron2.utils.comm as comm
-from detectron2.utils.file_io import PathManager
-from detectron2.utils.analysis import FlopCountAnalysis
-from fvcore.nn import flop_count_table, flop_count_str
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
+import torch
 from d2go.utils.helper import run_once
+from detectron2.utils.analysis import FlopCountAnalysis
+from detectron2.utils.file_io import PathManager
+from fvcore.nn import flop_count_table, flop_count_str
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,6 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
     except Exception:
         logger.exception("Failed to estimate flops using mobile_cv's FlopsEstimation")
 
-
     # 2. using d2/fvcore's flop counter
     try:
         flops = FlopCountAnalysis(model, inputs)
@@ -81,14 +80,16 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
         flops_table = flop_count_table(flops, max_depth=3)
         logger.info("Flops table:\n" + flops_table)
     except Exception:
-        logger.exception("Failed to estimate flops using detectron2's FlopCountAnalysis")
+        logger.exception(
+            "Failed to estimate flops using detectron2's FlopCountAnalysis"
+        )
     return flops
 
 
 def add_flop_printing_hook(
-        model,
-        output_dir: str,
-    ):
+    model,
+    output_dir: str,
+):
     """
     Add a pytorch module forward hook that will print/save flops of the whole model
     at the first time the model is called.
@@ -96,6 +97,7 @@ def add_flop_printing_hook(
     Args:
         output_dir: directory to save more detailed flop info
     """
+
     def hook(module, input):
         handle.remove()
         dump_flops_info(module, input, output_dir)

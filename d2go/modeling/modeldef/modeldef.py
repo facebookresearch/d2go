@@ -3,8 +3,9 @@
 
 
 import copy
-from mobile_cv.arch.fbnet_v2.modeldef_utils import _ex, e1, e2, e1p, e3, e4, e6
+
 from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
+from mobile_cv.arch.fbnet_v2.modeldef_utils import _ex, e1, e2, e1p, e3, e4, e6
 
 
 def _mutated_tuple(tp, pos, value):
@@ -34,7 +35,6 @@ _BASIC_ARGS = {
     # FBNetV1 builder.
     # "always_pw": True,
     # "bias": False,
-
     # temporarily disable zero_last_bn_gamma
     "zero_last_bn_gamma": False,
 }
@@ -59,10 +59,7 @@ IRF_CFG = {"less_se_channels": False}
 
 
 FBNetV3_A_dsmask = [
-    [
-        ("conv_k3", 16, 2, 1),
-        ("ir_k3", 16, 1, 1, {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 16, 2, 1), ("ir_k3", 16, 1, 1, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 32, 2, 1, {"expansion": 4}, IRF_CFG),
         ("ir_k5", 32, 1, 1, {"expansion": 2}, IRF_CFG),
@@ -85,10 +82,7 @@ FBNetV3_A_dsmask = [
 ]
 
 FBNetV3_A_dsmask_tiny = [
-    [
-        ("conv_k3", 8, 2, 1),
-        ("ir_k3", 8, 1, 1, {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 8, 2, 1), ("ir_k3", 8, 1, 1, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 16, 2, 1, {"expansion": 3}, IRF_CFG),
         ("ir_k5", 16, 1, 1, {"expansion": 2}, IRF_CFG),
@@ -112,10 +106,7 @@ FBNetV3_A_dsmask_tiny = [
 
 FBNetV3_A = [
     # FBNetV3 arch without hs
-    [
-        ("conv_k3", 16, 2, 1),
-        ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 16, 2, 1), ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 24, 2, 1, {"expansion": 4}, IRF_CFG),
         ("ir_k5", 24, 1, 3, {"expansion": 3}, IRF_CFG),
@@ -138,10 +129,7 @@ FBNetV3_A = [
 ]
 
 FBNetV3_B = [
-    [
-        ("conv_k3", 16, 2, 1),
-        ("ir_k3", 16, 1, 2 , {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 16, 2, 1), ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 24, 2, 1, {"expansion": 4}, IRF_CFG),
         ("ir_k5", 24, 1, 3, {"expansion": 2}, IRF_CFG),
@@ -303,10 +291,7 @@ FBNetV3_H = [
 
 FBNetV3_A_no_se = [
     # FBNetV3 without hs and SE (SE is not quantization friendly)
-    [
-        ("conv_k3", 16, 2, 1),
-        ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 16, 2, 1), ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 24, 2, 1, {"expansion": 4}, IRF_CFG),
         ("ir_k5", 24, 1, 3, {"expansion": 3}, IRF_CFG),
@@ -329,10 +314,7 @@ FBNetV3_A_no_se = [
 ]
 
 FBNetV3_B_no_se = [
-    [
-        ("conv_k3", 16, 2, 1),
-        ("ir_k3", 16, 1, 2 , {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 16, 2, 1), ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 24, 2, 1, {"expansion": 4}, IRF_CFG),
         ("ir_k5", 24, 1, 3, {"expansion": 2}, IRF_CFG),
@@ -357,10 +339,7 @@ FBNetV3_B_no_se = [
 
 # FBNetV3_B model, a lighter version for real-time inference
 FBNetV3_B_light_no_se = [
-    [
-        ("conv_k3", 16, 2, 1),
-        ("ir_k3", 16, 1, 2 , {"expansion": 1}, IRF_CFG)
-    ],
+    [("conv_k3", 16, 2, 1), ("ir_k3", 16, 1, 2, {"expansion": 1}, IRF_CFG)],
     [
         ("ir_k5", 24, 2, 1, {"expansion": 4}, IRF_CFG),
         ("ir_k5", 24, 1, 2, {"expansion": 2}, IRF_CFG),
@@ -411,11 +390,21 @@ SMALL_UPSAMPLE_HEAD_STAGES = [
 # NOTE: Compared with SMALL_UPSAMPLE_HEAD_STAGES, this does one more down-sample
 # in the first "layer" and then up-sample twice
 SMALL_DS_UPSAMPLE_HEAD_STAGES = [
-    [("ir_k3", 128, 2, 1, e4), ("ir_k3", 128, 1, 2, e6), ("ir_k3", 128, -2, 1, e6), ("ir_k3", 64, -2, 1, e3)],  # noqa
+    [
+        ("ir_k3", 128, 2, 1, e4),
+        ("ir_k3", 128, 1, 2, e6),
+        ("ir_k3", 128, -2, 1, e6),
+        ("ir_k3", 64, -2, 1, e3),
+    ],  # noqa
 ]
 
 TINY_DS_UPSAMPLE_HEAD_STAGES = [
-    [("ir_k3", 64, 2, 1, e4), ("ir_k3", 64, 1, 2, e4), ("ir_k3", 64, -2, 1, e4), ("ir_k3", 40, -2, 1, e3)],  # noqa
+    [
+        ("ir_k3", 64, 2, 1, e4),
+        ("ir_k3", 64, 1, 2, e4),
+        ("ir_k3", 64, -2, 1, e4),
+        ("ir_k3", 40, -2, 1, e3),
+    ],  # noqa
 ]
 
 FPN_UPSAMPLE_HEAD_STAGES = [

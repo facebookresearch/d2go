@@ -41,7 +41,7 @@ class TrainOutput:
 
 
 def maybe_override_output_dir(cfg: CfgNode, output_dir: Optional[str]) -> None:
-    """Overrides the output directory if `output_dir` is not None. """
+    """Overrides the output directory if `output_dir` is not None."""
     if output_dir is not None and output_dir != cfg.OUTPUT_DIR:
         cfg.OUTPUT_DIR = output_dir
         logger.warning(
@@ -70,16 +70,21 @@ def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
         callbacks.append(QuantizationAwareTraining.from_config(cfg))
     return callbacks
 
+
 def _get_accelerator(use_cpu: bool) -> str:
     return "ddp_cpu" if use_cpu else "ddp"
 
 
-def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> Dict[str, Any]:
+def get_trainer_params(
+    cfg: CfgNode, num_machines: int, num_processes: int
+) -> Dict[str, Any]:
     use_cpu = cfg.MODEL.DEVICE.lower() == "cpu"
     accelerator = _get_accelerator(use_cpu)
     plugins = []
     if accelerator:
-        plugins.append(DDPPlugin(find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS))
+        plugins.append(
+            DDPPlugin(find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS)
+        )
 
     return {
         # training loop is bounded by max steps, use a large max_epochs to make
@@ -101,6 +106,7 @@ def get_trainer_params(cfg: CfgNode, num_machines: int, num_processes: int) -> D
         "replace_sampler_ddp": False,
         "plugins": plugins,
     }
+
 
 def do_train(
     cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask

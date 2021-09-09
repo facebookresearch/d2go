@@ -2,17 +2,17 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import numpy as np
-import torch
 import unittest
 
+import numpy as np
+import torch
 from detectron2.modeling.box_regression import Box2BoxTransform
 
 
 class TestBox2BoxTransform(unittest.TestCase):
     def test_box2box_transform(self):
-        """ Match unit test UtilsBoxesTest.TestBboxTransformRandom in
-            caffe2/operators/generate_proposals_op_util_boxes_test.cc
+        """Match unit test UtilsBoxesTest.TestBboxTransformRandom in
+        caffe2/operators/generate_proposals_op_util_boxes_test.cc
         """
         box2box_transform = Box2BoxTransform(weights=(1.0, 1.0, 1.0, 1.0))
         bbox = torch.from_numpy(

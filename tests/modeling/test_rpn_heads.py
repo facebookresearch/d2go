@@ -6,9 +6,9 @@ import logging
 import unittest
 
 import torch
+from d2go.runner import GeneralizedRCNNRunner
 from detectron2.modeling import build_anchor_generator, build_backbone
 from detectron2.modeling.proposal_generator import rpn
-from d2go.runner import GeneralizedRCNNRunner
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ RPN_CFGS = {}
 
 class TestRPNHeads(unittest.TestCase):
     def test_build_rpn_heads(self):
-        """ Make sure rpn heads run """
+        """Make sure rpn heads run"""
 
         self.assertGreater(len(rpn.RPN_HEAD_REGISTRY._obj_map), 0)
 
@@ -65,7 +65,7 @@ class TestRPNHeads(unittest.TestCase):
                 )
 
     def test_build_rpn_heads_with_rotated_anchor_generator(self):
-        """ Make sure rpn heads work with rotated anchor generator"""
+        """Make sure rpn heads work with rotated anchor generator"""
 
         self.assertGreater(len(rpn.RPN_HEAD_REGISTRY._obj_map), 0)
 

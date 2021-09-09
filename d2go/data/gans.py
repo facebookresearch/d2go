@@ -13,19 +13,20 @@ raw data with fields such as:
     ...
 """
 
-import os
 import json
 import logging
+import os
 import tempfile
 from pathlib import Path
-from detectron2.utils.file_io import PathManager
+
 from detectron2.data import DatasetCatalog, MetadataCatalog
+from detectron2.utils.file_io import PathManager
 
 
 logger = logging.getLogger(__name__)
 
 
-IMG_EXTENSIONS = ['.jpg', '.JPG', '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP']
+IMG_EXTENSIONS = [".jpg", ".JPG", ".png", ".PNG", ".ppm", ".PPM", ".bmp", ".BMP"]
 
 
 def is_image_file(filename):
@@ -65,7 +66,7 @@ def load_pix2pix_image_folder(image_root, input_folder="input", gt_folder="gt"):
                 f = {
                     "file_name": fname[:-4],
                     "input_path": input_path,
-                    "gt_path": gt_path
+                    "gt_path": gt_path,
                 }
                 data.append(f)
                 if image_root.rfind("test") != -1 and len(data) == 5000:
@@ -76,8 +77,13 @@ def load_pix2pix_image_folder(image_root, input_folder="input", gt_folder="gt"):
 
 
 def load_pix2pix_json(
-    json_path, input_folder, gt_folder, mask_folder,
-    real_json_path=None, real_folder=None, max_num=1e10,
+    json_path,
+    input_folder,
+    gt_folder,
+    mask_folder,
+    real_json_path=None,
+    real_folder=None,
+    max_num=1e10,
 ):
     """
     Args:
@@ -90,11 +96,11 @@ def load_pix2pix_json(
     """
     real_filenames = {}
     if real_json_path is not None:
-        with PathManager.open(real_json_path, 'r') as f:
+        with PathManager.open(real_json_path, "r") as f:
             real_filenames = json.load(f)
 
     data = []
-    with PathManager.open(json_path, 'r') as f:
+    with PathManager.open(json_path, "r") as f:
         filenames = json.load(f)
 
         in_len = len(filenames)
@@ -110,9 +116,9 @@ def load_pix2pix_json(
             fname = in_keys[cnt % in_len]
             input_label = filenames[fname]
             if isinstance(input_label, tuple) or isinstance(input_label, list):
-                assert len(input_label) == 2, (
-                    "Save (real_name, label) as the value of the json dict for resampling"
-                )
+                assert (
+                    len(input_label) == 2
+                ), "Save (real_name, label) as the value of the json dict for resampling"
                 fname, input_label = input_label
 
             f = {
@@ -121,7 +127,7 @@ def load_pix2pix_json(
                 "gt_folder": gt_folder,
                 "mask_folder": mask_folder,
                 "input_label": input_label,
-                "real_folder": real_folder
+                "real_folder": real_folder,
             }
             if real_len > 0:
                 real_fname = real_keys[cnt % real_len]
@@ -151,10 +157,16 @@ def register_folder_dataset(
     max_num=1e10,
 ):
     DatasetCatalog.register(
-        name, lambda: load_pix2pix_json(
-            json_path, input_folder, gt_folder, mask_folder,
-            real_json_path, real_folder, max_num
-        )
+        name,
+        lambda: load_pix2pix_json(
+            json_path,
+            input_folder,
+            gt_folder,
+            mask_folder,
+            real_json_path,
+            real_folder,
+            max_num,
+        ),
     )
     metadata = {
         "input_src_path": input_src_path,
@@ -190,9 +202,7 @@ def register_lmdb_dataset(
     src_data_folder,
     max_num,
 ):
-    DatasetCatalog.register(
-        name, lambda: load_lmdb_keys(max_num)
-    )
+    DatasetCatalog.register(name, lambda: load_lmdb_keys(max_num))
     metadata = {
         "data_folder": data_folder,
         "src_data_folder": src_data_folder,
@@ -205,22 +215,23 @@ def inject_gan_datasets(cfg):
     if cfg.D2GO_DATA.DATASETS.GAN_INJECTION.ENABLE:
         name = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.NAME
         cfg.merge_from_list(
-            ["DATASETS.TRAIN",
-              list(cfg.DATASETS.TRAIN) + [name + "_train"],
-              "DATASETS.TEST",
-              list(cfg.DATASETS.TEST) + [name + "_test"]
+            [
+                "DATASETS.TRAIN",
+                list(cfg.DATASETS.TRAIN) + [name + "_train"],
+                "DATASETS.TEST",
+                list(cfg.DATASETS.TEST) + [name + "_test"],
             ]
         )
 
         json_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.JSON_PATH
-        assert PathManager.isfile(json_path), (
-                "{} is not valid!".format(json_path))
+        assert PathManager.isfile(json_path), "{} is not valid!".format(json_path)
 
         image_dir = Path(tempfile.mkdtemp())
 
         input_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.INPUT_SRC_DIR
-        assert PathManager.isfile(input_src_path), (
-            "{} is not valid!".format(input_src_path))
+        assert PathManager.isfile(input_src_path), "{} is not valid!".format(
+            input_src_path
+        )
         input_folder = os.path.join(image_dir, name, "input")
 
         gt_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.GT_SRC_DIR
@@ -228,25 +239,26 @@ def inject_gan_datasets(cfg):
             gt_folder = os.path.join(image_dir, name, "gt")
         else:
             gt_src_path = None
-            gt_folder=None
+            gt_folder = None
 
         mask_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.MASK_SRC_DIR
         if PathManager.isfile(mask_src_path):
             mask_folder = os.path.join(image_dir, name, "mask")
         else:
             mask_src_path = None
-            mask_folder=None
+            mask_folder = None
 
         real_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.REAL_SRC_DIR
         if PathManager.isfile(real_src_path):
             real_folder = os.path.join(image_dir, name, "real")
             real_json_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.REAL_JSON_PATH
-            assert PathManager.isfile(real_json_path), (
-                "{} is not valid!".format(real_json_path))
+            assert PathManager.isfile(real_json_path), "{} is not valid!".format(
+                real_json_path
+            )
         else:
             real_src_path = None
-            real_folder=None
-            real_json_path=None
+            real_folder = None
+            real_json_path = None
 
         register_folder_dataset(
             name + "_train",

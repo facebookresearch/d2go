@@ -14,7 +14,7 @@ def create_runner(
     class_full_name: str, *args, **kwargs
 ) -> Union[BaseRunner, Type[LightningModule]]:
     """Constructs a runner instance if class is a d2go runner. Returns class
-        type if class is a Lightning module.
+    type if class is a Lightning module.
     """
     runner_module_name, runner_class_name = class_full_name.rsplit(".", 1)
     runner_module = importlib.import_module(runner_module_name)

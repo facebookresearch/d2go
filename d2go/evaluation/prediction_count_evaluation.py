@@ -5,8 +5,8 @@ import itertools
 import logging
 from collections import OrderedDict
 
-import numpy as np
 import detectron2.utils.comm as comm
+import numpy as np
 from detectron2.evaluation import DatasetEvaluator
 
 logger = logging.getLogger(__name__)

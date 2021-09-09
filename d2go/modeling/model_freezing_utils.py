@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-import re
 import logging
+import re
 
 import torch.nn as nn
 from detectron2.layers import FrozenBatchNorm2d
@@ -32,8 +32,9 @@ def set_requires_grad(model, reg_exps, value):
         if not matched:
             unmatched_parameter_names.append(name)
             unmatched_parameters.append(parameter)
-    logger.info("Matched layers (require_grad={}): {}".format(
-        value, matched_parameter_names))
+    logger.info(
+        "Matched layers (require_grad={}): {}".format(value, matched_parameter_names)
+    )
     logger.info("Unmatched layers: {}".format(unmatched_parameter_names))
     return matched_parameter_names, unmatched_parameter_names
 

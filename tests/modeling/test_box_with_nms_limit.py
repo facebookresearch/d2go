@@ -2,11 +2,11 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import torch
 import unittest
 
-from detectron2.modeling.roi_heads.fast_rcnn import fast_rcnn_inference
+import torch
 from detectron2.layers import cat
+from detectron2.modeling.roi_heads.fast_rcnn import fast_rcnn_inference
 from detectron2.structures import Boxes
 
 
@@ -37,10 +37,12 @@ class TestBoxWithNMSLimit(unittest.TestCase):
         scores = [torch.rand(n, num_class + 1, generator=rng) for n in batch_splits]
 
         ref_results, ref_kept_indices = fast_rcnn_inference(
-            boxes, scores, image_shapes,
+            boxes,
+            scores,
+            image_shapes,
             score_thresh=score_thresh,
             nms_thresh=nms_thresh,
-            topk_per_image=detections_per_im
+            topk_per_image=detections_per_im,
         )
         for result, kept_index, score in zip(ref_results, ref_kept_indices, scores):
             torch.testing.assert_allclose(
@@ -78,7 +80,14 @@ class TestBoxWithNMSLimit(unittest.TestCase):
             output_classes_include_bg_cls=False,
             legacy_plus_one=False,
         )
-        roi_score_nms, roi_bbox_nms, roi_class_nms, roi_batch_splits_nms, roi_keeps_nms, roi_keeps_size_nms = nms_outputs  # noqa
+        (
+            roi_score_nms,
+            roi_bbox_nms,
+            roi_class_nms,
+            roi_batch_splits_nms,
+            roi_keeps_nms,
+            roi_keeps_size_nms,
+        ) = nms_outputs  # noqa
 
         roi_score_nms = roi_score_nms.split(roi_batch_splits_nms.int().tolist())
         roi_bbox_nms = roi_bbox_nms.split(roi_batch_splits_nms.int().tolist())

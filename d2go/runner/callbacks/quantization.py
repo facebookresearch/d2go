@@ -29,13 +29,13 @@ PREPARED = "_prepared"
 
 
 def rsetattr(obj: Any, attr: str, val: Any) -> None:
-    """ Same as setattr but supports deeply nested objects. """
+    """Same as setattr but supports deeply nested objects."""
     pre, _, post = attr.rpartition(".")
     return setattr(rgetattr(obj, pre) if pre else obj, post, val)
 
 
 def rgetattr(obj: Any, attr: str, *args) -> Any:
-    """ Same as getattr but supports deeply nested objects. """
+    """Same as getattr but supports deeply nested objects."""
 
     def _getattr(obj, attr):
         return getattr(obj, attr, *args)
@@ -44,7 +44,7 @@ def rgetattr(obj: Any, attr: str, *args) -> Any:
 
 
 def rhasattr(obj: Any, attr: str, *args) -> bool:
-    """ Same as hasattr but supports deeply nested objects. """
+    """Same as hasattr but supports deeply nested objects."""
 
     try:
         _ = rgetattr(obj, attr, *args)
@@ -66,7 +66,7 @@ def _deepcopy(pl_module: LightningModule) -> LightningModule:
 
 
 def _quantized_forward(self, *args, **kwargs):
-    """ Forward method for a quantized module. """
+    """Forward method for a quantized module."""
     if not self.training and hasattr(self, "_quantized"):
         return self._quantized(*args, **kwargs)
     return self._prepared(*args, **kwargs)
@@ -99,11 +99,7 @@ def checkpoint_has_prepared(checkpoint: Dict[str, Any]) -> bool:
 def maybe_prepare_for_quantization(model: LightningModule, checkpoint: Dict[str, Any]):
     if checkpoint_has_prepared(checkpoint) and not hasattr(model, PREPARED):
         # model has been prepared for QAT before saving into checkpoint
-        setattr(
-            model,
-            PREPARED,
-            _deepcopy(model).prepare_for_quant()
-        )
+        setattr(model, PREPARED, _deepcopy(model).prepare_for_quant())
 
 
 class QuantizationMixin(ABC):
@@ -241,7 +237,7 @@ class ModelTransform:
     interval: Optional[int] = None
 
     def __post_init__(self) -> None:
-        """ Validate a few properties for early failure. """
+        """Validate a few properties for early failure."""
         if (self.step is None and self.interval is None) or (
             self.step is not None and self.interval is not None
         ):
@@ -469,7 +465,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
         batch_idx: int,
         dataloader_idx: int,
     ) -> None:
-        """ Applies model transforms at as specified during training. """
+        """Applies model transforms at as specified during training."""
         apply_only_once = []
         current_step = trainer.global_step
         for i, transform in enumerate(self.transforms):
@@ -492,7 +488,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
             ]
 
     def on_fit_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """ Quantize the weights since training has finalized. """
+        """Quantize the weights since training has finalized."""
         if hasattr(pl_module, "_quantized") or self.skip_conversion:
             return
         pl_module._quantized = self.convert(
@@ -563,7 +559,7 @@ class PostTrainingQuantization(Callback, QuantizationMixin):
         qconfig_dicts: Optional[QConfigDicts] = None,
         preserved_attrs: Optional[List[str]] = None,
     ) -> None:
-        """ Initialize the callback. """
+        """Initialize the callback."""
         self.qconfig_dicts = qconfig_dicts or {"": {"": get_default_qconfig()}}
         self.preserved_attrs = set([] if preserved_attrs is None else preserved_attrs)
         self.prepared: Optional[torch.nn.Module] = None
@@ -593,7 +589,7 @@ class PostTrainingQuantization(Callback, QuantizationMixin):
         )
 
     def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """ Convert the calibrated model to its finalized quantized version. """
+        """Convert the calibrated model to its finalized quantized version."""
         self.quantized = self.convert(
             self.prepared, self.qconfig_dicts.keys(), attrs=self.preserved_attrs
         )
@@ -607,7 +603,7 @@ class PostTrainingQuantization(Callback, QuantizationMixin):
         batch_idx: int,
         dataloader_idx: int,
     ) -> None:
-        """ Also run the validation batch through the quantized model for calibration. """
+        """Also run the validation batch through the quantized model for calibration."""
         if self.should_calibrate:
             with torch.no_grad():
                 self.prepared(batch)

@@ -67,7 +67,7 @@ class TestModelingImagePooler(unittest.TestCase):
         self.assertArrayEqual(pooled_box, [[2, 3, 5, 7]])
 
     def test_image_pooler_scale_box_large_crop_only(self):
-        """ Crop bbox """
+        """Crop bbox"""
         H, W = 398, 224
         all_boxes = Boxes(torch.Tensor([[50, 40, 100, 80], [150, 60, 200, 120]]))
         image = rh.get_batched_inputs(1, (H, W), (H, W), all_boxes)[0]["image"]
@@ -86,7 +86,7 @@ class TestModelingImagePooler(unittest.TestCase):
         self.assertArrayEqual(sub_boxes.tensor, [[0, 0, 50, 40], [100, 20, 150, 80]])
 
     def test_image_pooler_scale_box_large_crop_and_scale(self):
-        """ Crop bbox that is scaled """
+        """Crop bbox that is scaled"""
         H, W = 398, 224
         all_boxes = Boxes(torch.Tensor([[50, 40, 100, 80], [150, 60, 200, 120]]))
         image = rh.get_batched_inputs(1, (H, W), (H, W), all_boxes)[0]["image"]
@@ -111,7 +111,7 @@ class TestModelingImagePooler(unittest.TestCase):
         self.assertArrayEqual(sub_boxes.tensor, [[15, 8, 65, 48], [115, 28, 165, 88]])
 
     def test_image_pooler_scale_box_large_crop_scale_and_resize(self):
-        """ Crop bbox that is scaled, resize the cropped box """
+        """Crop bbox that is scaled, resize the cropped box"""
         H, W = 398, 224
         all_boxes = Boxes(torch.Tensor([[50, 40, 100, 80], [150, 60, 200, 120]]))
         image = rh.get_batched_inputs(1, (H, W), (H, W), all_boxes)[0]["image"]

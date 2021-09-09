@@ -25,13 +25,13 @@ class EMAState(object):
         return ret
 
     def save_from(self, model: torch.nn.Module, device: str = ""):
-        """ Save model state from `model` to this object """
+        """Save model state from `model` to this object"""
         for name, val in self.get_model_state_iterator(model):
             val = val.detach().clone()
             self.state[name] = val.to(device) if device else val
 
     def apply_to(self, model: torch.nn.Module):
-        """ Apply state to `model` from this object """
+        """Apply state to `model` from this object"""
         with torch.no_grad():
             for name, val in self.get_model_state_iterator(model):
                 assert (
@@ -91,7 +91,7 @@ class EMAState(object):
 
 
 class EMAUpdater(object):
-    """ Model Exponential Moving Average
+    """Model Exponential Moving Average
     Keep a moving average of everything in the model state_dict (parameters and
     buffers). This is intended to allow functionality like
     https://www.tensorflow.org/api_docs/python/tf/train/ExponentialMovingAverage
@@ -163,8 +163,7 @@ def may_get_ema_checkpointer(cfg, model):
 
 
 def get_model_ema_state(model):
-    """ Return the ema state stored in `model`
-    """
+    """Return the ema state stored in `model`"""
     model = _remove_ddp(model)
     assert hasattr(model, "ema_state")
     ema = model.ema_state
@@ -172,8 +171,8 @@ def get_model_ema_state(model):
 
 
 def apply_model_ema(model, state=None, save_current=False):
-    """ Apply ema stored in `model` to model and returns a function to restore
-        the weights are applied
+    """Apply ema stored in `model` to model and returns a function to restore
+    the weights are applied
     """
     model = _remove_ddp(model)
 
@@ -192,8 +191,8 @@ def apply_model_ema(model, state=None, save_current=False):
 
 @contextmanager
 def apply_model_ema_and_restore(model, state=None):
-    """ Apply ema stored in `model` to model and returns a function to restore
-        the weights are applied
+    """Apply ema stored in `model` to model and returns a function to restore
+    the weights are applied
     """
     model = _remove_ddp(model)
 

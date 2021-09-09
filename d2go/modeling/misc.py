@@ -40,6 +40,7 @@ class AddCoordChannels(nn.Module):
 
     @param with_r include radial distance from centroid as additional channel (default: False)
     """
+
     def __init__(self, with_r: bool = False) -> None:
         super().__init__()
         self.with_r = with_r
@@ -71,10 +72,14 @@ class AddCoordChannels(nn.Module):
         xx_channel = xx_channel.repeat(batch_size_shape, 1, 1, 1)
         yy_channel = yy_channel.repeat(batch_size_shape, 1, 1, 1)
 
-        out = torch.cat([input_tensor, xx_channel.to(device), yy_channel.to(device)], dim=1)
+        out = torch.cat(
+            [input_tensor, xx_channel.to(device), yy_channel.to(device)], dim=1
+        )
 
         if self.with_r:
-            rr = torch.sqrt(torch.pow(xx_channel - 0.5, 2) + torch.pow(yy_channel - 0.5, 2))
+            rr = torch.sqrt(
+                torch.pow(xx_channel - 0.5, 2) + torch.pow(yy_channel - 0.5, 2)
+            )
             out = torch.cat([out, rr], dim=1)
 
         return out

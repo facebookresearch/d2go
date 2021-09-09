@@ -17,12 +17,12 @@ from d2go.config import (
 )
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
 from d2go.runner import GeneralizedRCNNRunner, create_runner
+from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info
+from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import setup_logger
 from detectron2.utils.serialize import PicklableWrapper
-from d2go.utils.helper import run_once
-from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem_if_fail
 
 
@@ -34,7 +34,7 @@ def basic_argument_parser(
     requires_config_file=True,
     requires_output_dir=True,
 ):
-    """ Basic cli tool parser for Detectron2Go binaries """
+    """Basic cli tool parser for Detectron2Go binaries"""
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Training")
     parser.add_argument(
         "--runner",
@@ -201,6 +201,7 @@ def _setup_after_launch(cfg: CN, output_dir: str, runner):
             cfg.OUTPUT_DIR = output_dir
     dump_cfg(cfg, os.path.join(output_dir, "config.yaml"))
 
+
 def setup_after_launch(cfg: CN, output_dir: str, runner):
     _setup_after_launch(cfg, output_dir, runner)
     logger.info("Initializing runner ...")
@@ -210,9 +211,11 @@ def setup_after_launch(cfg: CN, output_dir: str, runner):
 
     auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
 
+
 def setup_after_lightning_launch(cfg: CN, output_dir: str):
     _setup_after_launch(cfg, output_dir, runner=None)
     log_info(cfg, runner=None)
+
 
 @run_once()
 def setup_loggers(output_dir, color=None):

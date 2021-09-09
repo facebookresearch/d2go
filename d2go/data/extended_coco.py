@@ -190,8 +190,14 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
 
             bbox_object = obj.get("bbox", None)
             if bbox_object is not None and "bbox_mode" in obj:
-                bbox_object = BoxMode.convert(bbox_object, obj["bbox_mode"], BoxMode.XYWH_ABS)
-            if record.get("width") and record.get("height") and not valid_bbox(bbox_object, record["width"], record["height"]):
+                bbox_object = BoxMode.convert(
+                    bbox_object, obj["bbox_mode"], BoxMode.XYWH_ABS
+                )
+            if (
+                record.get("width")
+                and record.get("height")
+                and not valid_bbox(bbox_object, record["width"], record["height"])
+            ):
                 num_instances_without_valid_bounding_box += 1
                 continue
 

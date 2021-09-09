@@ -81,7 +81,7 @@ class PadBorderDivisible(aug.Augmentation):
         self.pad_mode = pad_mode
 
     def get_transform(self, image: np.ndarray) -> Transform:
-        """ image: HxWxC """
+        """image: HxWxC"""
         assert len(image.shape) == 3 and image.shape[2] in [1, 3]
         H, W = image.shape[:2]
         new_h = int(math.ceil(H / self.size_divisibility) * self.size_divisibility)

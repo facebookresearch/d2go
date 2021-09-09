@@ -67,7 +67,7 @@ def enable_ddp_env(func):
 
 
 def tempdir(func):
-    """ A decorator for creating a tempory directory that is cleaned up after function execution. """
+    """A decorator for creating a tempory directory that is cleaned up after function execution."""
 
     @wraps(func)
     def wrapper(self, *args, **kwargs):

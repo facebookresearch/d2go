@@ -4,9 +4,9 @@ from d2go.config import CfgNode as CN
 from d2go.data.dataset_mappers.build import D2GO_DATA_MAPPER_REGISTRY
 from d2go.data.dataset_mappers.d2go_dataset_mapper import D2GoDatasetMapper
 from d2go.runner import GeneralizedRCNNRunner
-from detr.d2 import DetrDatasetMapper, add_detr_config
 from detr.backbone.deit import add_deit_backbone_config
 from detr.backbone.pit import add_pit_backbone_config
+from detr.d2 import DetrDatasetMapper, add_detr_config
 
 
 @D2GO_DATA_MAPPER_REGISTRY.register()

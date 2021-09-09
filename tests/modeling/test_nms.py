@@ -11,8 +11,8 @@ from detectron2.layers import nms as box_nms
 
 class TestNMS(unittest.TestCase):
     def test_nms_cpu(self):
-        """ Match unit test UtilsNMSTest.TestNMS in
-            caffe2/operators/generate_proposals_op_util_nms_test.cc
+        """Match unit test UtilsNMSTest.TestNMS in
+        caffe2/operators/generate_proposals_op_util_nms_test.cc
         """
 
         inputs = (
@@ -60,8 +60,8 @@ class TestNMS(unittest.TestCase):
             np.testing.assert_array_equal(keep_indices, np.array(gt_index))
 
     def test_nms1_cpu(self):
-        """ Match unit test UtilsNMSTest.TestNMS1 in
-            caffe2/operators/generate_proposals_op_util_nms_test.cc
+        """Match unit test UtilsNMSTest.TestNMS1 in
+        caffe2/operators/generate_proposals_op_util_nms_test.cc
         """
 
         boxes = torch.from_numpy(

@@ -12,7 +12,7 @@ from .build import TRANSFORM_OP_REGISTRY, _json_load
 
 
 class LocalizedBoxMotionBlurTransform(Transform):
-    """ Transform to blur provided bounding boxes from an image. """
+    """Transform to blur provided bounding boxes from an image."""
 
     def __init__(
         self,
@@ -36,15 +36,15 @@ class LocalizedBoxMotionBlurTransform(Transform):
         return new_img
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
-        """ Apply no transform on the full-image segmentation. """
+        """Apply no transform on the full-image segmentation."""
         return segmentation
 
     def apply_coords(self, coords: np.ndarray):
-        """ Apply no transform on the coordinates. """
+        """Apply no transform on the coordinates."""
         return coords
 
     def inverse(self) -> Transform:
-        """ The inverse is a No-op, only for geometric transforms. """
+        """The inverse is a No-op, only for geometric transforms."""
         return NoOpTransform()
 
 

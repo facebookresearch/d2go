@@ -7,24 +7,21 @@ import inspect
 import logging
 import math
 import os
-import re
-import tempfile
-import zipfile
 import pickle
+import re
 import signal
 import sys
+import tempfile
 import threading
 import time
 import traceback
 import typing
 import warnings
-import pkg_resources
+import zipfile
 from contextlib import contextmanager
 from functools import partial
-from random import random
-import six
 from functools import wraps
-
+from random import random
 from typing import (
     Any,
     Callable,
@@ -39,12 +36,20 @@ from typing import (
     Union,
 )
 
-import torch
 import detectron2.utils.comm as comm
+import pkg_resources
+import six
+import torch
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
-from detectron2.engine import DefaultTrainer, default_argument_parser, default_setup, hooks, launch
+from detectron2.engine import (
+    DefaultTrainer,
+    default_argument_parser,
+    default_setup,
+    hooks,
+    launch,
+)
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
     CityscapesSemSegEvaluator,
@@ -66,8 +71,10 @@ NT = TypeVar("T", bound=NamedTuple)
 
 from detectron2.utils.events import TensorboardXWriter
 
+
 class MultipleFunctionCallError(Exception):
     pass
+
 
 def run_once(
     raise_on_multiple: bool = False,
@@ -102,8 +109,8 @@ def run_once(
 
 
 class retryable(object):
-    """Fake retryable function
-    """
+    """Fake retryable function"""
+
     def __init__(self, num_tries=1, sleep_time=0.1):
         pass
 
@@ -133,6 +140,7 @@ def alias(x, name, is_backward=False):
         return x
     assert isinstance(x, torch.Tensor)
     return torch.ops._caffe2.AliasWithName(x, name, is_backward=is_backward)
+
 
 class D2Trainer(DefaultTrainer):
     @classmethod
@@ -182,6 +190,7 @@ class D2Trainer(DefaultTrainer):
         elif len(evaluator_list) == 1:
             return evaluator_list[0]
         return DatasetEvaluators(evaluator_list)
+
 
 def reroute_config_path(path: str) -> str:
     """

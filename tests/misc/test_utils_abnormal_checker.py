@@ -2,9 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import glob
 import tempfile
 import unittest
-import glob
 
 import d2go.utils.abnormal_checker as ac
 import torch
@@ -35,9 +35,7 @@ class TestUtilsAbnormalChecker(unittest.TestCase):
         model = Model()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            checker = ac.AbnormalLossChecker(
-                -1, writers=[ac.FileWriter(tmp_dir)]
-            )
+            checker = ac.AbnormalLossChecker(-1, writers=[ac.FileWriter(tmp_dir)])
             cmodel = ac.AbnormalLossCheckerWrapper(model, checker)
 
             losses = [5, 4, 3, 10, 9, 2, 5, 4]

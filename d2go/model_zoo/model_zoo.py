@@ -1,16 +1,18 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 import os
 from typing import Optional
+
 import pkg_resources
 import torch
-
-from detectron2.checkpoint import DetectionCheckpointer
 from d2go.runner import create_runner
+from detectron2.checkpoint import DetectionCheckpointer
+
 
 class _ModelZooUrls(object):
     """
     Mapping from names to officially released D2Go pre-trained models.
     """
+
     S3_PREFIX = "https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/"
     CONFIG_PATH_TO_URL_SUFFIX = {
         "faster_rcnn_fbnetv3a_C4.yaml": "268421013/model_final.pth",
@@ -56,7 +58,9 @@ def get_config_file(config_path):
     return cfg_file
 
 
-def get_config(config_path, trained: bool = False, runner="d2go.runner.GeneralizedRCNNRunner"):
+def get_config(
+    config_path, trained: bool = False, runner="d2go.runner.GeneralizedRCNNRunner"
+):
     """
     Returns a config object for a model in model zoo.
     Args:
@@ -77,7 +81,13 @@ def get_config(config_path, trained: bool = False, runner="d2go.runner.Generaliz
         cfg.MODEL.WEIGHTS = get_checkpoint_url(config_path)
     return cfg
 
-def get(config_path, trained: bool = False, device: Optional[str] = None, runner="d2go.runner.GeneralizedRCNNRunner"):
+
+def get(
+    config_path,
+    trained: bool = False,
+    device: Optional[str] = None,
+    runner="d2go.runner.GeneralizedRCNNRunner",
+):
     """
     Get a model specified by relative path under Detectron2's official ``configs/`` directory.
     Args:

@@ -1,21 +1,24 @@
+import logging
 import unittest
+
+import torch
+from d2go.config import CfgNode as CN
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.modeling import BACKBONE_REGISTRY
+from detectron2.utils.file_io import PathManager
 from detr.backbone.deit import add_deit_backbone_config
 from detr.backbone.pit import add_pit_backbone_config
 
-import torch
-from detectron2.utils.file_io import PathManager
-from detectron2.checkpoint import DetectionCheckpointer
-from d2go.config import CfgNode as CN
-from detectron2.modeling import BACKBONE_REGISTRY
-
-import logging
 logger = logging.getLogger(__name__)
 
 # avoid testing on sandcastle due to access to manifold
 USE_CUDA = torch.cuda.device_count() > 0
 
+
 class TestTransformerBackbone(unittest.TestCase):
-    @unittest.skipIf(not USE_CUDA,"avoid testing on sandcastle due to access to manifold")
+    @unittest.skipIf(
+        not USE_CUDA, "avoid testing on sandcastle due to access to manifold"
+    )
     def test_deit_model(self):
         cfg = CN()
         cfg.MODEL = CN()
@@ -49,9 +52,10 @@ class TestTransformerBackbone(unittest.TestCase):
                     x = torch.rand(1, 3, input_size_h, input_size_w)
                     y = model(x)
                     print(f"x.shape: {x.shape}, y.shape: {y.shape}")
-                        
 
-    @unittest.skipIf(not USE_CUDA,"avoid testing on sandcastle due to access to manifold")
+    @unittest.skipIf(
+        not USE_CUDA, "avoid testing on sandcastle due to access to manifold"
+    )
     def test_pit_model(self):
         cfg = CN()
         cfg.MODEL = CN()

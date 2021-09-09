@@ -6,8 +6,7 @@ from d2go.config import CfgNode as CN
 
 
 def add_fbnet_default_configs(_C):
-    """ FBNet options and default values
-    """
+    """FBNet options and default values"""
     _C.MODEL.FBNET = CN()
     _C.MODEL.FBNET.ARCH = "default"
     # custom arch

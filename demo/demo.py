@@ -5,14 +5,13 @@ import glob
 import multiprocessing as mp
 import os
 import time
+
 import cv2
 import tqdm
-
-from detectron2.data.detection_utils import read_image
-from detectron2.utils.logger import setup_logger
-
 from d2go.model_zoo import model_zoo
 from d2go.utils.demo_predictor import VisualizationDemo
+from detectron2.data.detection_utils import read_image
+from detectron2.utils.logger import setup_logger
 
 # constants
 WINDOW_NAME = "COCO detections"
@@ -22,7 +21,9 @@ def setup_cfg(cfg, args):
     # Set score_threshold for builtin models
     cfg.MODEL.RETINANET.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
-    cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = args.confidence_threshold
+    cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = (
+        args.confidence_threshold
+    )
     cfg.freeze()
     return cfg
 
@@ -31,11 +32,13 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
     parser.add_argument(
         "--config-file",
-        default='keypoint_rcnn_fbnetv3a_dsmask_C4.yaml',
+        default="keypoint_rcnn_fbnetv3a_dsmask_C4.yaml",
         metavar="FILE",
         help="path to config file",
     )
-    parser.add_argument("--webcam", action="store_true", help="Take inputs from webcam.")
+    parser.add_argument(
+        "--webcam", action="store_true", help="Take inputs from webcam."
+    )
     parser.add_argument("--video-input", help="Path to video file.")
     parser.add_argument(
         "--input",
@@ -99,7 +102,9 @@ def main():
                     assert os.path.isdir(args.output), args.output
                     out_filename = os.path.join(args.output, os.path.basename(path))
                 else:
-                    assert len(args.input) == 1, "Please specify a directory with args.output"
+                    assert (
+                        len(args.input) == 1
+                    ), "Please specify a directory with args.output"
                     out_filename = args.output
                 visualized_output.save(out_filename)
             else:
@@ -145,6 +150,7 @@ def main():
             output_file.release()
         else:
             cv2.destroyAllWindows()
-    
+
+
 if __name__ == "__main__":
     main()

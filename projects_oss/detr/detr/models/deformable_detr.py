@@ -149,7 +149,9 @@ class DeformableDETR(nn.Module):
             for box_embed in self.bbox_embed:
                 nn.init.constant_(box_embed.layers[-1].bias.data[2:], 0.0)
 
-            self.transformer.encoder.bbox_embed = MLP(hidden_dim, hidden_dim, 4, bbox_embed_num_layers)
+            self.transformer.encoder.bbox_embed = MLP(
+                hidden_dim, hidden_dim, 4, bbox_embed_num_layers
+            )
 
     def forward(self, samples: NestedTensor):
         """The forward expects a NestedTensor, which consists of:

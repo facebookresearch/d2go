@@ -13,6 +13,7 @@ from d2go.utils.testing.data_loader_helper import create_local_dataset
 # RUN:
 # buck test mobile-vision/d2go/projects_oss/detr:test_detr_runner
 
+
 def _get_cfg(runner, output_dir, dataset_name):
     cfg = runner.get_default_cfg()
     cfg.MODEL.DEVICE = "cpu"

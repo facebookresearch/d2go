@@ -15,10 +15,10 @@ from d2go.data.utils import (
     update_cfg_if_using_adhoc_dataset,
 )
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
+from d2go.modeling import build_model
 from d2go.modeling.model_freezing_utils import (
     set_requires_grad,
 )
-from d2go.modeling import build_model
 from d2go.modeling.quantization import (
     default_prepare_for_quant,
     default_prepare_for_quant_convert,
@@ -206,7 +206,9 @@ class DefaultTask(pl.LightningModule):
         flattened = pl.loggers.LightningLoggerBase._flatten_dict(nested_res)
 
         if self.trainer.global_rank:
-            assert len(flattened) == 0, "evaluation results should have been reduced on rank 0."
+            assert (
+                len(flattened) == 0
+            ), "evaluation results should have been reduced on rank 0."
         self.log_dict(flattened, rank_zero_only=True)
 
     def test_epoch_end(self, _outputs) -> None:

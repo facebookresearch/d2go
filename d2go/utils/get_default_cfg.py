@@ -6,11 +6,11 @@ from d2go.data.build import (
     add_random_subset_training_sampler_default_configs,
 )
 from d2go.data.config import add_d2go_data_default_configs
+from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.backbone.fbnet_cfg import (
     add_bifpn_default_configs,
     add_fbnet_v2_default_configs,
 )
-from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.quantization import add_quantization_default_configs
 from d2go.modeling.subclass import add_subclass_configs

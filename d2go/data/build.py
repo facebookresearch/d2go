@@ -49,7 +49,7 @@ def add_random_subset_training_sampler_default_configs(cfg: CfgNode):
     Add default cfg.DATALOADER.RANDOM_SUBSET_RATIO for RandomSubsetTrainingSampler
     The CfgNode under cfg.DATALOADER.RANDOM_SUBSET_RATIO should be a float > 0 and <= 1
     """
-    cfg.DATALOADER.RANDOM_SUBSET_RATIO = 1.
+    cfg.DATALOADER.RANDOM_SUBSET_RATIO = 1.0
 
 
 def get_train_datasets_repeat_factors(cfg: CfgNode) -> Dict[str, float]:

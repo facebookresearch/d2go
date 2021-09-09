@@ -1,27 +1,29 @@
-# code adapt from https://www.internalfb.com/intern/diffusion/FBS/browse/master/fbcode/mobile-vision/experimental/deit/models.py 
+# code adapt from https://www.internalfb.com/intern/diffusion/FBS/browse/master/fbcode/mobile-vision/experimental/deit/models.py
 # Copyright (c) 2015-present, Facebook, Inc.
 # All rights reserved.
-import math
 import json
+import math
+from functools import partial
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from functools import partial
- 
+from aml.multimodal_video.utils.einops.lib import rearrange
 from detectron2.modeling import Backbone, BACKBONE_REGISTRY
 from detectron2.utils.file_io import PathManager
-
-from aml.multimodal_video.utils.einops.lib import rearrange
-from timm.models.vision_transformer import VisionTransformer, PatchEmbed
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from timm.models.registry import register_model
 from timm.models.layers import trunc_normal_
+from timm.models.registry import register_model
+from timm.models.vision_transformer import VisionTransformer, PatchEmbed
+
 
 def monkey_patch_forward(self, x):
     x = self.proj(x).flatten(2).transpose(1, 2)
     return x
 
+
 PatchEmbed.forward = monkey_patch_forward
+
 
 class DistilledVisionTransformer(VisionTransformer, Backbone):
     def __init__(self, *args, **kwargs):
@@ -29,10 +31,14 @@ class DistilledVisionTransformer(VisionTransformer, Backbone):
         self.dist_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
         num_patches = self.patch_embed.num_patches
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 2, self.embed_dim))
-        self.head_dist = nn.Linear(self.embed_dim, self.num_classes) if self.num_classes > 0 else nn.Identity()
+        self.head_dist = (
+            nn.Linear(self.embed_dim, self.num_classes)
+            if self.num_classes > 0
+            else nn.Identity()
+        )
 
-        trunc_normal_(self.dist_token, std=.02)
-        trunc_normal_(self.pos_embed, std=.02)
+        trunc_normal_(self.dist_token, std=0.02)
+        trunc_normal_(self.pos_embed, std=0.02)
         self.head_dist.apply(self._init_weights)
         self.norm = None
 
@@ -48,10 +54,13 @@ class DistilledVisionTransformer(VisionTransformer, Backbone):
         pos_tokens = pos_tokens.transpose(1, 2).reshape(-1, embed_size, H0, W0)
         # interp
         pos_tokens = F.interpolate(
-            pos_tokens, size=(H, W), mode="bilinear", align_corners=False,
+            pos_tokens,
+            size=(H, W),
+            mode="bilinear",
+            align_corners=False,
         )
         # flatten and reshape back
-        pos_tokens = pos_tokens.reshape(-1, embed_size, H*W).transpose(1, 2)
+        pos_tokens = pos_tokens.reshape(-1, embed_size, H * W).transpose(1, 2)
         pos_embed = torch.cat((self.pos_embed[:, :2, :], pos_tokens), dim=1)
         return pos_embed
 
@@ -65,7 +74,9 @@ class DistilledVisionTransformer(VisionTransformer, Backbone):
         B = x.shape[0]
         x = self.patch_embed(x)
 
-        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        cls_tokens = self.cls_token.expand(
+            B, -1, -1
+        )  # stole cls_tokens impl from Phil Wang, thanks
         dist_token = self.dist_token.expand(B, -1, -1)
         x = torch.cat((cls_tokens, dist_token, x), dim=1)
 
@@ -77,8 +88,8 @@ class DistilledVisionTransformer(VisionTransformer, Backbone):
         for blk in self.blocks:
             x = blk(x)
 
-        #x = self.norm(x)
-        spatial = rearrange(x[:, 2:], 'b (h w) c -> b c h w', h=H, w=W)
+        # x = self.norm(x)
+        spatial = rearrange(x[:, 2:], "b (h w) c -> b c h w", h=H, w=W)
         return x[:, 0], x[:, 1], spatial
 
     def forward(self, x):
@@ -92,15 +103,22 @@ class DistilledVisionTransformer(VisionTransformer, Backbone):
         #     # during inference, return the average of both classifier predictions
         #     return (x + x_dist) / 2
 
-def _cfg(input_size=224, url='', **kwargs):
+
+def _cfg(input_size=224, url="", **kwargs):
     return {
-        'url': url,
-        'num_classes': 1000, 'input_size': (3, input_size, input_size), 'pool_size': None,
-        'crop_pct': .9, 'interpolation': 'bilinear',
-        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'patch_embed.proj', 'classifier': 'head',
-        **kwargs
+        "url": url,
+        "num_classes": 1000,
+        "input_size": (3, input_size, input_size),
+        "pool_size": None,
+        "crop_pct": 0.9,
+        "interpolation": "bilinear",
+        "mean": IMAGENET_DEFAULT_MEAN,
+        "std": IMAGENET_DEFAULT_STD,
+        "first_conv": "patch_embed.proj",
+        "classifier": "head",
+        **kwargs,
     }
+
 
 def deit_scalable_distilled(model_config, pretrained=False, **kwargs):
     assert not pretrained
@@ -120,19 +138,21 @@ def deit_scalable_distilled(model_config, pretrained=False, **kwargs):
     print("model train config: {}".format(model.default_cfg))
     return model
 
+
 def add_deit_backbone_config(cfg):
     cfg.MODEL.DEIT = type(cfg)()
     cfg.MODEL.DEIT.MODEL_CONFIG = None
     cfg.MODEL.DEIT.WEIGHTS = None
+
 
 @BACKBONE_REGISTRY.register()
 def deit_d2go_model_wrapper(cfg, _):
     assert cfg.MODEL.DEIT.MODEL_CONFIG is not None
     with PathManager.open(cfg.MODEL.DEIT.MODEL_CONFIG) as f:
         model_config = json.load(f)
-    model =  deit_scalable_distilled(
+    model = deit_scalable_distilled(
         model_config,
-        num_classes=0, # set num_classes=0 to avoid building cls head
+        num_classes=0,  # set num_classes=0 to avoid building cls head
         drop_rate=0,
         drop_path_rate=0.1,
     )

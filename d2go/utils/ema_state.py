@@ -31,13 +31,13 @@ class EMAState(object):
         decay: float = 0.999,
         device: Optional[str] = None,
     ) -> "EMAState":
-        """ Constructs model state from the model and move to device if given."""
+        """Constructs model state from the model and move to device if given."""
         ret = cls(decay, device)
         ret.load_from(model)
         return ret
 
     def load_from(self, model: nn.Module) -> None:
-        """ Load state from the model. """
+        """Load state from the model."""
         self.state.clear()
         for name, val in self._get_model_state_iterator(model):
             val = val.detach().clone()
@@ -47,7 +47,7 @@ class EMAState(object):
         return len(self.state) > 0
 
     def apply_to(self, model: nn.Module) -> None:
-        """ Apply EMA state to the model. """
+        """Apply EMA state to the model."""
         with torch.no_grad():
             for name, val in self._get_model_state_iterator(model):
                 assert (
@@ -64,7 +64,7 @@ class EMAState(object):
             self.state[name] = val.to(self.device) if self.device else val
 
     def to(self, device: torch.device) -> None:
-        """ moves EMA state to device. """
+        """moves EMA state to device."""
         for name, val in self.state.items():
             self.state[name] = val.to(device)
 

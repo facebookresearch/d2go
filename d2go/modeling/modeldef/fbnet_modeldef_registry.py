@@ -4,12 +4,15 @@
 
 import copy
 
+
 class FBNetV2ModelArch(object):
     _MODEL_ARCH = {}
+
     @staticmethod
     def add(name, arch):
-        assert name not in FBNetV2ModelArch._MODEL_ARCH, \
-            "Arch name '{}' is already existed".format(name)
+        assert (
+            name not in FBNetV2ModelArch._MODEL_ARCH
+        ), "Arch name '{}' is already existed".format(name)
         FBNetV2ModelArch._MODEL_ARCH[name] = arch
 
     @staticmethod

@@ -293,6 +293,8 @@ class TestD2GoDatasets(unittest.TestCase):
         self.assertEqual(len(ds_list), 5)
 
         # Test adhoc classes to use with suffix removal
-        AdhocDatasetManager.add(COCOWithClassesToUse("test_adhoc_ds2@1classes", ["class_0"]))
+        AdhocDatasetManager.add(
+            COCOWithClassesToUse("test_adhoc_ds2@1classes", ["class_0"])
+        )
         ds_list = DatasetCatalog.get("test_adhoc_ds2@1classes")
         self.assertEqual(len(ds_list), 5)

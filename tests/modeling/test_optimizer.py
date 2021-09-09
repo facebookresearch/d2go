@@ -2,10 +2,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import torch
 import unittest
-from d2go.optimizer import build_optimizer_mapper
+
 import d2go.runner.default_runner as default_runner
+import torch
+from d2go.optimizer import build_optimizer_mapper
+
 
 class TestArch(torch.nn.Module):
     def __init__(self):
@@ -22,6 +24,7 @@ class TestArch(torch.nn.Module):
         ret = self.avgpool(ret)
         return ret
 
+
 def _test_each_optimizer(cfg):
     model = TestArch()
     optimizer = build_optimizer_mapper(cfg, model)
@@ -33,12 +36,12 @@ def _test_each_optimizer(cfg):
         loss.backward()
         optimizer.step()
 
-class TestOptimizer(unittest.TestCase):
 
+class TestOptimizer(unittest.TestCase):
     def test_all_optimizers(self):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
-        multipliers = [None, [{'conv': 0.1}]]
+        multipliers = [None, [{"conv": 0.1}]]
 
         for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT"]:
             for mult in multipliers:

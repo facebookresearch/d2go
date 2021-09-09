@@ -1,23 +1,21 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 from collections import deque
-import cv2
-import torch
 
+import cv2
+import detectron2.data.transforms as T
+import torch
+from d2go.model_zoo import model_zoo
 from detectron2.data import MetadataCatalog
 from detectron2.utils.video_visualizer import VideoVisualizer
 from detectron2.utils.visualizer import ColorMode, Visualizer
-import detectron2.data.transforms as T
 
-from d2go.model_zoo import model_zoo
 
 class DemoPredictor:
     def __init__(self, model, min_size_test=224, max_size_test=320, input_format="RGB"):
         self.model = model
         self.model.eval()
 
-        self.aug = T.ResizeShortestEdge(
-            [min_size_test, min_size_test], max_size_test
-        )
+        self.aug = T.ResizeShortestEdge([min_size_test, min_size_test], max_size_test)
 
         self.input_format = input_format
 
@@ -43,6 +41,7 @@ class DemoPredictor:
             predictions = self.model([inputs])[0]
             return predictions
 
+
 class VisualizationDemo(object):
     def __init__(self, cfg, config_file, instance_mode=ColorMode.IMAGE, parallel=False):
         """
@@ -59,7 +58,7 @@ class VisualizationDemo(object):
         self.instance_mode = instance_mode
 
         self.parallel = parallel
-        model = model_zoo.get(config_file, trained=True)#runner.build_model(cfg)
+        model = model_zoo.get(config_file, trained=True)  # runner.build_model(cfg)
         self.predictor = DemoPredictor(model)
 
     def run_on_image(self, image):
@@ -123,7 +122,9 @@ class VisualizationDemo(object):
                 )
             elif "instances" in predictions:
                 predictions = predictions["instances"].to(self.cpu_device)
-                vis_frame = video_visualizer.draw_instance_predictions(frame, predictions)
+                vis_frame = video_visualizer.draw_instance_predictions(
+                    frame, predictions
+                )
             elif "sem_seg" in predictions:
                 vis_frame = video_visualizer.draw_sem_seg(
                     frame, predictions["sem_seg"].argmax(dim=0).to(self.cpu_device)
