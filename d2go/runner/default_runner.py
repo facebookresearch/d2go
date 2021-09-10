@@ -514,13 +514,7 @@ class Detectron2GoRunner(BaseRunner):
     def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
         mapper = mapper or cls.get_mapper(cfg, is_train=True)
         data_loader = build_d2go_train_loader(cfg, mapper)
-
-        if comm.is_main_process():
-            data_loader_type = cls.get_data_loader_vis_wrapper()
-            if data_loader_type is not None:
-                tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
-                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
-        return data_loader
+        return cls._attach_visualizer_to_data_loader(cfg, data_loader)
 
     @staticmethod
     def get_data_loader_vis_wrapper() -> Optional[Type[DataLoaderVisWrapper]]:
@@ -568,6 +562,15 @@ class Detectron2GoRunner(BaseRunner):
     @staticmethod
     def final_model_name():
         return "model_final"
+
+    @classmethod
+    def _attach_visualizer_to_data_loader(cls, cfg, data_loader):
+        if comm.is_main_process():
+            data_loader_type = cls.get_data_loader_vis_wrapper()
+            if data_loader_type is not None:
+                tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
+        return data_loader
 
     def _create_after_step_hook(
         self, cfg, model, optimizer, scheduler, periodic_checkpointer
