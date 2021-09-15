@@ -19,7 +19,7 @@ def reduce_param_groups(param_groups: List[Dict[str, Any]]):
     # with the same lr and weight_decay in a single group. This approach speeds
     # up optimizer step significantly.
 
-    dict_new_groups: Dict[str, Dict[str, Any]] = {}
+    dict_new_groups: Dict[tuple, Dict[str, Any]] = {}
 
     for param_group in param_groups:
         # value is a list of parameters from the previous group
