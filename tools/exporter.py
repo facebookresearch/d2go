@@ -66,7 +66,7 @@ def main(
             logger.info(f"Predictor type {typ} has been exported to {predictor_path}")
             predictor_paths[typ] = predictor_path
         except Exception as e:
-            logger.warning(f"Export {typ} predictor failed: {e}")
+            logger.exception(f"Export {typ} predictor failed: {e}")
             if not skip_if_fail:
                 raise e
 
