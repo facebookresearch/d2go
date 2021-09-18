@@ -100,15 +100,18 @@ class D2RCNNTracingWrapper(nn.Module):
         return self.model.inference(inputs, do_postprocess=False)[0]
 
     @staticmethod
-    def generator_trace_inputs(batch):
+    class Preprocess(object):
         """
         This function describes how to covert orginal input (from the data loader)
         to the inputs used during the tracing (i.e. the inputs of forward function).
         """
-        return (batch[0]["image"],)
 
-    class RunFunc(object):
-        def __call__(self, tracing_adapter_wrapper, batch):
+        def __call__(self, batch):
+            assert len(batch) == 1, "only support single batch"
+            return batch[0]["image"]
+
+    class Postprocess(object):
+        def __call__(self, batch, inputs, outputs):
             """
             This function describes how to run the predictor using exported model. Note
             that `tracing_adapter_wrapper` runs the traced model under the hood and
@@ -116,7 +119,5 @@ class D2RCNNTracingWrapper(nn.Module):
             """
             assert len(batch) == 1, "only support single batch"
             width, height = batch[0]["width"], batch[0]["height"]
-            inputs = D2RCNNTracingWrapper.generator_trace_inputs(batch)
-            results_per_image = tracing_adapter_wrapper(inputs)
-            r = detector_postprocess(results_per_image, height, width)
+            r = detector_postprocess(outputs, height, width)
             return [{"instances": r}]

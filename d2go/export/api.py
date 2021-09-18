@@ -88,21 +88,12 @@ class PredictorExportConfig(NamedTuple):
     run_func_info: FuncInfo = FuncInfo.gen_func_info(NaiveRunFunc, params={})
 
 
-def convert_and_export_predictor(
+def convert_predictor(
     cfg,
     pytorch_model,
     predictor_type,
-    output_dir,
     data_loader,
 ):
-    """
-    Entry point for convert and export model. This involves two steps:
-        - convert: converting the given `pytorch_model` to another format, currently
-            mainly for quantizing the model.
-        - export: exporting the converted `pytorch_model` to predictor. This step
-            should not alter the behaviour of model.
-    """
-
     if "int8" in predictor_type:
         if not cfg.QUANTIZATION.QAT.ENABLED:
             logger.info(
@@ -131,7 +122,24 @@ def convert_and_export_predictor(
         logger.info("Fused Model:\n{}".format(pytorch_model))
         if fuse_utils.count_bn_exist(pytorch_model) > 0:
             logger.warning("BN existed in pytorch model after fusing.")
+    return pytorch_model
 
+
+def convert_and_export_predictor(
+    cfg,
+    pytorch_model,
+    predictor_type,
+    output_dir,
+    data_loader,
+):
+    """
+    Entry point for convert and export model. This involves two steps:
+        - convert: converting the given `pytorch_model` to another format, currently
+            mainly for quantizing the model.
+        - export: exporting the converted `pytorch_model` to predictor. This step
+            should not alter the behaviour of model.
+    """
+    pytorch_model = convert_predictor(cfg, pytorch_model, predictor_type, data_loader)
     return export_predictor(cfg, pytorch_model, predictor_type, output_dir, data_loader)
 
 

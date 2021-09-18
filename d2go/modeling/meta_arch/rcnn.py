@@ -62,11 +62,16 @@ class GeneralizedRCNNPatch:
 def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
 
     if "torchscript" in predictor_type and "@tracing" in predictor_type:
+        preprocess_info = FuncInfo.gen_func_info(
+            D2RCNNTracingWrapper.Preprocess, params={}
+        )
+        preprocess_func = preprocess_info.instantiate()
         return PredictorExportConfig(
             model=D2RCNNTracingWrapper(self),
-            data_generator=D2RCNNTracingWrapper.generator_trace_inputs,
-            run_func_info=FuncInfo.gen_func_info(
-                D2RCNNTracingWrapper.RunFunc, params={}
+            data_generator=lambda x: (preprocess_func(x),),
+            preprocess_info=preprocess_info,
+            postprocess_info=FuncInfo.gen_func_info(
+                D2RCNNTracingWrapper.Postprocess, params={}
             ),
         )
 

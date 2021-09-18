@@ -140,6 +140,19 @@ def tracing_adapter_wrap_export(old_f):
     return new_f
 
 
+class TracingAdapterModelWrapper(nn.Module):
+    def __init__(self, traced_model, inputs_schema, outputs_schema):
+        super().__init__()
+        self.traced_model = traced_model
+        self.inputs_schema = inputs_schema
+        self.outputs_schema = outputs_schema
+
+    def forward(self, *input_args):
+        flattened_inputs, _ = flatten_to_tuple(input_args)
+        flattened_outputs = self.traced_model(*flattened_inputs)
+        return self.outputs_schema(flattened_outputs)
+
+
 def tracing_adapter_wrap_load(old_f):
     def new_f(cls, save_path, **load_kwargs):
         assert "inputs_schema" in load_kwargs, load_kwargs.keys()
@@ -147,18 +160,6 @@ def tracing_adapter_wrap_load(old_f):
         inputs_schema = instantiate(load_kwargs.pop("inputs_schema"))
         outputs_schema = instantiate(load_kwargs.pop("outputs_schema"))
         traced_model = old_f(cls, save_path, **load_kwargs)
-
-        class TracingAdapterModelWrapper(nn.Module):
-            def __init__(self, traced_model, inputs_schema, outputs_schema):
-                super().__init__()
-                self.traced_model = traced_model
-                self.inputs_schema = inputs_schema
-                self.outputs_schema = outputs_schema
-
-            def forward(self, *input_args):
-                flattened_inputs, _ = flatten_to_tuple(input_args)
-                flattened_outputs = self.traced_model(*flattened_inputs)
-                return self.outputs_schema(flattened_outputs)
 
         return TracingAdapterModelWrapper(traced_model, inputs_schema, outputs_schema)
 
