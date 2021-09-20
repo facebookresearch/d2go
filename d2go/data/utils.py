@@ -150,7 +150,8 @@ class AdhocCOCODataset(AdhocDataset):
         metadata_dict["name"] = self.new_ds_name
         if "json_file" in metadata_dict:
             metadata_dict["json_file"] = tmp_file
-        MetadataCatalog.remove(self.new_ds_name)
+        if MetadataCatalog.get(self.new_ds_name):
+            MetadataCatalog.remove(self.new_ds_name)
         MetadataCatalog.get(self.new_ds_name).set(**metadata_dict)
 
     def cleanup(self):
