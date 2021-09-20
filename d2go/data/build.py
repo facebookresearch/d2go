@@ -12,6 +12,7 @@ import torch
 from d2go.config import CfgNode
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.utils import ClipLengthGroupedDataset
+from d2go.utils.misc import fb_overwritable
 from detectron2.data import (
     build_batch_data_loader,
     build_detection_train_loader,
@@ -22,7 +23,6 @@ from detectron2.data.common import MapDataset, DatasetFromList
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.data.samplers import RepeatFactorTrainingSampler
 from detectron2.utils.comm import get_world_size
-from mobile_cv.common.misc.registry import Registry
 
 logger = logging.getLogger(__name__)
 
@@ -146,10 +146,7 @@ def build_clip_grouping_data_loader(dataset, sampler, total_batch_size, num_work
     return ClipLengthGroupedDataset(data_loader, batch_size)
 
 
-_MAPPED_TRAIN_LOADER_BUILDER_REGISTRY = Registry("MAPPED_TRAIN_LOADER_BUILDER")
-
-
-@_MAPPED_TRAIN_LOADER_BUILDER_REGISTRY.register("oss")
+@fb_overwritable()
 def build_mapped_train_loader(cfg, mapper):
     if cfg.DATALOADER.SAMPLER_TRAIN == "WeightedTrainingSampler":
         data_loader = build_weighted_detection_train_loader(cfg, mapper=mapper)
@@ -170,10 +167,7 @@ def build_d2go_train_loader(cfg, mapper=None):
     mapper = mapper or build_dataset_mapper(cfg, is_train=True)
     logger.info("Using dataset mapper:\n{}".format(mapper))
 
-    data_loader = (
-        _MAPPED_TRAIN_LOADER_BUILDER_REGISTRY.get("internal", is_raise=False)
-        or _MAPPED_TRAIN_LOADER_BUILDER_REGISTRY.get("oss")
-    )(cfg, mapper)
+    data_loader = build_mapped_train_loader(cfg, mapper)
 
     # TODO: decide if move vis_wrapper inside this interface
     return data_loader
