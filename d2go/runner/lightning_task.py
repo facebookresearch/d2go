@@ -168,6 +168,7 @@ class DefaultTask(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         loss_dict = self.forward(batch)
         losses = sum(loss_dict.values())
+        loss_dict["total_loss"] = losses
         self.storage.step()
 
         self.log_dict(loss_dict, prog_bar=True)
