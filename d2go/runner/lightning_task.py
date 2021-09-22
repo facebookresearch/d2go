@@ -23,6 +23,7 @@ from d2go.modeling.quantization import (
     default_prepare_for_quant,
     default_prepare_for_quant_convert,
 )
+from d2go.optimizer import build_optimizer_mapper
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
     Detectron2GoRunner,
@@ -225,7 +226,7 @@ class DefaultTask(pl.LightningModule):
     def configure_optimizers(
         self,
     ) -> Tuple[List[torch.optim.Optimizer], List]:
-        optim = d2_build_optimizer(self.cfg, self.model)
+        optim = build_optimizer_mapper(self.cfg, self.model)
         lr_scheduler = d2_build_lr_scheduler(self.cfg, optim)
 
         return [optim], [{"scheduler": lr_scheduler, "interval": "step"}]
