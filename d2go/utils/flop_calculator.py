@@ -4,6 +4,7 @@
 import copy
 import logging
 import os
+import traceback
 
 import detectron2.utils.comm as comm
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
@@ -59,12 +60,12 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
         logger.exception("Failed to estimate flops using mobile_cv's FlopsEstimation")
 
     # 2. using d2/fvcore's flop counter
+    output_file = os.path.join(output_dir, "flops_str_fvcore.txt")
     try:
         flops = FlopCountAnalysis(model, inputs)
 
         # 2.1: dump as model str
         model_str = flop_count_str(flops)
-        output_file = os.path.join(output_dir, "flops_str_fvcore.txt")
         with PathManager.open(output_file, "w") as f:
             f.write(model_str)
             logger.info(f"Flops info written to {output_file}")
@@ -80,8 +81,11 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
         flops_table = flop_count_table(flops, max_depth=3)
         logger.info("Flops table:\n" + flops_table)
     except Exception:
-        logger.exception(
-            "Failed to estimate flops using detectron2's FlopCountAnalysis"
+        with PathManager.open(output_file, "w") as f:
+            traceback.print_exc(file=f)
+        logger.warning(
+            "Failed to estimate flops using detectron2's FlopCountAnalysis. "
+            f"Error written to {output_file}."
         )
     return flops
 
