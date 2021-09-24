@@ -2,27 +2,41 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import os
+import tempfile
 import unittest
 
 import torch
 from d2go.runner.default_runner import GeneralizedRCNNRunner
 from d2go.tools.exporter import main
+from d2go.utils.testing.data_loader_helper import create_local_dataset
 from d2go.utils.testing.rcnn_helper import get_quick_test_config_opts
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
 
 def maskrcnn_export_legacy_vs_new_format_example():
     with make_temp_directory("export_demo") as tmp_dir:
+        # use a fake dataset for ci
+        dataset_name = create_local_dataset(tmp_dir, 5, 224, 224)
+        config_list = [
+            "DATASETS.TRAIN",
+            (dataset_name,),
+            "DATASETS.TEST",
+            (dataset_name,),
+        ]
         # START_WIKI_EXAMPLE_TAG
         runner = GeneralizedRCNNRunner()
         cfg = runner.get_default_cfg()
         cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3a_dsmask_C4.yaml")
         cfg.merge_from_list(get_quick_test_config_opts())
+        cfg.merge_from_list(config_list)
 
         # equivalent to running:
         #   exporter.par --runner GeneralizedRCNNRunner --config-file config.yaml --predictor-types torchscript tourchscript@legacy --output-dir tmp_dir
         _ = main(
-            cfg, tmp_dir, runner, predictor_types=["torchscript@legacy", "torchscript"]
+            cfg,
+            tmp_dir,
+            runner,
+            predictor_types=["torchscript@legacy", "torchscript"],
         )
 
         # the path can be fetched from the return of main, here just use hard-coded values
