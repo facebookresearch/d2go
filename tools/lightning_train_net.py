@@ -102,7 +102,6 @@ def get_trainer_params(
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
         "progress_bar_refresh_rate": 10,
-        "terminate_on_nan": True,
         "replace_sampler_ddp": False,
         "plugins": plugins,
     }
