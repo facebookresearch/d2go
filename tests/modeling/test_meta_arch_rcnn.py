@@ -29,9 +29,10 @@ class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
-            ["torchscript@tracing", True],
+            ["torchscript@legacy", True],
+            ["torchscript", True],
+            ["torchscript_int8@legacy", False],
             ["torchscript_int8", False],
-            ["torchscript_int8@tracing", False],
         ]
     )
     def test_export(self, predictor_type, compare_match):
@@ -59,6 +60,7 @@ class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
+            ["torchscript_int8@legacy", False],  # TODO: fix mismatch
             ["torchscript_int8", False],  # TODO: fix mismatch
         ]
     )
@@ -85,6 +87,7 @@ class TestFBNetV3KeypointRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
+            ["torchscript_int8@legacy", False],  # TODO: fix mismatch
             ["torchscript_int8", False],  # TODO: fix mismatch
         ]
     )
@@ -133,7 +136,7 @@ class TestTorchVisionExport(unittest.TestCase):
                 predictor_path = convert_and_export_predictor(
                     cfg,
                     copy.deepcopy(pytorch_model),
-                    "torchscript@tracing",
+                    "torchscript",
                     tmp_dir,
                     data_loader,
                 )

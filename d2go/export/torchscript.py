@@ -214,10 +214,10 @@ def tracing_adapter_wrap_load(old_f):
     return new_f
 
 
-@ModelExportMethodRegistry.register("torchscript")
-@ModelExportMethodRegistry.register("torchscript_int8")
-@ModelExportMethodRegistry.register("torchscript_mobile")
-@ModelExportMethodRegistry.register("torchscript_mobile_int8")
+@ModelExportMethodRegistry.register("torchscript@legacy")
+@ModelExportMethodRegistry.register("torchscript_int8@legacy")
+@ModelExportMethodRegistry.register("torchscript_mobile@legacy")
+@ModelExportMethodRegistry.register("torchscript_mobile_int8@legacy")
 class DefaultTorchscriptExport(ModelExportMethod):
     @classmethod
     def export(
@@ -250,10 +250,10 @@ class DefaultTorchscriptExport(ModelExportMethod):
         return load_torchscript(model_path)
 
 
-@ModelExportMethodRegistry.register("torchscript@tracing")
-@ModelExportMethodRegistry.register("torchscript_int8@tracing")
-@ModelExportMethodRegistry.register("torchscript_mobile@tracing")
-@ModelExportMethodRegistry.register("torchscript_mobile_int8@tracing")
+@ModelExportMethodRegistry.register("torchscript")
+@ModelExportMethodRegistry.register("torchscript_int8")
+@ModelExportMethodRegistry.register("torchscript_mobile")
+@ModelExportMethodRegistry.register("torchscript_mobile_int8")
 class D2TorchscriptTracingExport(DefaultTorchscriptExport):
     @classmethod
     @tracing_adapter_wrap_export
