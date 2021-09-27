@@ -80,12 +80,17 @@ def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
         )
 
         preprocess_func = preprocess_info.instantiate()
+        model_export_kwargs = {}
+        if "torchscript" in predictor_type:
+            model_export_kwargs["force_disable_tracing_adapter"] = True
 
         return PredictorExportConfig(
             model=c2_compatible_model,
             # Caffe2MetaArch takes a single tuple as input (which is the return of
             # preprocess_func), data_generator requires all positional args as a tuple.
             data_generator=lambda x: (preprocess_func(x),),
+            model_export_method=predictor_type.replace("@legacy", "", 1),
+            model_export_kwargs=model_export_kwargs,
             preprocess_info=preprocess_info,
             postprocess_info=postprocess_info,
         )
