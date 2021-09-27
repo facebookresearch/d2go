@@ -136,7 +136,15 @@ def _is_data_flattened_tensors(data):
 
 
 def tracing_adapter_wrap_export(old_f):
-    def new_f(cls, model, input_args, *args, **kwargs):
+    def new_f(cls, model, input_args, save_path, export_method, **export_kwargs):
+        force_disable_tracing_adapter = export_kwargs.pop(
+            "force_disable_tracing_adapter", False
+        )
+        if force_disable_tracing_adapter:
+            logger.info("Not trace mode, export normally")
+            return old_f(
+                cls, model, input_args, save_path, export_method, **export_kwargs
+            )
 
         if _is_data_flattened_tensors(input_args):
             # TODO: only dry-run for traceing
@@ -146,7 +154,9 @@ def tracing_adapter_wrap_export(old_f):
                 logger.info(
                     "Both inputs and outputs are flattened tensors, export the model as is."
                 )
-                load_kwargs = old_f(cls, model, input_args, *args, **kwargs)
+                load_kwargs = old_f(
+                    cls, model, input_args, save_path, export_method, **export_kwargs
+                )
                 assert "tracing_adapted" not in load_kwargs
                 load_kwargs.update({"tracing_adapted": False})
                 return load_kwargs
@@ -162,7 +172,14 @@ def tracing_adapter_wrap_export(old_f):
             " please be aware that the exported model will have different input/output data structure."
         )
         adapter = TracingAdapter(model, input_args)
-        load_kwargs = old_f(cls, adapter, adapter.flattened_inputs, *args, **kwargs)
+        load_kwargs = old_f(
+            cls,
+            adapter,
+            adapter.flattened_inputs,
+            save_path,
+            export_method,
+            **export_kwargs
+        )
         inputs_schema = dump_dataclass(adapter.inputs_schema)
         outputs_schema = dump_dataclass(adapter.outputs_schema)
         assert "tracing_adapted" not in load_kwargs
@@ -214,10 +231,6 @@ def tracing_adapter_wrap_load(old_f):
     return new_f
 
 
-@ModelExportMethodRegistry.register("torchscript@legacy")
-@ModelExportMethodRegistry.register("torchscript_int8@legacy")
-@ModelExportMethodRegistry.register("torchscript_mobile@legacy")
-@ModelExportMethodRegistry.register("torchscript_mobile_int8@legacy")
 class DefaultTorchscriptExport(ModelExportMethod):
     @classmethod
     def export(
