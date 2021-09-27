@@ -369,7 +369,7 @@ class D2RCNNInferenceWrapper(nn.Module):
     def forward(self, image):
         """
         This function describes what happends during the tracing. Note that the output
-        contains non-tensor, therefore the D2TorchscriptTracingExport must be used in
+        contains non-tensor, therefore the TracingAdaptedTorchscriptExport must be used in
         order to convert the output back from flattened tensors.
         """
         inputs = [{"image": image}]
