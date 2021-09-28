@@ -172,6 +172,8 @@ def prepare_for_launch(args):
         cfg.merge_from_list(args.opts)
     else:
         cfg = create_cfg_from_cli_args(args, default_cfg=cfg)
+    if args.num_threads is not None:
+        cfg.merge_from_list(["on_device_num_threads", args.num_threads])
     cfg.freeze()
 
     assert args.output_dir or args.config_file

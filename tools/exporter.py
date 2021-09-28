@@ -114,6 +114,12 @@ def get_parser():
         help="If set, suppress the exception for failed exporting and continue to"
         " export the next type of model",
     )
+    parser.add_argument(
+        "--num_threads",
+        type=int,
+        default=None,
+        help="Number of threads to be run on device",
+    )
     return parser
 
 
