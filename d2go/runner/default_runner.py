@@ -279,11 +279,11 @@ class Detectron2GoRunner(BaseRunner):
                 model_ema.apply_model_ema(model)
 
         # Note: the _visualize_model API is experimental
-        if comm.is_main_process():
-            if hasattr(model, "_visualize_model"):
-                logger.info("Adding model visualization ...")
-                tbx_writer = self.get_tbx_writer(cfg)
-                model._visualize_model(tbx_writer)
+        # if comm.is_main_process():
+        #     if hasattr(model, "_visualize_model"):
+        #         logger.info("Adding model visualization ...")
+        #         tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+        #         model._visualize_model(tbx_writer)
 
         return model
 
@@ -340,22 +340,22 @@ class Detectron2GoRunner(BaseRunner):
 
             if not isinstance(evaluator, DatasetEvaluators):
                 evaluator = DatasetEvaluators([evaluator])
-            if comm.is_main_process():
-                tbx_writer = self.get_tbx_writer(cfg)
-                logger.info("Adding visualization evaluator ...")
-                mapper = self.get_mapper(cfg, is_train=False)
-                vis_eval_type = self.get_visualization_evaluator()
-                if vis_eval_type is not None:
-                    evaluator._evaluators.append(
-                        vis_eval_type(
-                            cfg,
-                            tbx_writer,
-                            mapper,
-                            dataset_name,
-                            train_iter=train_iter,
-                            tag_postfix=model_tag,
-                        )
-                    )
+            # if comm.is_main_process():
+            #     tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+            #     logger.info("Adding visualization evaluator ...")
+            #     mapper = self.get_mapper(cfg, is_train=False)
+            #     vis_eval_type = self.get_visualization_evaluator()
+            #     if vis_eval_type is not None:
+            #         evaluator._evaluators.append(
+            #             vis_eval_type(
+            #                 cfg,
+            #                 tbx_writer,
+            #                 mapper,
+            #                 dataset_name,
+            #                 train_iter=train_iter,
+            #                 tag_postfix=model_tag,
+            #             )
+            #         )
 
             results_per_dataset = inference_on_dataset(model, data_loader, evaluator)
 
@@ -387,17 +387,17 @@ class Detectron2GoRunner(BaseRunner):
             verify_results(cfg, results[model_tag][cfg.DATASETS.TEST[0]])
 
         # write results to tensorboard
-        if comm.is_main_process() and results:
-            from detectron2.evaluation.testing import flatten_results_dict
+        # if comm.is_main_process() and results:
+        #     from detectron2.evaluation.testing import flatten_results_dict
 
-            flattened_results = flatten_results_dict(results)
-            for k, v in flattened_results.items():
-                tbx_writer = self.get_tbx_writer(cfg)
-                tbx_writer._writer.add_scalar("eval_{}".format(k), v, train_iter)
+        #     flattened_results = flatten_results_dict(results)
+        #     for k, v in flattened_results.items():
+        #         tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+        #         tbx_writer._writer.add_scalar("eval_{}".format(k), v, train_iter)
 
-        if comm.is_main_process():
-            tbx_writer = self.get_tbx_writer(cfg)
-            tbx_writer._writer.flush()
+        # if comm.is_main_process():
+        #     tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+        #     tbx_writer._writer.flush()
         return results
 
     def do_test(self, cfg, model, train_iter=None):
@@ -483,14 +483,14 @@ class Detectron2GoRunner(BaseRunner):
             self._create_qat_hook(cfg) if cfg.QUANTIZATION.QAT.ENABLED else None,
         ]
 
-        if comm.is_main_process():
-            tbx_writer = self.get_tbx_writer(cfg)
-            writers = [
-                CommonMetricPrinter(max_iter),
-                JSONWriter(os.path.join(cfg.OUTPUT_DIR, "metrics.json")),
-                tbx_writer,
-            ]
-            trainer_hooks.append(hooks.PeriodicWriter(writers))
+        # if comm.is_main_process():
+        #     tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+        #     writers = [
+        #         CommonMetricPrinter(max_iter),
+        #         JSONWriter(os.path.join(cfg.OUTPUT_DIR, "metrics.json")),
+        #         tbx_writer,
+        #     ]
+        #     trainer_hooks.append(hooks.PeriodicWriter(writers))
         update_hooks_from_registry(trainer_hooks)
         trainer.register_hooks(trainer_hooks)
         trainer.train(start_iter, max_iter)
@@ -571,11 +571,11 @@ class Detectron2GoRunner(BaseRunner):
 
     @classmethod
     def _attach_visualizer_to_data_loader(cls, cfg, data_loader):
-        if comm.is_main_process():
-            data_loader_type = cls.get_data_loader_vis_wrapper()
-            if data_loader_type is not None:
-                tbx_writer = cls.get_tbx_writer(cfg)
-                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
+        # if comm.is_main_process():
+        #     data_loader_type = cls.get_data_loader_vis_wrapper()
+        #     if data_loader_type is not None:
+        #         tbx_writer = _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+        #         data_loader = data_loader_type(cfg, tbx_writer, data_loader)
         return data_loader
 
     def _create_after_step_hook(
