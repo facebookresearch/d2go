@@ -164,6 +164,9 @@ class TorchscriptWrapper(nn.Module):
         # TODO: set int8 backend accordingly if needed
         return self.module(*args, **kwargs)
 
+    def get_wrapped_models(self):
+        return self.module
+
 
 def load_torchscript(model_path):
     extra_files = {}
@@ -260,6 +263,9 @@ class TracingAdapterModelWrapper(nn.Module):
         flattened_inputs, _ = flatten_to_tuple(input_args)
         flattened_outputs = self.traced_model(*flattened_inputs)
         return self.outputs_schema(flattened_outputs)
+
+    def get_wrapped_models(self):
+        return self.traced_model
 
 
 def tracing_adapter_wrap_load(old_f):
