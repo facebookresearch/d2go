@@ -630,7 +630,7 @@ class Detectron2GoRunner(BaseRunner):
                         trainer.iter
                     )
                 )
-                trainer.model.apply(torch.quantization.enable_fake_quant)
+                trainer.model.apply(torch.ao.quantization.enable_fake_quant)
                 applied["enable_fake_quant"] = True
 
                 if cfg.QUANTIZATION.QAT.BATCH_SIZE_FACTOR != 1.0:
@@ -661,7 +661,7 @@ class Detectron2GoRunner(BaseRunner):
                 and trainer.iter < cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER
             ):
                 logger.info("[QAT] enable observer, iter = {}".format(trainer.iter))
-                trainer.model.apply(torch.quantization.enable_observer)
+                trainer.model.apply(torch.ao.quantization.enable_observer)
                 applied["enable_observer"] = True
 
             if (
@@ -673,7 +673,7 @@ class Detectron2GoRunner(BaseRunner):
                         trainer.iter
                     )
                 )
-                trainer.model.apply(torch.quantization.disable_observer)
+                trainer.model.apply(torch.ao.quantization.disable_observer)
                 applied["disable_observer"] = True
 
             if (

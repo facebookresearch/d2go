@@ -6,13 +6,18 @@ import contextlib
 import copy
 import inspect
 import logging
+from typing import Tuple
 
 import torch
-import torch.quantization.quantize_fx
 from detectron2.checkpoint import DetectionCheckpointer
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
 
+TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
+if TORCH_VERSION >= (1, 10):
+    from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
+else:
+    from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +153,7 @@ def _cast_detection_model(model, device):
 
 def add_d2_quant_mapping(mappings):
     """HACK: Add d2 specific module mapping for eager model quantization"""
-    import torch.quantization.quantization_mappings as qm
+    import torch.ao.quantization.quantization_mappings as qm
 
     for k, v in mappings.items():
         if k not in qm.get_default_static_quant_module_mappings():
@@ -218,7 +223,7 @@ def default_prepare_for_quant(cfg, model):
         - QAT/PTQ can be determined by model.training.
         - Currently the input model can be changed inplace since we won't re-use the
             input model.
-        - Currently this API doesn't include the final torch.quantization.prepare(_qat)
+        - Currently this API doesn't include the final torch.ao.quantization.prepare(_qat)
             call since existing usecases don't have further steps after it.
 
     Args:
@@ -229,9 +234,9 @@ def default_prepare_for_quant(cfg, model):
         nn.Module: a ready model for QAT training or PTQ calibration
     """
     qconfig = (
-        torch.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
+        torch.ao.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
         if model.training
-        else torch.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
+        else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
     )
 
     if cfg.QUANTIZATION.EAGER_MODE:
@@ -239,14 +244,14 @@ def default_prepare_for_quant(cfg, model):
 
         torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
         model.qconfig = qconfig
-        # TODO(future diff): move the torch.quantization.prepare(...) call
+        # TODO(future diff): move the torch.ao.quantization.prepare(...) call
         # here, to be consistent with the FX branch
     else:  # FX graph mode quantization
         qconfig_dict = {"": qconfig}
         if model.training:
-            model = torch.quantization.quantize_fx.prepare_qat_fx(model, qconfig_dict)
+            model = prepare_qat_fx(model, qconfig_dict)
         else:
-            model = torch.quantization.quantize_fx.prepare_fx(model, qconfig_dict)
+            model = prepare_fx(model, qconfig_dict)
 
     logger.info("Setup the model with qconfig:\n{}".format(qconfig))
 
@@ -254,7 +259,7 @@ def default_prepare_for_quant(cfg, model):
 
 
 def default_prepare_for_quant_convert(cfg, model):
-    return torch.quantization.quantize_fx.convert_fx(model)
+    return convert_fx(model)
 
 
 @mock_quantization_type
@@ -273,7 +278,7 @@ def post_training_quantize(cfg, model, data_loader):
         model = default_prepare_for_quant(cfg, model)
 
     if cfg.QUANTIZATION.EAGER_MODE:
-        torch.quantization.prepare(model, inplace=True)
+        torch.ao.quantization.prepare(model, inplace=True)
     logger.info("Prepared the PTQ model for calibration:\n{}".format(model))
 
     # Option for forcing running calibration on GPU, works only when the model supports
@@ -329,7 +334,7 @@ def setup_qat_model(cfg, model, enable_fake_quant=False, enable_observer=False):
             model = default_prepare_for_quant(cfg, model)
 
         # TODO(future diff): move this into prepare_for_quant to match FX branch
-        torch.quantization.prepare_qat(model, inplace=True)
+        torch.ao.quantization.prepare_qat(model, inplace=True)
     else:  # FX graph mode quantization
         if hasattr(model, "prepare_for_quant"):
             model = model.prepare_for_quant(cfg)
@@ -342,10 +347,10 @@ def setup_qat_model(cfg, model, enable_fake_quant=False, enable_observer=False):
 
     if not enable_fake_quant:
         logger.info("Disabling fake quant ...")
-        model.apply(torch.quantization.disable_fake_quant)
+        model.apply(torch.ao.quantization.disable_fake_quant)
     if not enable_observer:
         logger.info("Disabling observer ...")
-        model.apply(torch.quantization.disable_observer)
+        model.apply(torch.ao.quantization.disable_observer)
 
     # fuse_model and prepare_qat may change the state_dict of model, keep a map from the
     # orginal model to the key QAT in order to load weight from non-QAT model.
