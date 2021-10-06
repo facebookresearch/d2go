@@ -20,11 +20,11 @@ from d2go.utils.testing.helper import tempdir
 from d2go.utils.testing.lightning_test_module import TestModule
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from torch.quantization import (  # @manual; @manual
+from torch.ao.quantization import (  # @manual; @manual
     default_dynamic_qconfig,
     get_default_qconfig,
 )
-from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
+from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
 
 class TestUtilities(unittest.TestCase):

@@ -24,7 +24,7 @@ from mobile_cv.arch.utils.quantize_utils import (
     QuantWrapper,
 )
 from mobile_cv.predictor.api import FuncInfo
-from torch.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
+from torch.ao.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
 
 logger = logging.getLogger(__name__)
 
@@ -235,9 +235,9 @@ def default_rcnn_prepare_for_quant(self, cfg):
     model = self
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
     model.qconfig = (
-        torch.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
+        torch.ao.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
         if model.training
-        else torch.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
+        else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
     )
     if (
         hasattr(model, "roi_heads")

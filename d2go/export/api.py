@@ -26,7 +26,7 @@ import logging
 import os
 import sys
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, NamedTuple, Optional, Union
+from typing import Callable, Dict, NamedTuple, Optional, Union, Tuple
 
 if sys.version_info >= (3, 8):
     from typing import final
@@ -39,7 +39,6 @@ else:
 
 import torch
 import torch.nn as nn
-import torch.quantization.quantize_fx
 from d2go.modeling.quantization import post_training_quantize
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
@@ -52,6 +51,13 @@ from mobile_cv.predictor.builtin_functions import (
     NaiveRunFunc,
 )
 
+TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
+if TORCH_VERSION >= (1, 10):
+    from torch.ao.quantization import convert
+    from torch.ao.quantization.quantize_fx import convert_fx
+else:
+    from torch.quantization import convert
+    from torch.quantization.quantize_fx import convert_fx
 
 logger = logging.getLogger(__name__)
 
@@ -108,13 +114,13 @@ def convert_predictor(
 
         if cfg.QUANTIZATION.EAGER_MODE:
             # TODO(T93870278): move this logic to prepare_for_quant_convert
-            pytorch_model = torch.quantization.convert(pytorch_model, inplace=False)
+            pytorch_model = convert(pytorch_model, inplace=False)
         else:  # FX graph mode quantization
             if hasattr(pytorch_model, "prepare_for_quant_convert"):
                 pytorch_model = pytorch_model.prepare_for_quant_convert(cfg)
             else:
                 # TODO(T93870381): move this to a default function
-                pytorch_model = torch.quantization.quantize_fx.convert_fx(pytorch_model)
+                pytorch_model = convert_fx(pytorch_model)
 
         logger.info("Quantized Model:\n{}".format(pytorch_model))
     else:

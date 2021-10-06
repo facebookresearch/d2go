@@ -13,15 +13,15 @@ from mobile_cv.arch.quantization.observer import update_stat as observer_update_
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities import rank_zero_info
-from torch.quantization import (  # @manual
+from torch.ao.quantization import (  # @manual
     QConfig,
     QConfigDynamic,
     QuantType,
     get_default_qat_qconfig,
     get_default_qconfig,
 )
-from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
-from torch.quantization.utils import get_quant_type
+from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
+from torch.ao.quantization.utils import get_quant_type
 
 
 QConfigDicts = Dict[str, Dict[str, Union[QConfig, QConfigDynamic]]]
@@ -355,12 +355,12 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
                     # Enabled by default, so the assumption for > 0 is that the
                     # user wants it disabled then enabled.
                     ModelTransform(
-                        fn=torch.quantization.disable_fake_quant,
+                        fn=torch.ao.quantization.disable_fake_quant,
                         step=0,
                         message="Disable fake quant",
                     ),
                     ModelTransform(
-                        fn=torch.quantization.enable_fake_quant,
+                        fn=torch.ao.quantization.enable_fake_quant,
                         step=start_step,
                         message="Enable fake quant to start QAT",
                     ),
@@ -371,12 +371,12 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
                 # See comment for start_step above.
                 [
                     ModelTransform(
-                        fn=torch.quantization.disable_observer,
+                        fn=torch.ao.quantization.disable_observer,
                         step=0,
                         message="Disable observer",
                     ),
                     ModelTransform(
-                        fn=torch.quantization.enable_observer,
+                        fn=torch.ao.quantization.enable_observer,
                         step=start_observer,
                         message="Start observer",
                     ),
@@ -385,7 +385,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
         if end_observer is not None:
             self.transforms.append(
                 ModelTransform(
-                    fn=torch.quantization.disable_observer,
+                    fn=torch.ao.quantization.disable_observer,
                     step=end_observer,
                     message="End observer",
                 )
