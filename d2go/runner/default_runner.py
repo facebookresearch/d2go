@@ -68,6 +68,7 @@ from detectron2.solver import (
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from detectron2.utils.registry import Registry
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
+from mobile_cv.predictor.api import PredictorWrapper
 
 
 logger = logging.getLogger(__name__)
@@ -414,7 +415,7 @@ class Detectron2GoRunner(BaseRunner):
             results.update(cur_results)
 
             # model with ema weights
-            if cfg.MODEL_EMA.ENABLED:
+            if cfg.MODEL_EMA.ENABLED and not isinstance(model, PredictorWrapper):
                 logger.info("Run evaluation with EMA.")
                 with model_ema.apply_model_ema_and_restore(model):
                     cur_results = self._do_test(
