@@ -226,7 +226,10 @@ def inject_gan_datasets(cfg):
         json_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.JSON_PATH
         assert PathManager.isfile(json_path), "{} is not valid!".format(json_path)
 
-        image_dir = Path(tempfile.mkdtemp())
+        if len(cfg.D2GO_DATA.DATASETS.GAN_INJECTION.LOCAL_DIR) > 0:
+            image_dir = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.LOCAL_DIR
+        else:
+            image_dir = Path(tempfile.mkdtemp())
 
         input_src_path = cfg.D2GO_DATA.DATASETS.GAN_INJECTION.INPUT_SRC_DIR
         assert PathManager.isfile(input_src_path), "{} is not valid!".format(
