@@ -2,7 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-import contextlib
 import logging
 import math
 import os
@@ -12,7 +11,6 @@ from typing import Type, Optional, List
 
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
-import mock
 import torch
 from d2go.config import (
     CfgNode,
@@ -72,16 +70,6 @@ from mobile_cv.predictor.api import PredictorWrapper
 
 
 logger = logging.getLogger(__name__)
-
-
-@contextlib.contextmanager
-def _mock_func(module, src_func, target_func):
-    with mock.patch(
-        "{}.{}".format(module.__name__, src_func.__name__), side_effect=target_func
-    ) as mocked_func:
-        yield
-    if not mocked_func.call_count >= 1:
-        logger.warning("Didn't patch the {} in module {}".format(src_func, module))
 
 
 ALL_TB_WRITERS = []
