@@ -72,7 +72,7 @@ def launch(
             )
             with temp_defrost(cfg):
                 cfg.MODEL.DEVICE = "cpu"
-            backend = "GLOO"
+        backend = "GLOO"
 
     if backend == "NCCL":
         assert (
