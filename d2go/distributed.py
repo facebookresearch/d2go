@@ -64,8 +64,7 @@ def launch(
     if get_launch_environment() == "local" and not torch.cuda.is_available():
         assert len(args) > 0, args
         cfg = args[0]
-        assert isinstance(cfg, CfgNode)
-        if cfg.MODEL.DEVICE == "cuda":
+        if isinstance(cfg, CfgNode) and cfg.MODEL.DEVICE == "cuda":
             logger.warning(
                 "Detected that CUDA is not available on this machine, set MODEL.DEVICE"
                 " to cpu and backend to GLOO"
