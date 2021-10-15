@@ -7,7 +7,13 @@ import unittest
 
 import d2go.runner.default_runner as default_runner
 import torch
-from d2go.optimizer import build_optimizer_mapper
+from d2go.optimizer import (
+    build_optimizer_mapper,
+)
+from d2go.optimizer.build import (
+    expand_optimizer_param_groups,
+    regroup_optimizer_param_groups,
+)
 
 
 class TestArch(torch.nn.Module):
@@ -57,7 +63,167 @@ def _test_each_optimizer(cfg):
     print("Correct prediction rate {0}.".format(n_correct / 200))
 
 
+def _check_param_group(self, group, num_params=None, **kwargs):
+    if num_params is not None:
+        self.assertEqual(len(group["params"]), num_params)
+    for key, val in kwargs.items():
+        self.assertEqual(group[key], val)
+
+
+def get_optimizer_cfg(
+    lr,
+    weight_decay=None,
+    weight_decay_norm=None,
+    weight_decay_bias=None,
+    lr_mult=None,
+):
+    runner = default_runner.Detectron2GoRunner()
+    cfg = runner.get_default_cfg()
+    if lr is not None:
+        cfg.SOLVER.BASE_LR = lr
+    if weight_decay is not None:
+        cfg.SOLVER.WEIGHT_DECAY = weight_decay
+    if weight_decay_norm is not None:
+        cfg.SOLVER.WEIGHT_DECAY_NORM = weight_decay_norm
+    if weight_decay_bias is not None:
+        cfg.SOLVER.WEIGHT_DECAY_BIAS = weight_decay_bias
+    if lr_mult is not None:
+        cfg.SOLVER.LR_MULTIPLIER_OVERWRITE = [lr_mult]
+    return cfg
+
+
 class TestOptimizer(unittest.TestCase):
+    def test_expand_optimizer_param_groups(self):
+        groups = [
+            {
+                "params": ["p1", "p2", "p3", "p4"],
+                "lr": 1.0,
+                "weight_decay": 3.0,
+            },
+            {
+                "params": ["p2", "p3", "p5"],
+                "lr": 2.0,
+                "momentum": 2.0,
+            },
+            {
+                "params": ["p1"],
+                "weight_decay": 4.0,
+            },
+        ]
+        gt_groups = [
+            dict(params=["p1"], lr=1.0, weight_decay=4.0),  # noqa
+            dict(params=["p2"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
+            dict(params=["p3"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
+            dict(params=["p4"], lr=1.0, weight_decay=3.0),  # noqa
+            dict(params=["p5"], lr=2.0, momentum=2.0),  # noqa
+        ]
+        out = expand_optimizer_param_groups(groups)
+        self.assertEqual(out, gt_groups)
+
+    def test_regroup_optimizer_param_groups(self):
+        expanded_groups = [
+            dict(params=["p1"], lr=1.0, weight_decay=4.0),  # noqa
+            dict(params=["p2"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
+            dict(params=["p3"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
+            dict(params=["p4"], lr=1.0, weight_decay=3.0),  # noqa
+            dict(params=["p5"], lr=2.0, momentum=2.0),  # noqa
+        ]
+        gt_groups = [
+            {
+                "lr": 1.0,
+                "weight_decay": 4.0,
+                "params": ["p1"],
+            },
+            {
+                "lr": 2.0,
+                "weight_decay": 3.0,
+                "momentum": 2.0,
+                "params": ["p2", "p3"],
+            },
+            {
+                "lr": 1.0,
+                "weight_decay": 3.0,
+                "params": ["p4"],
+            },
+            {
+                "lr": 2.0,
+                "momentum": 2.0,
+                "params": ["p5"],
+            },
+        ]
+        out = regroup_optimizer_param_groups(expanded_groups)
+        self.assertEqual(out, gt_groups)
+
+    def test_create_optimizer_default(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = torch.nn.Conv2d(3, 3, 1)
+                self.bn = torch.nn.BatchNorm2d(3)
+
+            def forward(self, x):
+                return self.bn(self.conv(x))
+
+        model = Model()
+        cfg = get_optimizer_cfg(
+            lr=1.0, weight_decay=1.0, weight_decay_norm=1.0, weight_decay_bias=1.0
+        )
+        optimizer = build_optimizer_mapper(cfg, model)
+        self.assertEqual(len(optimizer.param_groups), 1)
+        _check_param_group(
+            self, optimizer.param_groups[0], num_params=4, weight_decay=1.0, lr=1.0
+        )
+
+    def test_create_optimizer_lr(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv1 = torch.nn.Conv2d(3, 3, 1)
+                self.conv2 = torch.nn.Conv2d(3, 3, 1)
+                self.bn = torch.nn.BatchNorm2d(3)
+
+            def forward(self, x):
+                return self.bn(self.conv2(self.conv1(x)))
+
+        model = Model()
+        cfg = get_optimizer_cfg(
+            lr=1.0,
+            lr_mult={"conv1": 3.0, "conv2": 3.0},
+            weight_decay=2.0,
+            weight_decay_norm=2.0,
+        )
+        optimizer = build_optimizer_mapper(cfg, model)
+
+        self.assertEqual(len(optimizer.param_groups), 2)
+
+        _check_param_group(self, optimizer.param_groups[0], num_params=4, lr=3.0)
+        _check_param_group(self, optimizer.param_groups[1], num_params=2, lr=1.0)
+
+    def test_create_optimizer_weight_decay_norm(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = torch.nn.Conv2d(3, 3, 1)
+                self.bn = torch.nn.BatchNorm2d(3)
+
+            def forward(self, x):
+                return self.bn(self.conv(x))
+
+        model = Model()
+        cfg = get_optimizer_cfg(
+            lr=1.0, weight_decay=1.0, weight_decay_norm=2.0, weight_decay_bias=1.0
+        )
+        optimizer = build_optimizer_mapper(cfg, model)
+
+        self.assertEqual(len(optimizer.param_groups), 2)
+
+        _check_param_group(
+            self, optimizer.param_groups[0], num_params=2, lr=1.0, weight_decay=1.0
+        )
+        _check_param_group(
+            self, optimizer.param_groups[1], num_params=2, lr=1.0, weight_decay=2.0
+        )
+
     def test_all_optimizers(self):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()

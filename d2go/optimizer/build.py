@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import itertools
-from typing import Any, Dict, List, Optional, Set
+import logging
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 from detectron2.solver.build import (
@@ -11,77 +13,180 @@ from detectron2.utils.registry import Registry
 
 D2GO_OPTIM_MAPPER_REGISTRY = Registry("D2GO_OPTIM_MAPPER")
 
+logger = logging.getLogger(__name__)
 
-def reduce_param_groups(param_groups: List[Dict[str, Any]]):
+
+OptimizerModelsType = Union[torch.nn.Module, torch.nn.parallel.DistributedDataParallel]
+
+
+def get_optimizer_param_groups(model: OptimizerModelsType, cfg):
+    """
+    Get override optimizer parameter groups
+       * Get all default parameters
+       # Get parameter groups for normalization and bias
+       # Get parameter groups from model if the model implements `get_optimizer_param_groups()`
+    Parameters appear later will override parameters appear earlier
+    """
+    # get all parameters that requires gradient
+    params = get_optimizer_param_groups_default(model)
+
+    # parameter groups for lr
+    params += get_optimizer_param_groups_lr(
+        model,
+        base_lr=cfg.SOLVER.BASE_LR,
+        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
+        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
+    )
+
+    # parameter groups for normalization, bias, and embedding
+    params += get_optimizer_param_groups_weight_decay(
+        model,
+        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
+        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
+    )
+
+    # Reorganize the parameter groups and merge duplicated groups
     # The number of parameter groups needs to be as small as possible in order
     # to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
-    # of using a parameter_group per single parameter, we group all the params
-    # with the same lr and weight_decay in a single group. This approach speeds
+    # of using a parameter_group per single parameter, we reorganize the
+    # parameter groups and merge duplicated groups. This approach speeds
     # up optimizer step significantly.
+    params = expand_optimizer_param_groups(params)
+    params = regroup_optimizer_param_groups(params)
 
-    dict_new_groups: Dict[tuple, Dict[str, Any]] = {}
-
-    for param_group in param_groups:
-        # value is a list of parameters from the previous group
-        value = param_group["params"]
-
-        # lr and weight_decay are floating point values
-        lr = param_group["lr"]
-        weight_decay = param_group["weight_decay"]
-
-        # Create the new groups using combinations of lr and weight_decay
-        group_key = (lr, weight_decay)
-        if group_key not in dict_new_groups:
-            dict_new_groups[group_key] = {
-                "params": value,
-                "lr": lr,
-                "weight_decay": weight_decay,
-            }
-        else:
-            # Add elements from an existing group to the new larger group
-            dict_new_groups[group_key]["params"].extend(value)
-
-    return list(dict_new_groups.values())
+    return params
 
 
-def get_default_optimizer_params(
-    model: torch.nn.Module,
-    base_lr,
-    weight_decay,
-    weight_decay_norm,
-    weight_decay_embed,
-    bias_lr_factor=1.0,
-    weight_decay_bias=None,
-    use_param_group_reduction=False,
-    overrides: Optional[Dict[str, Dict[str, float]]] = None,
+def expand_optimizer_param_groups(params: List[Dict[str, Any]]):
+    """Expand the optimizer parameter groups so that each group contains only
+    one parameter
+    """
+    ret = defaultdict(dict)
+    for item in params:
+        assert "params" in item
+        cur_params = {x: y for x, y in item.items() if x != "params"}
+        for param in item["params"]:
+            ret[param]["params"] = [param]
+            ret[param].update(cur_params)
+
+    ret = list(ret.values())
+
+    return ret
+
+
+def regroup_optimizer_param_groups(params: List[Dict[str, Any]]):
+    """Regroup the optimizer parameter groups using the optimizer parameters as key"""
+    groups = defaultdict(list)
+    for item in params:
+        cur_params = tuple((x, y) for x, y in item.items() if x != "params")
+        groups[cur_params] += item["params"]
+
+    ret = []
+    for param_keys, param_values in groups.items():
+        cur = {kv[0]: kv[1] for kv in param_keys}
+        cur["params"] = param_values
+        ret.append(cur)
+
+    return ret
+
+
+def iterate_module_named_parameters(
+    model: OptimizerModelsType, check_requires_grad=True
+):
+    """Iterate over all parameters for the model"""
+    memo = set()
+    for module_name, module in model.named_modules():
+        for module_param_name, value in module.named_parameters(recurse=False):
+            if check_requires_grad and not value.requires_grad:
+                continue
+            # Avoid duplicating parameters
+            if value in memo:
+                continue
+            memo.add(value)
+
+            yield module_name, module, module_param_name, value
+
+
+def get_optimizer_param_groups_default(model: OptimizerModelsType):
+    ret = [
+        {
+            "params": list(
+                filter(
+                    lambda x: x.requires_grad,
+                    model.parameters(),
+                )
+            )
+        }
+    ]
+    return ret
+
+
+def get_optimizer_param_groups_lr(
+    model: OptimizerModelsType,
+    base_lr: float,
+    bias_lr_factor: float = 1.0,
     lr_multipliers_overwrite: Optional[Dict[str, float]] = None,
 ):
     """
-    Get default param list for optimizer
-    Args:
-        overrides (dict: str -> (dict: str -> float)):
-            if not `None`, provides values for optimizer hyperparameters
-            (LR, weight decay) for module parameters with a given name; e.g.
-            {"embedding": {"lr": 0.01, "weight_decay": 0.1}} will set the LR and
-            weight decay values for all module parameters named `embedding` (default: None)
-        lr_multipliers_overwrite (dict: str-> float):
-            Applying different lr multiplier to a set of parameters whose names
-            containing certain keys. For example, if lr_multipliers_overwrite={'backbone': 0.1},
-            the LR for the parameters whose names containing 'backbone' will be scaled to 0.1x.
-            Set lr_multipliers_overwrite={} if no multipliers required.
-        use_param_group_reduction:
-            if set to `False` we will have a parameter group for each parameter which makes
-            the optimizer very slow. This option should be used when using checkpoints of models
-            that were created using a parameter group for each param.
+    Allow setting up lr for modules
+    base_lr: lr for all modules
+    bias_lr_factor: scale factor for lr for bias term
+    lr_multipliers_overwrite (dict: str-> float):
+        Applying different lr multiplier to a set of parameters whose names
+        containing certain keys. For example, if lr_multipliers_overwrite={'backbone': 0.1},
+        the LR for the parameters whose names containing 'backbone' will be scaled to 0.1x.
+        Set lr_multipliers_overwrite=None if no multipliers required.
     """
+    params: List[Dict[str, Any]] = []
+    for (
+        module_name,
+        _module,
+        module_param_name,
+        value,
+    ) in iterate_module_named_parameters(model):
+        cur_lr = base_lr
+        if module_param_name == "bias":
+            cur_lr = base_lr * bias_lr_factor
+        if lr_multipliers_overwrite is not None:
+            for kname, mult in lr_multipliers_overwrite.items():
+                if kname in module_name:
+                    # apply multiplier for the params containing kname, e.g. backbone
+                    cur_lr = cur_lr * mult
+
+        params += [
+            {
+                "params": [value],
+                "lr": cur_lr,
+            }
+        ]
+
+    return params
+
+
+def get_optimizer_param_groups_weight_decay(
+    model: OptimizerModelsType,
+    weight_decay: Optional[float],
+    weight_decay_norm: Optional[float] = None,
+    weight_decay_bias: Optional[float] = None,
+    weight_decay_embed: Optional[float] = None,
+):
+    """
+    Allow setting up weight decay for normalization, embedding and bias
+    """
+    if weight_decay_norm is None:
+        weight_decay_norm = weight_decay
     if weight_decay_bias is None:
         weight_decay_bias = weight_decay
+    if weight_decay_embed is None:
+        weight_decay_embed = weight_decay
+
     norm_module_types = (
         torch.nn.BatchNorm1d,
         torch.nn.BatchNorm2d,
         torch.nn.BatchNorm3d,
         torch.nn.SyncBatchNorm,
-        # NaiveSyncBatchNorm inherits from BatchNorm2d
         torch.nn.GroupNorm,
         torch.nn.InstanceNorm1d,
         torch.nn.InstanceNorm2d,
@@ -90,49 +195,58 @@ def get_default_optimizer_params(
         torch.nn.LocalResponseNorm,
     )
     params: List[Dict[str, Any]] = []
-    memo: Set[torch.nn.parameter.Parameter] = set()
-    for module_name, module in model.named_modules():
-        for module_param_name, value in module.named_parameters(recurse=False):
-            if not value.requires_grad:
-                continue
-            # Avoid duplicating parameters
-            if value in memo:
-                continue
-            memo.add(value)
-
-            schedule_params = {
-                "lr": base_lr,
-                "weight_decay": weight_decay,
-            }
-            if isinstance(module, norm_module_types):
-                schedule_params["weight_decay"] = weight_decay_norm
-            elif module_param_name == "bias":
-                # NOTE: unlike Detectron v1, we now default BIAS_LR_FACTOR to 1.0
-                # and WEIGHT_DECAY_BIAS to WEIGHT_DECAY so that bias optimizer
-                # hyperparameters are by default exactly the same as for regular
-                # weights.
-                schedule_params["lr"] = base_lr * bias_lr_factor
-                schedule_params["weight_decay"] = weight_decay_bias
-            if isinstance(module, torch.nn.Embedding):
-                schedule_params["weight_decay"] = weight_decay_embed
-            if overrides is not None and module_param_name in overrides:
-                schedule_params.update(overrides[module_param_name])
-            if lr_multipliers_overwrite is not None:
-                for kname, mult in lr_multipliers_overwrite.items():
-                    if kname in module_name:
-                        # apply multiplier for the params containing kname, e.g. backbone
-                        schedule_params["lr"] = schedule_params["lr"] * mult
+    for (
+        _module_name,
+        module,
+        module_param_name,
+        value,
+    ) in iterate_module_named_parameters(model):
+        cur_wd = weight_decay
+        if isinstance(module, norm_module_types):
+            cur_wd = weight_decay_norm
+        elif isinstance(module, torch.nn.Embedding):
+            cur_wd = weight_decay_embed
+        elif module_param_name == "bias":
+            cur_wd = weight_decay_bias
+        if cur_wd is not None:
             params += [
                 {
                     "params": [value],
-                    "lr": schedule_params["lr"],
-                    "weight_decay": schedule_params["weight_decay"],
+                    "weight_decay": cur_wd,
                 }
             ]
 
-    if use_param_group_reduction:
-        # Reduce number of param groups to speed-up optimizer step
-        return reduce_param_groups(params)
+    return params
+
+
+def get_optimizer_param_groups_override(
+    model: OptimizerModelsType,
+    overrides: Optional[Dict[str, Dict[str, float]]] = None,
+):
+    """
+    Allow setting up overrides for parameter groups
+    overrides (dict: str -> (dict: str -> float)):
+        if not `None`, provides values for optimizer hyperparameters
+        (LR, weight decay) for module parameters with a given name; e.g.
+        {"embedding": {"lr": 0.01, "weight_decay": 0.1}} will set the LR and
+        weight decay values for all module parameters named `embedding` (default: None)
+    """
+
+    params: List[Dict[str, Any]] = []
+
+    if overrides is None:
+        return params
+
+    for (
+        _module_name,
+        _module,
+        module_param_name,
+        value,
+    ) in iterate_module_named_parameters(model):
+        schedule_params = {}
+        if module_param_name in overrides:
+            schedule_params.update(overrides[module_param_name])
+            params += [{"params": [value], **schedule_params}]
 
     return params
 
@@ -170,16 +284,7 @@ def sgd(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     """
     Build an optimizer from config.
     """
-    params = get_default_optimizer_params(
-        model,
-        base_lr=cfg.SOLVER.BASE_LR,
-        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
-        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
-        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
-        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
-        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
-    )
+    params = get_optimizer_param_groups(model, cfg)
     return maybe_add_gradient_clipping(cfg, torch.optim.SGD)(
         params,
         cfg.SOLVER.BASE_LR,
@@ -193,16 +298,7 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     """
     Build an optimizer from config.
     """
-    params = get_default_optimizer_params(
-        model,
-        base_lr=cfg.SOLVER.BASE_LR,
-        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
-        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
-        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
-        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
-        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
-    )
+    params = get_optimizer_param_groups(model, cfg)
     return maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
         params, cfg.SOLVER.BASE_LR
     )
@@ -216,17 +312,7 @@ def sgd_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     optimizer by end of H1'21. To benefit from the speedup, the number
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
-    params = get_default_optimizer_params(
-        model,
-        base_lr=cfg.SOLVER.BASE_LR,
-        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
-        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
-        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
-        use_param_group_reduction=True,
-        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
-        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
-    )
+    params = get_optimizer_param_groups(model, cfg)
     return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.SGD)(
         params,
         cfg.SOLVER.BASE_LR,
@@ -243,17 +329,7 @@ def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     optimizer by end of H1'21. To benefit from the speedup, the number
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
-    params = get_default_optimizer_params(
-        model,
-        base_lr=cfg.SOLVER.BASE_LR,
-        weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-        weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
-        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
-        bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
-        use_param_group_reduction=True,
-        weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
-        lr_multipliers_overwrite=_merge_dict(cfg.SOLVER.LR_MULTIPLIER_OVERWRITE),
-    )
+    params = get_optimizer_param_groups(model, cfg)
     return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.AdamW)(
         params, cfg.SOLVER.BASE_LR
     )
@@ -261,4 +337,23 @@ def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
 
 def build_optimizer_mapper(cfg, model):
     name = cfg.SOLVER.OPTIMIZER
-    return D2GO_OPTIM_MAPPER_REGISTRY.get(name.lower())(cfg, model)
+    optimizer = D2GO_OPTIM_MAPPER_REGISTRY.get(name.lower())(cfg, model)
+
+    def _param_group_str(group):
+        ret = {x: y if x != "params" else len(y) for x, y in group.items()}
+        ret = sorted(ret.items())
+        ret = [f"{x[0]}: {x[1]}" for x in ret]
+        ret = "{" + ", ".join(ret) + "}"
+        return ret
+
+    def _param_groups_str(groups):
+        ret = ""
+        for idx, group in enumerate(groups):
+            ret += f"Param group {idx}: {_param_group_str(group)}\n"
+        return ret
+
+    logger.info(
+        f"optimizer parameter groups:\n{_param_groups_str(optimizer.param_groups)}"
+    )
+
+    return optimizer
