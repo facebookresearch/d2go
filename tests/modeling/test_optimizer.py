@@ -14,6 +14,7 @@ from d2go.optimizer.build import (
     expand_optimizer_param_groups,
     regroup_optimizer_param_groups,
 )
+from d2go.utils.testing import helper
 
 
 class TestArch(torch.nn.Module):
@@ -247,3 +248,75 @@ class TestOptimizer(unittest.TestCase):
             cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE = "full_model"
             cfg.SOLVER.OPTIMIZER = optimizer_name
             _test_each_optimizer(cfg)
+
+    def test_create_optimizer_custom(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = torch.nn.Conv2d(3, 3, 1)
+                self.bn = torch.nn.BatchNorm2d(3)
+
+            def forward(self, x):
+                return self.bn(self.conv(x))
+
+            def get_optimizer_param_groups(self, _opts):
+                ret = [
+                    {
+                        "params": [self.conv.weight],
+                        "lr": 10.0,
+                    }
+                ]
+                return ret
+
+        model = Model()
+        cfg = get_optimizer_cfg(lr=1.0, weight_decay=1.0, weight_decay_norm=0.0)
+        optimizer = build_optimizer_mapper(cfg, model)
+
+        self.assertEqual(len(optimizer.param_groups), 3)
+
+        _check_param_group(
+            self, optimizer.param_groups[0], num_params=1, lr=10.0, weight_decay=1.0
+        )
+        _check_param_group(
+            self, optimizer.param_groups[1], num_params=1, lr=1.0, weight_decay=1.0
+        )
+        _check_param_group(
+            self, optimizer.param_groups[2], num_params=2, lr=1.0, weight_decay=0.0
+        )
+
+    @helper.enable_ddp_env
+    def test_create_optimizer_custom_ddp(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = torch.nn.Conv2d(3, 3, 1)
+                self.bn = torch.nn.BatchNorm2d(3)
+
+            def forward(self, x):
+                return self.bn(self.conv(x))
+
+            def get_optimizer_param_groups(self, _opts):
+                ret = [
+                    {
+                        "params": [self.conv.weight],
+                        "lr": 10.0,
+                    }
+                ]
+                return ret
+
+        model = Model()
+        model = torch.nn.parallel.DistributedDataParallel(model)
+        cfg = get_optimizer_cfg(lr=1.0, weight_decay=1.0, weight_decay_norm=0.0)
+        optimizer = build_optimizer_mapper(cfg, model)
+
+        self.assertEqual(len(optimizer.param_groups), 3)
+
+        _check_param_group(
+            self, optimizer.param_groups[0], num_params=1, lr=10.0, weight_decay=1.0
+        )
+        _check_param_group(
+            self, optimizer.param_groups[1], num_params=1, lr=1.0, weight_decay=1.0
+        )
+        _check_param_group(
+            self, optimizer.param_groups[2], num_params=2, lr=1.0, weight_decay=0.0
+        )

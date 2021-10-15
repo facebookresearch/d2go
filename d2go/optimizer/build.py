@@ -47,6 +47,15 @@ def get_optimizer_param_groups(model: OptimizerModelsType, cfg):
         weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
     )
 
+    # parameter groups from model function `model.get_optimizer_param_groups(opts)`
+    if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+        model = model.module
+    if hasattr(model, "get_optimizer_param_groups"):
+        logger.info(
+            "Getting optimizer parameter groups from model.get_optimizer_param_groups()"
+        )
+        params += model.get_optimizer_param_groups(cfg)
+
     # Reorganize the parameter groups and merge duplicated groups
     # The number of parameter groups needs to be as small as possible in order
     # to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
