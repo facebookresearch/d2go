@@ -268,6 +268,9 @@ def log_info(cfg, runner):
             num_processes, comm.get_rank()
         )
     )
+    wf_id = os.getenv("WORKFLOW_RUN_ID", None)
+    if wf_id is not None:
+        logger.info("FBLearner Flow Run ID: {}".format(wf_id))
     logger.info("Environment info:\n" + collect_env_info())
     logger.info("Running with full config:\n{}".format(cfg))
     logger.info("Running with runner: {}".format(runner))
