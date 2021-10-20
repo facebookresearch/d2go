@@ -335,6 +335,7 @@ class TestDefaultRunner(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmp_dir:
                 runner, cfg = setup(tmp_dir, backend=backend)
                 model = runner.build_model(cfg)
+                print(model)
                 runner.do_train(cfg, model, resume=True)
 
             default_runner._close_all_tbx_writers()

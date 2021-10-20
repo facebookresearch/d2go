@@ -3,7 +3,6 @@
 
 
 import logging
-import math
 import os
 from collections import OrderedDict
 from functools import lru_cache
@@ -35,6 +34,7 @@ from d2go.modeling.model_freezing_utils import (
 from d2go.modeling.quantization import (
     QATCheckpointer,
     setup_qat_model,
+    QATHook,
 )
 from d2go.optimizer import build_optimizer_mapper
 from d2go.utils.flop_calculator import add_flop_printing_hook
@@ -65,7 +65,6 @@ from detectron2.solver import (
 )
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from detectron2.utils.registry import Registry
-from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.predictor.api import PredictorWrapper
 
 
@@ -593,98 +592,14 @@ class Detectron2GoRunner(BaseRunner):
         """
         return None
 
-    def _create_qat_hook(self, cfg):
+    def _create_qat_hook(self, cfg) -> Optional[QATHook]:
         """
         Create a hook to start QAT (during training) and/or change the phase of QAT.
         """
-        applied = {
-            "enable_fake_quant": False,
-            "enable_observer": False,
-            "disable_observer": False,
-            "freeze_bn_stats": False,
-        }
+        if not cfg.QUANTIZATION.QAT.ENABLED:
+            return None
 
-        assert (
-            cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER
-            <= cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER
-        ), "Can't diable observer before enabling it"
-
-        def qat_before_step_callback(trainer):
-            if (
-                not applied["enable_fake_quant"]
-                and trainer.iter >= cfg.QUANTIZATION.QAT.START_ITER
-            ):
-                logger.info(
-                    "[QAT] enable fake quant to start QAT, iter = {}".format(
-                        trainer.iter
-                    )
-                )
-                trainer.model.apply(torch.ao.quantization.enable_fake_quant)
-                applied["enable_fake_quant"] = True
-
-                if cfg.QUANTIZATION.QAT.BATCH_SIZE_FACTOR != 1.0:
-                    loader_cfg = cfg.clone()
-                    loader_cfg.defrost()
-                    num_gpus = comm.get_world_size()
-                    old_bs = cfg.SOLVER.IMS_PER_BATCH // num_gpus
-                    new_bs = math.ceil(old_bs * cfg.QUANTIZATION.QAT.BATCH_SIZE_FACTOR)
-                    loader_cfg.SOLVER.IMS_PER_BATCH = new_bs * num_gpus
-                    loader_cfg.freeze()
-
-                    logger.info(
-                        "[QAT] Rebuild data loader with batch size per GPU: {} -> {}".format(
-                            old_bs, new_bs
-                        )
-                    )
-                    # This method assumes the data loader can be replaced from trainer
-                    assert trainer.__class__ == SimpleTrainer
-                    del trainer._data_loader_iter
-                    del trainer.data_loader
-                    data_loader = self.build_detection_train_loader(loader_cfg)
-                    trainer.data_loader = data_loader
-                    trainer._data_loader_iter = iter(data_loader)
-
-            if (
-                not applied["enable_observer"]
-                and trainer.iter >= cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER
-                and trainer.iter < cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER
-            ):
-                logger.info("[QAT] enable observer, iter = {}".format(trainer.iter))
-                trainer.model.apply(torch.ao.quantization.enable_observer)
-                applied["enable_observer"] = True
-
-            if (
-                not applied["disable_observer"]
-                and trainer.iter >= cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER
-            ):
-                logger.info(
-                    "[QAT] disabling observer for sub seq iters, iter = {}".format(
-                        trainer.iter
-                    )
-                )
-                trainer.model.apply(torch.ao.quantization.disable_observer)
-                applied["disable_observer"] = True
-
-            if (
-                not applied["freeze_bn_stats"]
-                and trainer.iter >= cfg.QUANTIZATION.QAT.FREEZE_BN_ITER
-            ):
-                logger.info(
-                    "[QAT] freezing BN for subseq iters, iter = {}".format(trainer.iter)
-                )
-                trainer.model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
-                applied["freeze_bn_stats"] = True
-
-            if (
-                applied["enable_fake_quant"]
-                and cfg.QUANTIZATION.QAT.UPDATE_OBSERVER_STATS_PERIODICALLY
-                and trainer.iter % cfg.QUANTIZATION.QAT.UPDATE_OBSERVER_STATS_PERIOD
-                == 0
-            ):
-                logger.info(f"[QAT] updating observers, iter = {trainer.iter}")
-                trainer.model.apply(observer_update_stat)
-
-        return hooks.CallbackHook(before_step=qat_before_step_callback)
+        return QATHook(cfg, self.build_detection_train_loader)
 
 
 class GeneralizedRCNNRunner(Detectron2GoRunner):
