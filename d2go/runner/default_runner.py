@@ -232,7 +232,8 @@ class Detectron2GoRunner(BaseRunner):
         _C = super(Detectron2GoRunner, Detectron2GoRunner).get_default_cfg()
         return get_default_cfg(_C)
 
-    def build_model(self, cfg, eval_only=False):
+    # temporary API
+    def _build_model(self, cfg, eval_only=False):
         # build_model might modify the cfg, thus clone
         cfg = cfg.clone()
 
@@ -265,6 +266,11 @@ class Detectron2GoRunner(BaseRunner):
 
             if cfg.MODEL_EMA.ENABLED and cfg.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY:
                 model_ema.apply_model_ema(model)
+
+        return model
+
+    def build_model(self, cfg, eval_only=False):
+        model = self._build_model(cfg, eval_only)
 
         # Note: the _visualize_model API is experimental
         if comm.is_main_process():
@@ -602,15 +608,18 @@ class Detectron2GoRunner(BaseRunner):
         return QATHook(cfg, self.build_detection_train_loader)
 
 
+def _add_rcnn_default_config(_C):
+    _C.EXPORT_CAFFE2 = CfgNode()
+    _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
+
+    _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
+    _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
+    _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
+
+
 class GeneralizedRCNNRunner(Detectron2GoRunner):
     @staticmethod
     def get_default_cfg():
         _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
-        _C.EXPORT_CAFFE2 = CfgNode()
-        _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
-
-        _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
-        _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
-        _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
-
+        _add_rcnn_default_config(_C)
         return _C
