@@ -8,6 +8,7 @@ import logging
 import math
 from typing import Tuple
 
+import d2go.utils.qat_utils as qat_utils
 import detectron2.utils.comm as comm
 import torch
 from detectron2.checkpoint import DetectionCheckpointer
@@ -95,6 +96,8 @@ def add_quantization_default_configs(_C):
     # quantization-aware training
     _C.QUANTIZATION.QAT = CfgNode()
     _C.QUANTIZATION.QAT.ENABLED = False
+    # Methods for QAT training, could be "default" or "learnable"
+    _C.QUANTIZATION.QAT.FAKE_QUANT_METHOD = "default"
     # QAT will use more GPU memory, user can change this factor to reduce the batch size
     # after fake quant is enabled. Setting it to 0.5 should guarantee no memory increase
     # compared with QAT is disabled.
@@ -106,6 +109,8 @@ def add_quantization_default_configs(_C):
     # the iteration number to enable observer, it's usually set to be the same as
     # QUANTIZATION.QAT.START_ITER.
     _C.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER = 35000
+    # the iteration number to enable learnable observer, only used when METHOD == "learnable"
+    _C.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER = 36000
     # the iteration number to disable observer, here it's 3k after enabling the fake
     # quant, 3k roughly corresponds to 7 out of 90 epochs in classification.
     _C.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER = 35000 + 3000
@@ -238,7 +243,9 @@ def default_prepare_for_quant(cfg, model):
         nn.Module: a ready model for QAT training or PTQ calibration
     """
     qconfig = (
-        torch.ao.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
+        qat_utils.get_qat_qconfig(
+            cfg.QUANTIZATION.BACKEND, cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
+        )
         if model.training
         else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
     )
@@ -346,12 +353,16 @@ def setup_qat_model(
     model_fp32,
     enable_fake_quant: bool = False,
     enable_observer: bool = False,
+    enable_learnable_observer: bool = False,
 ):
+    assert cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD in ["default", "learnable"]
+
     if hasattr(model_fp32, "_non_qat_to_qat_state_dict_map"):
         raise RuntimeError("The model is already setup to be QAT, cannot setup again!")
 
     device = model_fp32.device
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
+    qat_method = cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
 
     # prepare for qat may modify the fp32 model directly so we create a copy
     model_fp32_state_dict = model_fp32.state_dict()
@@ -359,20 +370,31 @@ def setup_qat_model(
     # prepare model for qat
     model = _prepare_model_for_qat(cfg, model_fp32)
 
+    # make sure the proper qconfig are used in the model
+    qat_utils.check_for_learnable_fake_quant_ops(qat_method, model)
+
     # Move newly added observers to the original device
     model.to(device)
 
     if not enable_fake_quant:
         logger.info("Disabling fake quant ...")
         model.apply(torch.ao.quantization.disable_fake_quant)
+        model.apply(qat_utils.disable_lqat_fake_quant)
     if not enable_observer:
-        logger.info("Disabling observer ...")
+        logger.info("Disabling static observer ...")
         model.apply(torch.ao.quantization.disable_observer)
+        model.apply(qat_utils.disable_lqat_static_observer)
+    if not enable_learnable_observer and qat_method == "learnable":
+        logger.info("Disabling learnable observer ...")
+        model.apply(qat_utils.disable_lqat_learnable_observer)
 
     # qat state dict mapper
     model = _setup_non_qat_to_qat_state_dict_map(
         model_fp32_state_dict, model, is_eager_mode=cfg.QUANTIZATION.EAGER_MODE
     )
+
+    # qat optimizer group for learnable qat
+    model = qat_utils.setup_qat_get_optimizer_param_groups(model, qat_method)
 
     return model
 
@@ -433,6 +455,7 @@ class QATHook(HookBase):
         self._applied = {
             "enable_fake_quant": False,
             "enable_observer": False,
+            "enable_learnable_observer": False,
             "disable_observer": False,
             "freeze_bn_stats": False,
         }
@@ -455,6 +478,7 @@ class QATHook(HookBase):
                 "[QAT] enable fake quant to start QAT, iter = {}".format(cur_iter)
             )
             model.apply(torch.ao.quantization.enable_fake_quant)
+            model.apply(qat_utils.enable_lqat_fake_quant)
             self._applied["enable_fake_quant"] = True
 
             _reset_qat_data_loader_if_needed(
@@ -466,9 +490,18 @@ class QATHook(HookBase):
             and cur_iter >= cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER
             and cur_iter < cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER
         ):
-            logger.info("[QAT] enable observer, iter = {}".format(cur_iter))
+            logger.info("[QAT] enable static observer, iter = {}".format(cur_iter))
             model.apply(torch.ao.quantization.enable_observer)
+            model.apply(qat_utils.enable_lqat_static_observer)
             self._applied["enable_observer"] = True
+
+        if (
+            not self._applied["enable_learnable_observer"]
+            and cur_iter >= cfg.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER
+        ):
+            logger.info(f"[QAT] enabling learnable observer, iter = {cur_iter}")
+            model.apply(qat_utils.enable_lqat_learnable_observer)
+            self._applied["enable_learnable_observer"] = True
 
         if (
             not self._applied["disable_observer"]
@@ -478,6 +511,8 @@ class QATHook(HookBase):
                 "[QAT] disabling observer for sub seq iters, iter = {}".format(cur_iter)
             )
             model.apply(torch.ao.quantization.disable_observer)
+            model.apply(qat_utils.disable_lqat_static_observer)
+            model.apply(qat_utils.disable_lqat_learnable_observer)
             self._applied["disable_observer"] = True
 
         if (

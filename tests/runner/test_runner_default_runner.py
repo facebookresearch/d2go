@@ -316,7 +316,7 @@ class TestDefaultRunner(unittest.TestCase):
 
                 return losses
 
-        def setup(tmp_dir, backend):
+        def setup(tmp_dir, backend, qat_method):
             ds_name = create_local_dataset(tmp_dir, 5, 10, 10)
             runner = default_runner.Detectron2GoRunner()
             cfg = _get_cfg(runner, tmp_dir, ds_name)
@@ -324,19 +324,29 @@ class TestDefaultRunner(unittest.TestCase):
                 (
                     ["MODEL.META_ARCHITECTURE", "MetaArchForTestQAT1"]
                     + ["QUANTIZATION.QAT.ENABLED", "True"]
-                    + ["QUANTIZATION.QAT.START_ITER", "0"]
+                    + ["QUANTIZATION.QAT.START_ITER", "1"]
                     + ["QUANTIZATION.QAT.ENABLE_OBSERVER_ITER", "0"]
+                    + ["QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER", "2"]
+                    + ["QUANTIZATION.QAT.DISABLE_OBSERVER_ITER", "4"]
+                    + ["QUANTIZATION.QAT.FREEZE_BN_ITER", "4"]
                     + ["QUANTIZATION.BACKEND", backend]
+                    + ["QUANTIZATION.QAT.FAKE_QUANT_METHOD", qat_method]
                 )
             )
             return runner, cfg
 
-        for backend in ["fbgemm", "qnnpack"]:
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                runner, cfg = setup(tmp_dir, backend=backend)
-                model = runner.build_model(cfg)
-                print(model)
-                runner.do_train(cfg, model, resume=True)
+        # seems that fbgemm with learnable qat is not supported
+        for backend, qat_method in [
+            ("fbgemm", "default"),
+            ("qnnpack", "default"),
+            ("qnnpack", "learnable"),
+        ]:
+            with self.subTest(backend=backend, qat_method=qat_method):
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    runner, cfg = setup(tmp_dir, backend=backend, qat_method=qat_method)
+                    model = runner.build_model(cfg)
+                    print(model)
+                    runner.do_train(cfg, model, resume=True)
 
             default_runner._close_all_tbx_writers()
 

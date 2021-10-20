@@ -6,10 +6,12 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
 import torch
+from d2go.utils.qat_utils import iterate_module_named_parameters
 from detectron2.solver.build import (
     maybe_add_gradient_clipping as d2_maybe_add_gradient_clipping,
 )
 from detectron2.utils.registry import Registry
+
 
 D2GO_OPTIM_MAPPER_REGISTRY = Registry("D2GO_OPTIM_MAPPER")
 
@@ -99,23 +101,6 @@ def regroup_optimizer_param_groups(params: List[Dict[str, Any]]):
         ret.append(cur)
 
     return ret
-
-
-def iterate_module_named_parameters(
-    model: OptimizerModelsType, check_requires_grad=True
-):
-    """Iterate over all parameters for the model"""
-    memo = set()
-    for module_name, module in model.named_modules():
-        for module_param_name, value in module.named_parameters(recurse=False):
-            if check_requires_grad and not value.requires_grad:
-                continue
-            # Avoid duplicating parameters
-            if value in memo:
-                continue
-            memo.add(value)
-
-            yield module_name, module, module_param_name, value
 
 
 def get_optimizer_param_groups_default(model: OptimizerModelsType):
