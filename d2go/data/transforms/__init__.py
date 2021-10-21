@@ -3,4 +3,4 @@
 
 
 # import all modules to make sure Registry works
-from . import affine, blur, color_yuv, crop, d2_native  # noqa
+from . import affine, blur, box_utils, color_yuv, crop, d2_native  # noqa
