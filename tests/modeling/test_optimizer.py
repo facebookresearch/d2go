@@ -10,10 +10,6 @@ import torch
 from d2go.optimizer import (
     build_optimizer_mapper,
 )
-from d2go.optimizer.build import (
-    expand_optimizer_param_groups,
-    regroup_optimizer_param_groups,
-)
 from d2go.utils.testing import helper
 
 
@@ -94,67 +90,6 @@ def get_optimizer_cfg(
 
 
 class TestOptimizer(unittest.TestCase):
-    def test_expand_optimizer_param_groups(self):
-        groups = [
-            {
-                "params": ["p1", "p2", "p3", "p4"],
-                "lr": 1.0,
-                "weight_decay": 3.0,
-            },
-            {
-                "params": ["p2", "p3", "p5"],
-                "lr": 2.0,
-                "momentum": 2.0,
-            },
-            {
-                "params": ["p1"],
-                "weight_decay": 4.0,
-            },
-        ]
-        gt_groups = [
-            dict(params=["p1"], lr=1.0, weight_decay=4.0),  # noqa
-            dict(params=["p2"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
-            dict(params=["p3"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
-            dict(params=["p4"], lr=1.0, weight_decay=3.0),  # noqa
-            dict(params=["p5"], lr=2.0, momentum=2.0),  # noqa
-        ]
-        out = expand_optimizer_param_groups(groups)
-        self.assertEqual(out, gt_groups)
-
-    def test_regroup_optimizer_param_groups(self):
-        expanded_groups = [
-            dict(params=["p1"], lr=1.0, weight_decay=4.0),  # noqa
-            dict(params=["p2"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
-            dict(params=["p3"], lr=2.0, weight_decay=3.0, momentum=2.0),  # noqa
-            dict(params=["p4"], lr=1.0, weight_decay=3.0),  # noqa
-            dict(params=["p5"], lr=2.0, momentum=2.0),  # noqa
-        ]
-        gt_groups = [
-            {
-                "lr": 1.0,
-                "weight_decay": 4.0,
-                "params": ["p1"],
-            },
-            {
-                "lr": 2.0,
-                "weight_decay": 3.0,
-                "momentum": 2.0,
-                "params": ["p2", "p3"],
-            },
-            {
-                "lr": 1.0,
-                "weight_decay": 3.0,
-                "params": ["p4"],
-            },
-            {
-                "lr": 2.0,
-                "momentum": 2.0,
-                "params": ["p5"],
-            },
-        ]
-        out = regroup_optimizer_param_groups(expanded_groups)
-        self.assertEqual(out, gt_groups)
-
     def test_create_optimizer_default(self):
         class Model(torch.nn.Module):
             def __init__(self):

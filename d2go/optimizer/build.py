@@ -2,13 +2,13 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import itertools
 import logging
-from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
 import torch
 from d2go.utils.qat_utils import iterate_module_named_parameters
 from detectron2.solver.build import (
     maybe_add_gradient_clipping as d2_maybe_add_gradient_clipping,
+    reduce_param_groups,
 )
 from detectron2.utils.registry import Registry
 
@@ -58,49 +58,7 @@ def get_optimizer_param_groups(model: OptimizerModelsType, cfg):
         )
         params += model.get_optimizer_param_groups(cfg)
 
-    # Reorganize the parameter groups and merge duplicated groups
-    # The number of parameter groups needs to be as small as possible in order
-    # to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
-    # of using a parameter_group per single parameter, we reorganize the
-    # parameter groups and merge duplicated groups. This approach speeds
-    # up optimizer step significantly.
-    params = expand_optimizer_param_groups(params)
-    params = regroup_optimizer_param_groups(params)
-
-    return params
-
-
-def expand_optimizer_param_groups(params: List[Dict[str, Any]]):
-    """Expand the optimizer parameter groups so that each group contains only
-    one parameter
-    """
-    ret = defaultdict(dict)
-    for item in params:
-        assert "params" in item
-        cur_params = {x: y for x, y in item.items() if x != "params"}
-        for param in item["params"]:
-            ret[param]["params"] = [param]
-            ret[param].update(cur_params)
-
-    ret = list(ret.values())
-
-    return ret
-
-
-def regroup_optimizer_param_groups(params: List[Dict[str, Any]]):
-    """Regroup the optimizer parameter groups using the optimizer parameters as key"""
-    groups = defaultdict(list)
-    for item in params:
-        cur_params = tuple((x, y) for x, y in item.items() if x != "params")
-        groups[cur_params] += item["params"]
-
-    ret = []
-    for param_keys, param_values in groups.items():
-        cur = {kv[0]: kv[1] for kv in param_keys}
-        cur["params"] = param_values
-        ret.append(cur)
-
-    return ret
+    return reduce_param_groups(params)
 
 
 def get_optimizer_param_groups_default(model: OptimizerModelsType):
