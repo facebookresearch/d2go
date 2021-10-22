@@ -7,9 +7,10 @@ import logging
 
 import mock
 import yaml
-from d2go.utils.helper import reroute_config_path
 from detectron2.config import CfgNode as _CfgNode
 from fvcore.common.registry import Registry
+
+from .utils import reroute_config_path
 
 logger = logging.getLogger(__name__)
 

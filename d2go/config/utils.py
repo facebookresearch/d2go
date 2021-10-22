@@ -1,7 +1,45 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import os
 from typing import Dict, List
+
+import pkg_resources
+
+
+def reroute_config_path(path: str) -> str:
+    """
+    Supporting rerouting the config files for convenience:
+        d2go:// -> mobile-vision/d2go/...
+        detectron2go:// -> mobile-vision/d2go/configs/...
+        detectron2:// -> vision/fair/detectron2/configs/...
+        flow:// -> fblearner/flow/projects/mobile_vision/detectron2go/...
+        mv_experimental:// -> mobile-vision/experimental/...
+            (see //mobile-vision/experimental:mv_experimental_d2go_yaml_files)
+    Those config are considered as code, so they'll reflect your current checkout,
+        try using canary if you have local changes.
+    """
+
+    if path.startswith("d2go://"):
+        rel_path = path[len("d2go://") :]
+        config_in_resource = pkg_resources.resource_filename(
+            "d2go.model_zoo", os.path.join("configs", rel_path)
+        )
+        return config_in_resource
+    elif path.startswith("detectron2go://"):
+        rel_path = path[len("detectron2go://") :]
+        config_in_resource = pkg_resources.resource_filename(
+            "d2go.model_zoo", os.path.join("configs", rel_path)
+        )
+        return config_in_resource
+    elif path.startswith("detectron2://"):
+        rel_path = path[len("detectron2://") :]
+        config_in_resource = pkg_resources.resource_filename(
+            "detectron2.model_zoo", os.path.join("configs", rel_path)
+        )
+        return config_in_resource
+
+    return path
 
 
 def _flatten_config_dict(x, reorder, prefix):
