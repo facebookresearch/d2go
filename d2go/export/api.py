@@ -39,7 +39,6 @@ else:
 
 import torch
 import torch.nn as nn
-from d2go.modeling.quantization import post_training_quantize
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.file_utils import make_temp_directory
@@ -106,10 +105,13 @@ def convert_predictor(
                 "The model is not quantized during training, running post"
                 " training quantization ..."
             )
+            # delayed import to avoid circular import since d2go.modeling depends on d2go.export
+            from d2go.modeling.quantization import post_training_quantize
+
             pytorch_model = post_training_quantize(cfg, pytorch_model, data_loader)
             # only check bn exists in ptq as qat still has bn inside fused ops
             if fuse_utils.check_bn_exist(pytorch_model):
-                logger.warn(f"Post training quantized model has bn inside fused ops")
+                logger.warn("Post training quantized model has bn inside fused ops")
         logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
 
         if cfg.QUANTIZATION.EAGER_MODE:
