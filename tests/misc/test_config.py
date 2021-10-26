@@ -51,6 +51,22 @@ class TestConfig(unittest.TestCase):
             another_cfg = default_cfg.clone()
             another_cfg.merge_from_file(file_name)
 
+    def test_base_reroute(self):
+        default_cfg = GeneralizedRCNNRunner().get_default_cfg()
+
+        # use rerouted file as base
+        cfg = default_cfg.clone()
+        cfg.merge_from_file(get_resource_path("rerouted_base.yaml"))
+        self.assertEqual(cfg.MODEL.MASK_ON, True)  # base is loaded
+        self.assertEqual(cfg.MODEL.FBNET_V2.ARCH, "test")  # non-base is loaded
+
+        # use multiple files as base
+        cfg = default_cfg.clone()
+        cfg.merge_from_file(get_resource_path("rerouted_multi_base.yaml"))
+        self.assertEqual(cfg.MODEL.MASK_ON, True)  # base is loaded
+        self.assertEqual(cfg.MODEL.FBNET_V2.ARCH, "FBNetV3_A")  # second base is loaded
+        self.assertEqual(cfg.OUTPUT_DIR, "test")  # non-base is loaded
+
     def test_default_cfg_dump_and_load(self):
         default_cfg = GeneralizedRCNNRunner().get_default_cfg()
 

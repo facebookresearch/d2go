@@ -56,16 +56,22 @@ def reroute_load_yaml_with_base():
     _safe_load = yaml.safe_load
     _unsafe_load = yaml.unsafe_load
 
+    def _reroute_base(cfg):
+        if BASE_KEY in cfg:
+            if isinstance(cfg[BASE_KEY], list):
+                cfg[BASE_KEY] = [reroute_config_path(x) for x in cfg[BASE_KEY]]
+            else:
+                cfg[BASE_KEY] = reroute_config_path(cfg[BASE_KEY])
+        return cfg
+
     def mock_safe_load(f):
         cfg = _safe_load(f)
-        if BASE_KEY in cfg:
-            cfg[BASE_KEY] = reroute_config_path(cfg[BASE_KEY])
+        cfg = _reroute_base(cfg)
         return cfg
 
     def mock_unsafe_load(f):
         cfg = _unsafe_load(f)
-        if BASE_KEY in cfg:
-            cfg[BASE_KEY] = reroute_config_path(cfg[BASE_KEY])
+        cfg = _reroute_base(cfg)
         return cfg
 
     with mock.patch("yaml.safe_load", side_effect=mock_safe_load):

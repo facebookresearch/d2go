@@ -19,6 +19,7 @@ def reroute_config_path(path: str) -> str:
     Those config are considered as code, so they'll reflect your current checkout,
         try using canary if you have local changes.
     """
+    assert isinstance(path, str), path
 
     if path.startswith("d2go://"):
         rel_path = path[len("d2go://") :]

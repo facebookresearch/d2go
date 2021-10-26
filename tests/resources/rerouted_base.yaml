@@ -1,0 +1,4 @@
+_BASE_: "detectron2go://mask_rcnn_fbnetv3a_C4.yaml"
+MODEL:
+  FBNET_V2:
+    ARCH: "test"

@@ -1,0 +1,4 @@
+_BASE_:
+  - "rerouted_base.yaml"
+  - "detectron2go://mask_rcnn_fbnetv3a_C4.yaml"
+OUTPUT_DIR: "test"
