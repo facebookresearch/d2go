@@ -54,9 +54,9 @@ class BaseRegistryPopulationTests(object):
 
 class TestMetaArchRegistryPopulation(unittest.TestCase, BaseRegistryPopulationTests):
     def setUp(self):
-        import d2go.modeling.meta_arch
+        import d2go.modeling
 
-        self._package = d2go.modeling.meta_arch
+        self._package = d2go.modeling
 
     def get_registered_items(self):
         from detectron2.modeling import META_ARCH_REGISTRY
