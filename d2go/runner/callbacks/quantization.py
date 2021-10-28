@@ -449,11 +449,16 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
             return
 
         with mode(pl_module, training=True) as train:
-            pl_module._prepared = self.prepare(
+            prepared = self.prepare(
                 _deepcopy(train),
                 configs=self.qconfig_dicts,
                 attrs=self.preserved_attrs,
             )
+            # freeze the original model since only the prepared model will
+            # participate in forward.
+            for x in train.parameters():
+                x.requires_grad = False
+            pl_module._prepared = prepared
         pl_module.forward = MethodType(_quantized_forward, pl_module)
         self.prepared = pl_module._prepared
 

@@ -226,7 +226,11 @@ class DefaultTask(pl.LightningModule):
     def configure_optimizers(
         self,
     ) -> Tuple[List[torch.optim.Optimizer], List]:
-        optim = build_optimizer_mapper(self.cfg, self.model)
+        model = self.model
+        if hasattr(self, PREPARED):
+            # train the prepared model for FX quantization
+            model = getattr(self, PREPARED)
+        optim = build_optimizer_mapper(self.cfg, model)
         lr_scheduler = d2_build_lr_scheduler(self.cfg, optim)
 
         return [optim], [{"scheduler": lr_scheduler, "interval": "step"}]

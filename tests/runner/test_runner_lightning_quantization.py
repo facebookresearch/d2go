@@ -20,6 +20,7 @@ from d2go.utils.testing.helper import tempdir
 from d2go.utils.testing.lightning_test_module import TestModule
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+from pytorch_lightning.plugins import DDPPlugin
 from torch.ao.quantization import (  # @manual; @manual
     default_dynamic_qconfig,
     get_default_qconfig,
@@ -189,11 +190,14 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         num_epochs = 2
         qat = QuantizationAwareTraining()
         trainer = Trainer(
+            accelerator="ddp_cpu",
+            num_processes=1,
             default_root_dir=os.path.join(root_dir, "quantized"),
             checkpoint_callback=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
+            plugins=[DDPPlugin(find_unused_parameters=False)],
         )
         trainer.fit(model)
 
