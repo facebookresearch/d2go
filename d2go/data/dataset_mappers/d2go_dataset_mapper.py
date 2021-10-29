@@ -4,17 +4,19 @@
 
 import copy
 import logging
-from io import BytesIO
 
 import numpy as np
 import torch
+from d2go.data.dataset_mappers.data_reading import (
+    read_image_with_prefetch,
+    read_sem_seg_file_with_prefetch,
+)
 from d2go.utils.helper import retryable
 from detectron2.data import detection_utils as utils, transforms as T
 from detectron2.data.transforms.augmentation import (
     AugInput,
     AugmentationList,
 )
-from PIL import Image
 
 from .build import D2GO_DATA_MAPPER_REGISTRY
 
@@ -22,16 +24,6 @@ logger = logging.getLogger(__name__)
 
 PREFETCHED_FILE_NAME = "prefetch_image"
 PREFETCHED_SEM_SEG_FILE_NAME = "prefetch_sem_seg"
-
-
-def read_image_with_prefetch(file_name, format=None, prefetched=None):
-    if prefetched is None:
-        return utils.read_image(file_name, format)
-
-    image = Image.open(BytesIO(prefetched.numpy().view()))
-    # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
-    image = utils._apply_exif_orientation(image)
-    return utils.convert_PIL_to_numpy(image, format)
 
 
 @D2GO_DATA_MAPPER_REGISTRY.register()
@@ -176,11 +168,12 @@ class D2GoDatasetMapper(object):
             dataset_dict["instances"] = utils.filter_empty_instances(instances)
 
         if "sem_seg_file_name" in dataset_dict:
-            sem_seg_gt = read_image_with_prefetch(
+            sem_seg_gt = read_sem_seg_file_with_prefetch(
                 dataset_dict.pop("sem_seg_file_name"),
-                "L",
                 prefetched=dataset_dict.get(PREFETCHED_SEM_SEG_FILE_NAME, None),
-            ).squeeze(2)
+            )
+            if len(sem_seg_gt.shape) > 2:
+                sem_seg_gt = sem_seg_gt.squeeze(2)
             sem_seg_gt = transforms.apply_segmentation(sem_seg_gt)
             sem_seg_gt = torch.as_tensor(sem_seg_gt.astype("long"))
             dataset_dict["sem_seg"] = sem_seg_gt
