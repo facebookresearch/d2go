@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from caffe2.proto import caffe2_pb2
 from d2go.export.api import PredictorExportConfig
+from d2go.utils.qat_utils import get_qat_qconfig
 from detectron2.export.caffe2_modeling import (
     META_ARCH_CAFFE2_EXPORT_TYPE_MAP,
     convert_batched_inputs_to_c2_format,
@@ -235,7 +236,9 @@ def default_rcnn_prepare_for_quant(self, cfg):
     model = self
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
     model.qconfig = (
-        torch.ao.quantization.get_default_qat_qconfig(cfg.QUANTIZATION.BACKEND)
+        get_qat_qconfig(
+            cfg.QUANTIZATION.BACKEND, cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
+        )
         if model.training
         else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
     )
