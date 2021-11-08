@@ -169,14 +169,6 @@ class BaseRunner(object):
             cfg
         )  # upgrade from D2's CfgNode to D2Go's CfgNode
 
-        try:
-            from d2go.runner import get_unintentional_added_configs_during_runner_import
-
-            for key in get_unintentional_added_configs_during_runner_import():
-                cfg.register_deprecated_key(key)
-        except ImportError:
-            pass
-
         cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
         return cfg
 
