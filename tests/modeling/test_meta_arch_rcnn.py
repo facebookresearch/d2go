@@ -29,9 +29,9 @@ class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
-            ["torchscript@legacy", True],
+            ["torchscript@c2_ops", True],
             ["torchscript", True],
-            ["torchscript_int8@legacy", False],
+            ["torchscript_int8@c2_ops", False],
             ["torchscript_int8", False],
         ]
     )
@@ -60,7 +60,7 @@ class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
-            ["torchscript_int8@legacy", False],  # TODO: fix mismatch
+            ["torchscript_int8@c2_ops", False],  # TODO: fix mismatch
             ["torchscript_int8", False],  # TODO: fix mismatch
         ]
     )
@@ -87,7 +87,7 @@ class TestFBNetV3KeypointRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
-            ["torchscript_int8@legacy", False],  # TODO: fix mismatch
+            ["torchscript_int8@c2_ops", False],  # TODO: fix mismatch
             ["torchscript_int8", False],  # TODO: fix mismatch
         ]
     )

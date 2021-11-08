@@ -64,7 +64,7 @@ class GeneralizedRCNNPatch:
 @RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()
 def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
     if (
-        "@legacy" in predictor_type
+        "@c2_ops" in predictor_type
         or "caffe2" in predictor_type
         or "onnx" in predictor_type
     ):
@@ -90,7 +90,7 @@ def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
             # Caffe2MetaArch takes a single tuple as input (which is the return of
             # preprocess_func), data_generator requires all positional args as a tuple.
             data_generator=lambda x: (preprocess_func(x),),
-            model_export_method=predictor_type.replace("@legacy", "", 1),
+            model_export_method=predictor_type.replace("@c2_ops", "", 1),
             model_export_kwargs=model_export_kwargs,
             preprocess_info=preprocess_info,
             postprocess_info=postprocess_info,
