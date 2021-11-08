@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple, Union, Any
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
 from detectron2.config import CfgNode
-from detectron2.data.transforms import ExtentTransform, CropTransform
+from detectron2.data.transforms import ExtentTransform
 from detectron2.structures import BoxMode
 
 from . import box_utils as bu
