@@ -87,6 +87,7 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
             "Failed to estimate flops using detectron2's FlopCountAnalysis. "
             f"Error written to {output_file}."
         )
+        flops = float("nan")
     return flops
 
 
