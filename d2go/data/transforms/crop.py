@@ -10,10 +10,9 @@ import numpy as np
 from detectron2.config import CfgNode
 from detectron2.data.transforms import ExtentTransform
 from detectron2.structures import BoxMode
-
-from . import box_utils as bu
 from fvcore.transforms.transform import CropTransform, NoOpTransform, Transform
 
+from . import box_utils as bu
 from .build import TRANSFORM_OP_REGISTRY, _json_load
 
 
