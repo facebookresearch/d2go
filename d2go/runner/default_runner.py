@@ -6,7 +6,7 @@ import logging
 import os
 from collections import OrderedDict
 from functools import lru_cache
-from typing import Type, Optional, List
+from typing import Type, Optional, List, Union
 
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
@@ -494,7 +494,9 @@ class Detectron2GoRunner(BaseRunner):
         return {"model_final": trained_cfg}
 
     @classmethod
-    def build_detection_test_loader(cls, cfg, dataset_name, mapper=None):
+    def build_detection_test_loader(
+        cls, cfg, dataset_name: Union[str, List[str]], mapper=None
+    ):
         logger.info(
             "Building detection test loader for dataset: {} ...".format(dataset_name)
         )
