@@ -94,17 +94,19 @@ def parse_tfm_gen_repr(tfm_gen_repr: str) -> Tuple[str, Optional[str]]:
         )
 
 
-def build_transform_gen(cfg: CfgNode, is_train: bool) -> List[d2T.Transform]:
+def build_transform_gen(
+    cfg: CfgNode, is_train: bool, tfm_gen_repr_list: Optional[List[str]] = None
+) -> List[d2T.Transform]:
     """
-    This function builds a list of TransformGen or Transform objects using the a list of
-    strings from cfg.D2GO_DATA.AUG_OPS.TRAIN/TEST. Each string (aka. `tfm_gen_repr`)
-    will be split into `name` and `arg_str` (separated by "::"); the `name`
-    will be used to lookup the registry while `arg_str` will be used as argument.
+    This function builds a list of TransformGen or Transform objects using a list of
+    strings (`tfm_gen_repr_list). If list is not provided, cfg.D2GO_DATA.AUG_OPS.TRAIN/TEST is used.
+    Each string (aka. `tfm_gen_repr`) will be split into `name` and `arg_str` (separated by "::");
+    the `name` will be used to lookup the registry while `arg_str` will be used as argument.
 
     Each function in registry needs to take `cfg`, `arg_str` and `is_train` as
     input, and return a list of TransformGen or Transform objects.
     """
-    tfm_gen_repr_list = (
+    tfm_gen_repr_list = tfm_gen_repr_list or (
         cfg.D2GO_DATA.AUG_OPS.TRAIN if is_train else cfg.D2GO_DATA.AUG_OPS.TEST
     )
     tfm_gens = [
