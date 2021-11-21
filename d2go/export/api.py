@@ -51,7 +51,7 @@ from mobile_cv.predictor.builtin_functions import (
 )
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
-if TORCH_VERSION >= (1, 10):
+if TORCH_VERSION > (1, 10):
     from torch.ao.quantization import convert
     from torch.ao.quantization.quantize_fx import convert_fx
 else:

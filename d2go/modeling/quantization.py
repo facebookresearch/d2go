@@ -19,7 +19,7 @@ from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
-if TORCH_VERSION >= (1, 10):
+if TORCH_VERSION > (1, 10):
     from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 else:
     from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
