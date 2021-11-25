@@ -30,6 +30,7 @@ def main(
     runner,
     # binary specific optional arguments
     predictor_types: typing.List[str],
+    device: str = "cpu",
     compare_accuracy: bool = False,
     skip_if_fail: bool = False,
 ):
@@ -37,7 +38,7 @@ def main(
     setup_after_launch(cfg, output_dir, runner)
 
     with temp_defrost(cfg):
-        cfg.merge_from_list(["MODEL.DEVICE", "cpu"])
+        cfg.merge_from_list(["MODEL.DEVICE", device])
     model = runner.build_model(cfg, eval_only=True)
 
     # NOTE: train dataset is used to avoid leakage since the data might be used for
@@ -88,6 +89,7 @@ def run_with_cmdline_args(args):
         runner,
         # binary specific optional arguments
         predictor_types=args.predictor_types,
+        device=args.device,
         compare_accuracy=args.compare_accuracy,
         skip_if_fail=args.skip_if_fail,
     )
@@ -100,6 +102,9 @@ def get_parser():
         type=str,
         nargs="+",
         help="List of strings specify the types of predictors to export",
+    )
+    parser.add_argument(
+        "--device", default="cpu", help="the device to export the model on"
     )
     parser.add_argument(
         "--compare-accuracy",
