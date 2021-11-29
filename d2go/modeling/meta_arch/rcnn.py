@@ -6,14 +6,8 @@ import logging
 
 import torch
 import torch.nn as nn
-from caffe2.proto import caffe2_pb2
 from d2go.export.api import PredictorExportConfig
 from d2go.utils.qat_utils import get_qat_qconfig
-from detectron2.export.caffe2_modeling import (
-    META_ARCH_CAFFE2_EXPORT_TYPE_MAP,
-    convert_batched_inputs_to_c2_format,
-)
-from detectron2.export.shared import get_pb_arg_vali, get_pb_arg_vals
 from detectron2.modeling import GeneralizedRCNN
 from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.projects.point_rend import PointRendMaskHead
@@ -63,6 +57,8 @@ class GeneralizedRCNNPatch:
 
 @RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()
 def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
+    from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
+
     if (
         "@c2_ops" in predictor_type
         or "caffe2" in predictor_type
@@ -297,6 +293,10 @@ class D2Caffe2MetaArchPreprocessFunc(object):
         self.device = device
 
     def __call__(self, inputs):
+        from detectron2.export.caffe2_modeling import (
+            convert_batched_inputs_to_c2_format,
+        )
+
         data, im_info = convert_batched_inputs_to_c2_format(
             inputs, self.size_divisibility, self.device
         )
@@ -304,6 +304,9 @@ class D2Caffe2MetaArchPreprocessFunc(object):
 
     @staticmethod
     def get_params(cfg, model):
+        from caffe2.proto import caffe2_pb2
+        from detectron2.export.shared import get_pb_arg_vali, get_pb_arg_vals
+
         fake_predict_net = caffe2_pb2.NetDef()
         model.encode_additional_info(fake_predict_net, None)
         size_divisibility = get_pb_arg_vali(fake_predict_net, "size_divisibility", 0)
@@ -321,6 +324,9 @@ class D2Caffe2MetaArchPostprocessFunc(object):
         self.encoded_info = encoded_info
 
     def __call__(self, inputs, tensor_inputs, tensor_outputs):
+        from caffe2.proto import caffe2_pb2
+        from detectron2.export.shared import get_pb_arg_vals
+
         encoded_info = self.encoded_info.encode("ascii")
         fake_predict_net = caffe2_pb2.NetDef().FromString(encoded_info)
         meta_architecture = get_pb_arg_vals(fake_predict_net, "meta_architecture", None)
@@ -334,6 +340,8 @@ class D2Caffe2MetaArchPostprocessFunc(object):
 
     @staticmethod
     def get_params(cfg, model):
+        from caffe2.proto import caffe2_pb2
+
         # NOTE: the post processing has different values for different meta
         # architectures, here simply relying Caffe2 meta architecture to encode info
         # into a NetDef and storing it as whole.
