@@ -10,6 +10,7 @@ from typing import Any, Tuple, Optional, Dict, NamedTuple, List, AnyStr, Set
 import torch
 from d2go.export.api import ModelExportMethodRegistry, ModelExportMethod
 from detectron2.config.instantiate import dump_dataclass, instantiate
+from detectron2.export import dump_torchscript_IR
 from detectron2.export.flatten import TracingAdapter, flatten_to_tuple
 from detectron2.export.torchscript_patch import patch_builtin_len
 from detectron2.utils.file_io import PathManager
@@ -93,6 +94,7 @@ def export_optimize_and_save_torchscript(
 
         with _synced_local_file(torchscript_filename) as model_file:
             torch.jit.save(script_model, model_file, _extra_files=_extra_files)
+        dump_torchscript_IR(script_model, os.path.join(output_path, "torchscript_IR"))
 
         with _synced_local_file("data.pth") as data_file:
             torch.save(inputs, data_file)
