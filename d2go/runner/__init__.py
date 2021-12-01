@@ -3,15 +3,15 @@
 
 
 import importlib
-from typing import Type, Union
+from typing import Type, Union, Optional
 
 from pytorch_lightning import LightningModule
 
-from .default_runner import BaseRunner, Detectron2GoRunner, GeneralizedRCNNRunner
+from .default_runner import BaseRunner, GeneralizedRCNNRunner
 
 
 def create_runner(
-    class_full_name: str, *args, **kwargs
+    class_full_name: Optional[str], *args, **kwargs
 ) -> Union[BaseRunner, Type[LightningModule]]:
     """Constructs a runner instance if class is a d2go runner. Returns class
     type if class is a Lightning module.
