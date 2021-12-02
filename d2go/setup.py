@@ -272,6 +272,12 @@ def log_info(cfg, runner):
     if wf_id is not None:
         logger.info("FBLearner Flow Run ID: {}".format(wf_id))
     logger.info("Environment info:\n" + collect_env_info())
+    try:
+        from detectron2.fb.utils import print_fbcode_info
+
+        print_fbcode_info()
+    except ImportError:
+        pass
     logger.info("Running with full config:\n{}".format(cfg))
     logger.info("Running with runner: {}".format(runner))
 
