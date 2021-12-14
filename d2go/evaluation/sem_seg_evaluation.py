@@ -74,13 +74,18 @@ class MultiSemSegEvaluator(DatasetEvaluator):
             from d2go.data.fb.semantic_seg import register_sem_seg
 
             if tmp_dataset_name not in MetadataCatalog:
+                if superclass_name in metadata.pseudo_gt_classes:
+                    mask_dir = metadata.pseudo_gt_mask_dir
+                else:
+                    mask_dir = metadata.mask_dir
+
                 register_sem_seg(
                     tmp_dataset_name,
                     metadata=metadata.mcs_metadata[superclass_name],
                     image_root=metadata.image_root,
                     sem_seg_root=metadata.sem_seg_root,
                     instances_json=metadata.json_file,
-                    mask_dir=metadata.mask_dir.format(superclass_name),
+                    mask_dir=mask_dir.format(superclass_name),
                 )
             self.evaluators[key] = create_evaluator_and_reset(tmp_dataset_name)
 
