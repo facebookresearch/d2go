@@ -254,6 +254,13 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
             )
         )
 
+    assert len(dataset_dicts) != 0, (
+        f"Loaded zero entries from {dataset_name} empty. \n"
+        f"  Size of inputs (imgs={len(imgs)}, anns={len(anns)})\n"
+        f"  Filtered of inputs (seg={num_instances_without_valid_segmentation},"
+        f" ={num_instances_without_valid_bounding_box}\n"
+    )
+
     return dataset_dicts
 
 
