@@ -4,6 +4,7 @@
 import copy
 import json
 import os
+import tempfile
 import unittest
 
 import d2go.data.extended_coco as extended_coco
@@ -174,6 +175,29 @@ class TestD2GoDatasets(unittest.TestCase):
         for dic in inj_ds1:
             self.assertEqual(dic["width"], 80)
             self.assertEqual(dic["height"], 60)
+
+    @tempdir
+    def test_direct_copy_keys(self, tmp_dir):
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
+        with tempfile.NamedTemporaryFile(prefix=tmp_dir, suffix=".json") as h_temp:
+            new_json_file = h_temp.name
+            with open(json_file, "r") as h_in:
+                ds = json.load(h_in)
+                for idx, x in enumerate(ds["images"]):
+                    x["key1"] = idx
+                    x["key2"] = idx
+                with open(new_json_file, "w") as h_out:
+                    json.dump(ds, h_out)
+
+            loaded_ds = extended_coco.extended_coco_load(new_json_file, image_dir)
+            self.assertTrue("key1" not in loaded_ds[0])
+            self.assertTrue("key2" not in loaded_ds[0])
+
+            loaded_ds = extended_coco.extended_coco_load(
+                new_json_file, image_dir, image_direct_copy_keys=["key1"]
+            )
+            self.assertTrue("key1" in loaded_ds[0])
+            self.assertTrue("key2" not in loaded_ds[0])
 
     @tempdir
     def test_sub_dataset(self, tmp_dir):

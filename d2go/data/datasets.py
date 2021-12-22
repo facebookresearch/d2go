@@ -10,6 +10,7 @@ import os
 from d2go.utils.helper import get_dir_path
 from d2go.utils.misc import fb_overwritable
 from detectron2.data import DatasetCatalog, MetadataCatalog
+from detectron2.utils.registry import Registry
 
 from .extended_coco import coco_text_load, extended_coco_load
 from .extended_lvis import extended_lvis_load
@@ -22,6 +23,14 @@ D2GO_DATASETS_BASE_MODULE = "d2go.datasets"
 IM_DIR = "image_directory"
 ANN_FN = "annotation_file"
 
+COCO_REGISTER_FUNCTION_REGISTRY = Registry("COCO_REGISTER_FUNCTION_REGISTRY")
+COCO_REGISTER_FUNCTION_REGISTRY.__doc__ = "Registry - coco register function"
+
+
+def get_coco_register_function(cfg):
+    name = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.REGISTER_FUNCTION
+    return COCO_REGISTER_FUNCTION_REGISTRY.get(name)
+
 
 def _import_dataset(module_name):
     return importlib.import_module(
@@ -29,6 +38,7 @@ def _import_dataset(module_name):
     )
 
 
+@COCO_REGISTER_FUNCTION_REGISTRY.register()
 def _register_extended_coco(dataset_name, split_dict):
     json_file = split_dict[ANN_FN]
     image_root = split_dict[IM_DIR]
@@ -113,6 +123,7 @@ def inject_coco_datasets(cfg):
     im_dirs = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS
     json_files = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES
     metadata_type = cfg.D2GO_DATA.DATASETS.COCO_INJECTION.KEYPOINT_METADATA
+    _register_func = get_coco_register_function(cfg)
 
     assert len(names) == len(im_dirs) == len(json_files)
     for ds_index, (name, im_dir, json_file) in enumerate(
@@ -122,7 +133,7 @@ def inject_coco_datasets(cfg):
         if len(metadata_type) != 0:
             split_dict["meta_data"] = get_keypoint_metadata(metadata_type[ds_index])
         logger.info("Inject coco dataset {}: {}".format(name, split_dict))
-        _register_extended_coco(name, split_dict)
+        _register_func(name, split_dict)
 
 
 def register_dataset_split(dataset_name, split_dict):

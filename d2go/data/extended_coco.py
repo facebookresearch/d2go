@@ -7,6 +7,7 @@ import logging
 import shlex
 import subprocess
 from collections import defaultdict
+from typing import Optional, List, Dict
 
 import detectron2.utils.comm as comm
 from detectron2.data import MetadataCatalog
@@ -43,7 +44,7 @@ class InMemoryCOCO(COCO):
         self.createIndex()
 
 
-def extract_archive_file(archive_fn, im_dir):
+def extract_archive_file(archive_fn: str, im_dir: str):
     if not os.path.exists(im_dir) or not os.listdir(im_dir):
         # Dataset is not deployed. Deploy it.
         archive_fns = archive_fn
@@ -71,8 +72,12 @@ def extract_archive_file(archive_fn, im_dir):
 
 
 def convert_coco_text_to_coco_detection_json(
-    source_json, target_json, set_type=None, min_img_size=100, text_cat_id=1
-):
+    source_json: str,
+    target_json: str,
+    set_type: Optional[str] = None,
+    min_img_size: int = 100,
+    text_cat_id: int = 1,
+) -> Dict:
     """
     This function converts a COCOText style JSON to a COCODetection style
     JSON.
@@ -125,7 +130,7 @@ def convert_coco_text_to_coco_detection_json(
     return coco_text_json
 
 
-def valid_bbox(bbox_xywh, img_w, img_h):
+def valid_bbox(bbox_xywh: List[int], img_w: int, img_h: int) -> bool:
     if (
         bbox_xywh is None
         or (bbox_xywh[3] == 0 or bbox_xywh[2] == 0)
@@ -136,7 +141,14 @@ def valid_bbox(bbox_xywh, img_w, img_h):
     return True
 
 
-def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
+def convert_to_dict_list(
+    image_root: str,
+    id_map: Dict,
+    imgs: Dict,
+    anns: Dict,
+    dataset_name: Optional[str] = None,
+    image_direct_copy_keys: List[str] = None,
+) -> List[Dict]:
     num_instances_without_valid_segmentation = 0
     num_instances_without_valid_bounding_box = 0
     dataset_dicts = []
@@ -159,6 +171,13 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
                         ).format(img_dict["file_name"], image_root)
                     )
             record["file_name"] = img_dict["file_name"]
+
+        if image_direct_copy_keys:
+            for copy_key in image_direct_copy_keys:
+                assert (
+                    copy_key in img_dict
+                ), f"{copy_key} not in coco image dictionary entry"
+                record[copy_key] = img_dict[copy_key]
 
         if "height" in img_dict or "width" in img_dict:
             record["height"] = img_dict["height"]
@@ -265,12 +284,12 @@ def convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name=None):
 
 
 def coco_text_load(
-    coco_json_file,
-    image_root,
-    source_json_file=None,
-    dataset_name=None,
-    archive_file=None,
-):
+    coco_json_file: str,
+    image_root: str,
+    source_json_file: Optional[str] = None,
+    dataset_name: Optional[str] = None,
+    archive_file: Optional[str] = None,
+) -> List[Dict]:
     if archive_file is not None:
         if comm.get_rank() == 0:
             extract_archive_file(archive_file, image_root)
@@ -288,7 +307,13 @@ def coco_text_load(
     )
 
 
-def extended_coco_load(json_file, image_root, dataset_name=None, loaded_json=None):
+def extended_coco_load(
+    json_file: str,
+    image_root: str,
+    dataset_name: Optional[str] = None,
+    loaded_json: Optional[str] = None,
+    image_direct_copy_keys: List[str] = None,
+) -> List[Dict]:
     """
     Load a json file with COCO's annotation format.
     Currently only supports instance segmentation annotations.
@@ -352,7 +377,14 @@ def extended_coco_load(json_file, image_root, dataset_name=None, loaded_json=Non
     logger.info("Loaded {} images from {}".format(len(imgs), json_file))
 
     # Return the coco converted to record list
-    return convert_to_dict_list(image_root, id_map, imgs, anns, dataset_name)
+    return convert_to_dict_list(
+        image_root,
+        id_map,
+        imgs,
+        anns,
+        dataset_name,
+        image_direct_copy_keys=image_direct_copy_keys,
+    )
 
 
 if __name__ == "__main__":

@@ -28,6 +28,7 @@ def add_d2go_data_default_configs(_C):
     _C.D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS = []
     _C.D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES = []
     _C.D2GO_DATA.DATASETS.COCO_INJECTION.KEYPOINT_METADATA = []
+    _C.D2GO_DATA.DATASETS.COCO_INJECTION.REGISTER_FUNCTION = "_register_extended_coco"
 
     # On-the-fly register a list of datasets located under detectron2go/datasets
     # by specifying the filename (without .py).
