@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import os
 import unittest
 
 import torch
@@ -11,6 +12,7 @@ from detectron2.structures import Boxes
 
 
 class TestBoxWithNMSLimit(unittest.TestCase):
+    @unittest.skipIf(os.getenv("OSSRUN") == "1", "Caffe2 is not available for OSS")
     def test_caffe2_pytorch_eq(self):
         ims_per_batch = 8
         post_nms_topk = 100

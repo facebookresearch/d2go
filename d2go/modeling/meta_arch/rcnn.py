@@ -57,13 +57,13 @@ class GeneralizedRCNNPatch:
 
 @RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()
 def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
-    from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
-
     if (
         "@c2_ops" in predictor_type
         or "caffe2" in predictor_type
         or "onnx" in predictor_type
     ):
+        from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
+
         C2MetaArch = META_ARCH_CAFFE2_EXPORT_TYPE_MAP[cfg.MODEL.META_ARCHITECTURE]
         c2_compatible_model = C2MetaArch(cfg, self)
 

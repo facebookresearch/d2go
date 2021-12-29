@@ -83,5 +83,6 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example():
 
 
 class TestOptimizer(unittest.TestCase):
-    def test_maskrcnn_export_legacy_vs_new_format_example(self):
+    @unittest.skipIf(os.getenv("OSSRUN") == "1", "Caffe2 is not available for OSS")
+    def test_maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
         maskrcnn_export_caffe2_vs_torchvision_opset_format_example()

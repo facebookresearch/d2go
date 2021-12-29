@@ -36,6 +36,8 @@ class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
         ]
     )
     def test_export(self, predictor_type, compare_match):
+        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+            self.skipTest("Caffe2 is not available for OSS")
         self._test_export(predictor_type, compare_match=compare_match)
 
 
@@ -65,6 +67,8 @@ class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
         ]
     )
     def test_export(self, predictor_type, compare_match):
+        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+            self.skipTest("Caffe2 is not available for OSS")
         self._test_export(predictor_type, compare_match=compare_match)
 
 
@@ -92,6 +96,8 @@ class TestFBNetV3KeypointRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
         ]
     )
     def test_export(self, predictor_type, compare_match):
+        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+            self.skipTest("Caffe2 is not available for OSS")
         self._test_export(predictor_type, compare_match=compare_match)
 
 
