@@ -7,7 +7,21 @@ from typing import Type, Union, Optional
 
 from pytorch_lightning import LightningModule
 
-from .default_runner import BaseRunner, GeneralizedRCNNRunner
+from .default_runner import (
+    BaseRunner,
+    Detectron2GoRunner,
+    GeneralizedRCNNRunner,
+    TRAINER_HOOKS_REGISTRY,
+)
+
+
+__all__ = [
+    "BaseRunner",
+    "Detectron2GoRunner",
+    "GeneralizedRCNNRunner",
+    "TRAINER_HOOKS_REGISTRY",
+    "create_runner",
+]
 
 
 def create_runner(
