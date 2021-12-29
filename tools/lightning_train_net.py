@@ -22,8 +22,15 @@ from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.plugins import DDPPlugin
 from torch.distributed import get_rank
+
+try:
+    from pytorch_lightning.plugins import DDPPlugin
+except ImportError:
+    assert os.getenv("OSSRUN") == "1"
+    # FIXME: DDPPlugin has been renamed to DDPStrategy, however internal version is
+    # not updated yet, temporally skipping the import in oss env in order to unblock
+    # CI where DPP is not used.
 
 
 logging.basicConfig(level=logging.INFO)
