@@ -5,6 +5,7 @@ from typing import Optional
 import pkg_resources
 import torch
 from d2go.runner import create_runner
+from d2go.utils.launch_environment import MODEL_ZOO_STORAGE_PREFIX
 from detectron2.checkpoint import DetectionCheckpointer
 
 
@@ -13,7 +14,6 @@ class _ModelZooUrls(object):
     Mapping from names to officially released D2Go pre-trained models.
     """
 
-    S3_PREFIX = "https://mobile-cv.s3-us-west-2.amazonaws.com/d2go/models/"
     CONFIG_PATH_TO_URL_SUFFIX = {
         "faster_rcnn_fbnetv3a_C4.yaml": "268421013/model_final.pth",
         "faster_rcnn_fbnetv3a_dsmask_C4.yaml": "268412271/model_0499999.pth",
@@ -37,7 +37,7 @@ def get_checkpoint_url(config_path):
     name = config_path.replace(".yaml", "")
     if config_path in _ModelZooUrls.CONFIG_PATH_TO_URL_SUFFIX:
         suffix = _ModelZooUrls.CONFIG_PATH_TO_URL_SUFFIX[config_path]
-        return _ModelZooUrls.S3_PREFIX + suffix
+        return MODEL_ZOO_STORAGE_PREFIX + suffix
     raise RuntimeError("{} not available in Model Zoo!".format(name))
 
 
@@ -51,7 +51,7 @@ def get_config_file(config_path):
         str: the real path to the config file.
     """
     cfg_file = pkg_resources.resource_filename(
-        "d2go.model_zoo", os.path.join("configs", config_path)
+        "d2go", os.path.join("configs", config_path)
     )
     if not os.path.exists(cfg_file):
         raise RuntimeError("{} not available in Model Zoo!".format(config_path))
