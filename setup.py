@@ -62,16 +62,6 @@ def d2go_gather_files(dst_module, file_path, extension="*") -> List[str]:
     return config_paths
 
 
-def get_model_zoo_configs() -> List[str]:
-    """
-    Return a list of configs to include in package for model zoo. Copy over these configs inside
-    d2go/model_zoo.
-    """
-    return d2go_gather_files(
-        os.path.join("model_zoo", "configs"), "configs", "**/*.yaml"
-    )
-
-
 if __name__ == "__main__":
     setup(
         name="d2go",
@@ -88,7 +78,7 @@ if __name__ == "__main__":
             "d2go": [
                 "LICENSE",
             ],
-            "d2go.model_zoo": get_model_zoo_configs(),
+            "d2go.configs": d2go_gather_files("configs", "configs", "**/*.yaml"),
             "d2go.tools": d2go_gather_files("tools", "tools", "**/*.py"),
             "d2go.tests": d2go_gather_files("tests", "tests", "**/*helper.py"),
         },
