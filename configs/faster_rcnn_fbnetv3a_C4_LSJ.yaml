@@ -1,0 +1,61 @@
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  MASK_ON: False
+  FBNET_V2:
+    ARCH: "FBNetV3_A"
+    NORM: "naiveSyncBN"
+    WIDTH_DIVISOR: 8
+  BACKBONE:
+    NAME: FBNetV2C4Backbone
+  ANCHOR_GENERATOR:
+    # SIZES: [[32, 64, 128, 256, 512]]  # NOTE: for smaller resolution (320 < 512)
+    SIZES: [[32, 64, 96, 128, 160]]
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]  # Three aspect ratios (same for all in feature maps)
+  RPN:
+    HEAD_NAME: FBNetV2RpnHead
+    IN_FEATURES: ["trunk3"]
+    # Default values are 12000/2000 for train and 6000/1000 for test. In FBNet
+    # we use smaller numbers.  TODO: reduce proposals for test in .yaml directly.
+    PRE_NMS_TOPK_TRAIN: 2000
+    POST_NMS_TOPK_TRAIN: 2000
+    PRE_NMS_TOPK_TEST: 1000
+    POST_NMS_TOPK_TEST: 30
+  ROI_HEADS:
+    NAME: StandardROIHeads
+    IN_FEATURES: ["trunk3"]
+  ROI_BOX_HEAD:
+    NAME: FBNetV2RoIBoxHead
+    POOLER_RESOLUTION: 6
+    NORM: "naiveSyncBN"
+  ROI_MASK_HEAD:
+    NAME: "MaskRCNNConvUpsampleHead"
+    NUM_CONV: 4
+    POOLER_RESOLUTION: 14
+MODEL_EMA:
+  ENABLED: True
+  DECAY: 0.9998
+DATASETS:
+  TRAIN: ("coco_2017_train",)
+  TEST: ("coco_2017_val",)
+SOLVER:
+  IMS_PER_BATCH: 32
+  BASE_LR: 0.16
+  MAX_ITER: 540000
+  LR_SCHEDULER_NAME: WarmupCosineLR
+TEST:
+  EVAL_PERIOD: 10000
+D2GO_DATA:
+  AUG_OPS:
+    TRAIN: [
+      'ResizeScaleOp::{"min_scale": 0.1, "max_scale": 2.0, "target_height": 224, "target_width": 320}',
+      "RandomFlipOp",
+      'FixedSizeCropOp::{"crop_size": [224, 320]}',
+    ]
+    TEST: ["ResizeShortestEdgeOp"]
+INPUT:
+  RECOMPUTE_BOXES: True
+  MAX_SIZE_TEST: 320
+  MAX_SIZE_TRAIN: 320
+  MIN_SIZE_TEST: 224
+  MIN_SIZE_TRAIN: (224,)
+VERSION: 2

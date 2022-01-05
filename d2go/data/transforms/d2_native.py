@@ -3,7 +3,7 @@
 
 
 import logging
-from typing import List, Union
+from typing import List, Union, Optional
 
 import detectron2.data.transforms.augmentation as aug
 from detectron2.config import CfgNode
@@ -24,6 +24,8 @@ D2_RANDOM_TRANSFORMS = {
     "RandomFlip": d2T.RandomFlip,
     "RandomSaturation": d2T.RandomSaturation,
     "RandomLighting": d2T.RandomLighting,
+    "FixedSizeCrop": d2T.FixedSizeCrop,
+    "ResizeScale": d2T.ResizeScale,
 }
 
 
@@ -105,3 +107,19 @@ def RandomSSDColorAugOp(
     assert isinstance(kwargs, dict)
     assert "img_format" not in kwargs
     return [ColorAugSSDTransform(img_format=cfg.INPUT.FORMAT, **kwargs)]
+
+
+# example repr: ResizeScaleOp::{"min_scale": 0.1, "max_scale": 2.0, "target_height": 1024, "target_width": 1024}
+@TRANSFORM_OP_REGISTRY.register()
+def ResizeScaleOp(
+    cfg: CfgNode, arg_str: Optional[str], is_train: bool
+) -> List[aug.Augmentation]:
+    return build_func(cfg, arg_str, is_train, name="ResizeScale")
+
+
+# example repr: FixedSizeCropOp::{"crop_size": [1024, 1024]}
+@TRANSFORM_OP_REGISTRY.register()
+def FixedSizeCropOp(
+    cfg: CfgNode, arg_str: Optional[str], is_train: bool
+) -> List[aug.Augmentation]:
+    return build_func(cfg, arg_str, is_train, name="FixedSizeCrop")

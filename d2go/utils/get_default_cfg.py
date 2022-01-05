@@ -70,6 +70,9 @@ def get_default_cfg(_C):
     _C.SOLVER.LR_MULTIPLIER_OVERWRITE = []
     _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
 
+    # RECOMPUTE_BOXES for LSJ Training
+    _C.INPUT.RECOMPUTE_BOXES = False
+
     # Default world size in D2 is 0, which means scaling is not applied. For D2Go
     # auto scale is encouraged, setting it to 8
     assert _C.SOLVER.REFERENCE_WORLD_SIZE == 0
