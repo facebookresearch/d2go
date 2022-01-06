@@ -25,10 +25,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.distributed import get_rank
 
 try:
-    from pytorch_lightning.plugins import DDPPlugin
+    from pytorch_lightning.plugins import DDPStrategy
 except ImportError:
     assert os.getenv("OSSRUN") == "1"
-    # FIXME: DDPPlugin has been renamed to DDPStrategy, however internal version is
+    # FIXME: DDPStrategy has been renamed to DDPStrategy, however internal version is
     # not updated yet, temporally skipping the import in oss env in order to unblock
     # CI where DPP is not used.
 
@@ -90,7 +90,7 @@ def get_trainer_params(
     plugins = []
     if accelerator:
         plugins.append(
-            DDPPlugin(find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS)
+            DDPStrategy(find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS)
         )
 
     return {
