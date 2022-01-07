@@ -86,10 +86,6 @@ def _convert_to_lightning(d2_checkpoint: Dict[str, Any]) -> None:
         d2_checkpoint[new] = d2_checkpoint[old]
         del d2_checkpoint[old]
 
-    if _OLD_EMA_KEY in d2_checkpoint:
-        for k, v in d2_checkpoint[_OLD_EMA_KEY].items():
-            d2_checkpoint[_STATE_DICT_KEY][f"model_ema.{k}"] = v
-
     for old, new in zip(
         ["optimizer", "scheduler"], ["optimizer_states", "lr_schedulers"]
     ):
@@ -129,7 +125,6 @@ class DefaultTask(pl.LightningModule):
                 decay=cfg.MODEL_EMA.DECAY,
                 device=cfg.MODEL_EMA.DEVICE or cfg.MODEL.DEVICE,
             )
-            self.model_ema = deepcopy(self.model)
             self.dataset_evaluators[ModelTag.EMA] = []
 
     def _build_model(self) -> torch.nn.Module:
@@ -419,7 +414,16 @@ class DefaultTask(pl.LightningModule):
 
     def _on_evaluation_epoch_start(self):
         if self.ema_state:
+            self.model_ema = deepcopy(self.model)
             self.ema_state.apply_to(self.model_ema)
+
+    def on_validation_epoch_end(self):
+        if self.ema_state and hasattr(self, "model_ema"):
+            del self.model_ema
+
+    def on_test_epoch_end(self):
+        if self.ema_state and hasattr(self, "model_ema"):
+            del self.model_ema
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         if self.ema_state:
