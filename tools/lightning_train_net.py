@@ -25,7 +25,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.distributed import get_rank
 
 try:
-    from pytorch_lightning.plugins import DDPStrategy
+    from pytorch_lightning.strategies import DDPStrategy
 except ImportError:
     assert os.getenv("OSSRUN") == "1"
     # FIXME: DDPStrategy has been renamed to DDPStrategy, however internal version is
