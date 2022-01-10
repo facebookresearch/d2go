@@ -92,6 +92,7 @@ def default_scale_d2_configs(cfg, new_world_size):
     gpu_scale = new_world_size / cfg.SOLVER.REFERENCE_WORLD_SIZE
 
     base_lr = cfg.SOLVER.BASE_LR
+    base_lr_end = cfg.SOLVER.BASE_LR_END
     max_iter = cfg.SOLVER.MAX_ITER
     steps = cfg.SOLVER.STEPS
     eval_period = cfg.TEST.EVAL_PERIOD
@@ -110,6 +111,7 @@ def default_scale_d2_configs(cfg, new_world_size):
 
     # default configs in D2
     cfg.SOLVER.BASE_LR = base_lr * lr_scale
+    cfg.SOLVER.BASE_LR_END = base_lr_end * lr_scale
     cfg.SOLVER.MAX_ITER = int(round(max_iter / gpu_scale))
     cfg.SOLVER.STEPS = tuple(int(round(s / gpu_scale)) for s in steps)
     cfg.TEST.EVAL_PERIOD = int(round(eval_period / gpu_scale))
@@ -127,6 +129,9 @@ def default_scale_quantization_configs(cfg, new_world_size):
     )
     cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER = int(
         round(cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER / gpu_scale)
+    )
+    cfg.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER = int(
+        round(cfg.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER / gpu_scale)
     )
     cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER = int(
         round(cfg.QUANTIZATION.QAT.DISABLE_OBSERVER_ITER / gpu_scale)
