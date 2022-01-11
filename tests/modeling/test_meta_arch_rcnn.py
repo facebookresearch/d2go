@@ -41,6 +41,28 @@ class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
         self._test_export(predictor_type, compare_match=compare_match)
 
 
+class TestFBNetV3MaskRCNNFPNFP32(RCNNBaseTestCases.TemplateTestCase):
+    def setup_custom_test(self):
+        super().setup_custom_test()
+        self.cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3g_fpn.yaml")
+
+    def test_inference(self):
+        self._test_inference()
+
+    @RCNNBaseTestCases.expand_parameterized_test_export(
+        [
+            ["torchscript@c2_ops", True],
+            ["torchscript", True],
+            ["torchscript_int8@c2_ops", False],
+            ["torchscript_int8", False],
+        ]
+    )
+    def test_export(self, predictor_type, compare_match):
+        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+            self.skipTest("Caffe2 is not available for OSS")
+        self._test_export(predictor_type, compare_match=compare_match)
+
+
 class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
         super().setup_custom_test()

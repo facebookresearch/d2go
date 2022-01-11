@@ -9,6 +9,7 @@ import torch.nn as nn
 from d2go.export.api import PredictorExportConfig
 from d2go.utils.qat_utils import get_qat_qconfig
 from detectron2.modeling import GeneralizedRCNN
+from detectron2.modeling.backbone.fpn import FPN
 from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.projects.point_rend import PointRendMaskHead
 from detectron2.utils.registry import Registry
@@ -113,9 +114,22 @@ def _apply_eager_mode_quant(cfg, model):
         """Wrap each quantized part of the model to insert Quant and DeQuant in-place"""
 
         # Wrap backbone and proposal_generator
-        model.backbone = wrap_quant_subclass(
-            model.backbone, n_inputs=1, n_outputs=len(model.backbone._out_features)
-        )
+        if isinstance(model.backbone, FPN):
+            # HACK: currently the quantization won't pick up D2's the Conv2d, which is
+            # used by D2's default FPN (same as FBNetV2FPN), this causes problem if we
+            # warpping entire backbone as whole. The current solution is only quantizing
+            # bottom_up and leaving other parts un-quantized. However we need to
+            # re-visit this if using other FPN module since the new FPN module might
+            # be pikced by quantization.
+            model.backbone.bottom_up = wrap_quant_subclass(
+                model.backbone.bottom_up,
+                n_inputs=1,
+                n_outputs=len(model.backbone.bottom_up._out_features),
+            )
+        else:
+            model.backbone = wrap_quant_subclass(
+                model.backbone, n_inputs=1, n_outputs=len(model.backbone._out_features)
+            )
         model.proposal_generator.rpn_head = wrap_quant_subclass(
             model.proposal_generator.rpn_head,
             n_inputs=len(cfg.MODEL.RPN.IN_FEATURES),
@@ -175,6 +189,7 @@ def _apply_eager_mode_quant(cfg, model):
 def _fx_quant_prepare(self, cfg):
     prep_fn = prepare_qat_fx if self.training else prepare_fx
     qconfig = {"": self.qconfig}
+    assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
     self.backbone = prep_fn(
         self.backbone,
         qconfig,
@@ -261,6 +276,7 @@ def default_rcnn_prepare_for_quant_convert(self, cfg):
     if cfg.QUANTIZATION.EAGER_MODE:
         raise NotImplementedError()
 
+    assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
     self.backbone = convert_fx(
         self.backbone,
         convert_custom_config_dict={"preserved_attributes": ["size_divisibility"]},
