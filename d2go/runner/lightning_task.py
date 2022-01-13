@@ -119,6 +119,11 @@ class DefaultTask(pl.LightningModule):
         self.save_hyperparameters()
         self.eval_res = None
 
+        # Support custom training step in meta arch
+        if hasattr(self.model, "training_step"):
+            # activate manual optimization for custom training step
+            self.automatic_optimization = False
+
         self.ema_state: Optional[EMAState] = None
         if cfg.MODEL_EMA.ENABLED:
             self.ema_state = EMAState(
@@ -164,12 +169,29 @@ class DefaultTask(pl.LightningModule):
         return task
 
     def training_step(self, batch, batch_idx):
+        if hasattr(self.model, "training_step"):
+            self._meta_arch_training_step(batch, batch_idx)
+
+        return self._standard_training_step(batch, batch_idx)
+
+    def _standard_training_step(self, batch, batch_idx):
         loss_dict = self.forward(batch)
         losses = sum(loss_dict.values())
         loss_dict["total_loss"] = losses
         self.storage.step()
         self.log_dict(loss_dict, prog_bar=True)
         return losses
+
+    def _meta_arch_training_step(self, batch, batch_idx):
+        opt = self.optimizers()
+        loss_dict = self.model.training_step(
+            batch, batch_idx, opt, self.manual_backward
+        )
+        sch = self.lr_schedulers()
+        sch.step()
+        self.storage.step()
+        self.log_dict(loss_dict, prog_bar=True)
+        return loss_dict
 
     def test_step(self, batch, batch_idx: int, dataloader_idx: int = 0) -> None:
         self._evaluation_step(batch, batch_idx, dataloader_idx)

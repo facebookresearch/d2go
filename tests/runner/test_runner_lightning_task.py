@@ -213,3 +213,23 @@ class TestLightningTask(unittest.TestCase):
             cfg.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
             model = GeneralizedRCNNTask.build_model(cfg, eval_only=True)
             self.assertTrue(isinstance(model.avgpool, torch.fx.GraphModule))
+
+    @tempdir
+    def test_meta_arch_training_step(self, tmp_dir):
+        @META_ARCH_REGISTRY.register()
+        class DetMetaArchForWithTrainingStep(mah.DetMetaArchForTest):
+            def training_step(self, batch, batch_idx, opt, manual_backward):
+                assert batch
+                assert opt
+                assert manual_backward
+                return {"total_loss": 0.4}
+
+        cfg = self._get_cfg(tmp_dir)
+        cfg.MODEL.META_ARCHITECTURE = "DetMetaArchForWithTrainingStep"
+
+        task = GeneralizedRCNNTask(cfg)
+
+        trainer = self._get_trainer(tmp_dir)
+        with EventStorage() as storage:
+            task.storage = storage
+            trainer.fit(task)
