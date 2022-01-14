@@ -43,7 +43,7 @@ class VisualizerWrapper(object):
         if "instances" in per_image:
             target_fields = per_image["instances"].get_fields()
             labels = [metadata.thing_classes[i] for i in target_fields["gt_classes"]]
-            vis = visualizer.overlay_instances(
+            visualizer.overlay_instances(
                 labels=labels,
                 boxes=target_fields.get("gt_boxes", None),
                 masks=target_fields.get("gt_masks", None),
@@ -51,11 +51,9 @@ class VisualizerWrapper(object):
             )
 
         if "sem_seg" in per_image:
-            vis = visualizer.draw_sem_seg(
-                per_image["sem_seg"], area_threshold=0, alpha=0.5
-            )
+            visualizer.draw_sem_seg(per_image["sem_seg"], area_threshold=0, alpha=0.5)
 
-        return vis.get_image()
+        return visualizer.get_output().get_image()
 
     def visualize_test_output(
         self, dataset_name, dataset_mapper, input_dict, output_dict
@@ -139,17 +137,27 @@ class DataLoaderVisWrapper:
 
         for i, per_image in enumerate(data):
             vis_image = self._visualizer.visualize_train_input(per_image)
-            tag = "train_loader_batch_{}/".format(storage.iter)
+            tag = [f"train_loader_batch_{storage.iter}"]
             if "dataset_name" in per_image:
-                tag += per_image["dataset_name"] + "/"
+                tag += [per_image["dataset_name"]]
             if "file_name" in per_image:
-                tag += "img_{}/{}".format(i, per_image["file_name"])
-            self.tbx_writer._writer.add_image(
-                tag=tag,
-                img_tensor=vis_image,
-                global_step=storage.iter,
-                dataformats="HWC",
-            )
+                tag += [f"img_{i}", per_image["file_name"]]
+
+            if isinstance(vis_image, dict):
+                for k in vis_image:
+                    self.tbx_writer._writer.add_image(
+                        tag="/".join(tag + [k]),
+                        img_tensor=vis_image[k],
+                        global_step=storage.iter,
+                        dataformats="HWC",
+                    )
+            else:
+                self.tbx_writer._writer.add_image(
+                    tag="/".join(tag),
+                    img_tensor=vis_image,
+                    global_step=storage.iter,
+                    dataformats="HWC",
+                )
 
 
 class VisualizationEvaluator(DatasetEvaluator):

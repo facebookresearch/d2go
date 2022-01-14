@@ -9,6 +9,7 @@ import unittest
 from typing import Optional, List, Tuple, Dict
 
 import d2go.runner.default_runner as default_runner
+import numpy as np
 import torch
 from d2go.utils.testing.data_loader_helper import (
     LocalImageGenerator,
@@ -17,6 +18,7 @@ from d2go.utils.testing.data_loader_helper import (
 from d2go.utils.testing.helper import tempdir
 from d2go.utils.visualization import VisualizerWrapper, DataLoaderVisWrapper
 from detectron2.data import DatasetCatalog
+from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, Instances
 from detectron2.utils.events import EventStorage
 
@@ -50,6 +52,13 @@ def create_dummy_input_dict(
         instance.gt_classes = torch.tensor([0])
     input_dict = {"image": torch.zeros(3, img_w, img_h), "instances": instance}
     return input_dict
+
+
+@META_ARCH_REGISTRY.register()
+class DummyMetaArch(torch.nn.Module):
+    @staticmethod
+    def visualize_train_input(visualizer_wrapper, input_dict):
+        return {"default": np.zeros((60, 60, 30)), "secondary": np.zeros((60, 60, 30))}
 
 
 class ImageDictStore:
@@ -140,3 +149,51 @@ class TestVisualization(unittest.TestCase):
             self.assertTrue("tag" in vis_image_dict)
             self.assertTrue("img_tensor" in vis_image_dict)
             self.assertTrue("global_step" in vis_image_dict)
+
+    @tempdir
+    def test_dict_based_dataloader_visualizer_wrapper(self, tmp_dir: str):
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir, 60, 60)
+
+        # Create config data
+        runner = default_runner.Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_list(
+            [
+                "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
+                str(["inj_ds3"]),
+                "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
+                str([image_dir]),
+                "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
+                str([json_file]),
+                "DATASETS.TRAIN",
+                str(["inj_ds3"]),
+                "MODEL.META_ARCHITECTURE",
+                "DummyMetaArch",
+            ]
+        )
+
+        # Register configs
+        runner.register(cfg)
+        DatasetCatalog.get("inj_ds3")
+
+        with EventStorage():
+            # Create mock storage for writer
+            mock_tbx_writer = MockTbxWriter()
+            # Create a wrapper around an iterable object and run once
+            input_dict = create_dummy_input_dict(60, 60, [[1, 1, 2, 2]])
+            dl_wrapper = DataLoaderVisWrapper(
+                cfg, mock_tbx_writer, [[input_dict], [input_dict]]
+            )
+            for _ in dl_wrapper:
+                break
+
+            # Check data has been written to buffer
+            self.assertTrue(len(mock_tbx_writer._writer.write_buffer) == 2)
+            self.assertTrue(
+                "train_loader_batch_0/default"
+                in mock_tbx_writer._writer.write_buffer[0]["tag"]
+            )
+            self.assertTrue(
+                "train_loader_batch_0/secondary"
+                in mock_tbx_writer._writer.write_buffer[1]["tag"]
+            )
