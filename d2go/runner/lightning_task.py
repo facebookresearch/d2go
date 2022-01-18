@@ -32,7 +32,6 @@ from d2go.runner.default_runner import (
     GeneralizedRCNNRunner,
     _get_tbx_writer,
 )
-from d2go.setup import setup_after_lightning_launch
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import VisualizationEvaluator
@@ -340,6 +339,8 @@ class DefaultTask(pl.LightningModule):
     # Runner methods
     # ---------------------------------------------------------------------------
     def setup(self, stage: str):
+        from d2go.setup import setup_after_lightning_launch
+
         setup_after_lightning_launch(self.cfg, self.cfg.OUTPUT_DIR)
 
     def register(self, cfg: CfgNode):
