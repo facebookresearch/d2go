@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import functools
 from typing import Tuple, List, Any, Union
 
 import detectron2.data.transforms.augmentation as aug
@@ -136,6 +137,22 @@ def clip_box_xywh(bbox_xywh: torch.Tensor, image_size_hw: List[int]):
     return get_bbox_xywh_from_xyxy(bbox_xyxy)
 
 
+def scale_coord(
+    target: Union[torch.tensor, np.ndarray],
+    source: Union[torch.tensor, np.ndarray],
+    percentage: float,
+):
+    return [((a - b) * percentage + a) for a, b in zip(target, source)]
+
+
+def pad_coord(
+    target: Union[torch.tensor, np.ndarray],
+    source: Union[torch.tensor, np.ndarray],
+    fixed_pad: float,
+):
+    return [(np.sign(a - b) * fixed_pad + a) for a, b in zip(target, source)]
+
+
 class EnlargeBoundingBox(Transform):
     """Enlarge bounding box based on fixed padding or percentage"""
 
@@ -147,17 +164,12 @@ class EnlargeBoundingBox(Transform):
         assert percentage is None or fixed_pad is None
 
         if percentage is not None:
-
-            def xfn(x, c):
-                return [((a - b) * percentage + a) for a, b in zip(x, c)]
+            self.xfm_fn = functools.partial(scale_coord, percentage=percentage)
 
         elif fixed_pad is not None:
-
-            def xfn(x, c):
-                return [(np.sign(a - b) * fixed_pad + a) for a, b in zip(x, c)]
+            self.xfm_fn = functools.partial(pad_coord, fixed_pad=fixed_pad)
 
         self.box_only = box_only
-        self.xfm_fn = xfn
 
     def apply_image(self, img: torch.Tensor) -> np.ndarray:
         return img
