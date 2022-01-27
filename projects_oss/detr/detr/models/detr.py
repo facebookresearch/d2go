@@ -6,6 +6,7 @@ DETR model and criterion classes.
 """
 import torch
 import torch.nn.functional as F
+from detectron2.config import configurable
 from detr.util import box_ops
 from detr.util.misc import (
     NestedTensor,
@@ -18,6 +19,7 @@ from detr.util.misc import (
 from torch import nn
 
 from .backbone import build_backbone
+from .build import DETR_MODEL_REGISTRY, build_detr_backbone
 from .matcher import build_matcher
 from .segmentation import (
     DETRsegm,
@@ -27,12 +29,14 @@ from .segmentation import (
     sigmoid_focal_loss,
 )
 from .setcriterion import SetCriterion
-from .transformer import build_transformer
+from .transformer import Transformer, build_transformer
 
 
+@DETR_MODEL_REGISTRY.register()
 class DETR(nn.Module):
     """This is the DETR module that performs object detection"""
 
+    @configurable
     def __init__(
         self,
         backbone,
@@ -65,6 +69,46 @@ class DETR(nn.Module):
         )
         self.backbone = backbone
         self.aux_loss = aux_loss
+
+    @classmethod
+    def from_config(cls, cfg):
+        num_classes = cfg.MODEL.DETR.NUM_CLASSES
+        hidden_dim = cfg.MODEL.DETR.HIDDEN_DIM
+        num_queries = cfg.MODEL.DETR.NUM_OBJECT_QUERIES
+        # Transformer parameters:
+        nheads = cfg.MODEL.DETR.NHEADS
+        dropout = cfg.MODEL.DETR.DROPOUT
+        dim_feedforward = cfg.MODEL.DETR.DIM_FEEDFORWARD
+        enc_layers = cfg.MODEL.DETR.ENC_LAYERS
+        dec_layers = cfg.MODEL.DETR.DEC_LAYERS
+        pre_norm = cfg.MODEL.DETR.PRE_NORM
+
+        # Loss parameters:
+        deep_supervision = cfg.MODEL.DETR.DEEP_SUPERVISION
+
+        use_focal_loss = cfg.MODEL.DETR.USE_FOCAL_LOSS
+
+        backbone = build_detr_backbone(cfg)
+
+        transformer = Transformer(
+            d_model=hidden_dim,
+            dropout=dropout,
+            nhead=nheads,
+            dim_feedforward=dim_feedforward,
+            num_encoder_layers=enc_layers,
+            num_decoder_layers=dec_layers,
+            normalize_before=pre_norm,
+            return_intermediate_dec=deep_supervision,
+        )
+
+        return {
+            "backbone": backbone,
+            "transformer": transformer,
+            "num_classes": num_classes,
+            "num_queries": num_queries,
+            "aux_loss": deep_supervision,
+            "use_focal_loss": use_focal_loss,
+        }
 
     def forward(self, samples: NestedTensor):
         """The forward expects a NestedTensor, which consists of:

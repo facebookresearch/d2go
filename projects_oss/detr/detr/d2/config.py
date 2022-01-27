@@ -10,7 +10,10 @@ def add_detr_config(cfg):
     Add config for DETR.
     """
     cfg.MODEL.DETR = CN()
+    cfg.MODEL.DETR.NAME = "DETR"
     cfg.MODEL.DETR.NUM_CLASSES = 80
+
+    # simple backbone
     cfg.MODEL.BACKBONE.SIMPLE = False
     cfg.MODEL.BACKBONE.STRIDE = 1
     cfg.MODEL.BACKBONE.CHANNEL = 0

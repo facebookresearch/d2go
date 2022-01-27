@@ -3,10 +3,11 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from detectron2.modeling import META_ARCH_REGISTRY, build_backbone, detector_postprocess
+from detectron2.modeling import META_ARCH_REGISTRY, detector_postprocess
 from detectron2.structures import Boxes, ImageList, Instances, BitMasks
 from detr.datasets.coco import convert_coco_poly_to_mask
 from detr.models.backbone import Joiner
+from detr.models.build import build_detr_model
 from detr.models.deformable_detr import DeformableDETR
 from detr.models.deformable_transformer import DeformableTransformer
 from detr.models.detr import DETR
@@ -14,123 +15,11 @@ from detr.models.matcher import HungarianMatcher
 from detr.models.position_encoding import PositionEmbeddingSine
 from detr.models.segmentation import DETRsegm, PostProcessSegm
 from detr.models.setcriterion import SetCriterion, FocalLossSetCriterion
-from detr.models.transformer import Transformer
 from detr.util.box_ops import box_cxcywh_to_xyxy, box_xyxy_to_cxcywh
 from detr.util.misc import NestedTensor
 from torch import nn
 
 __all__ = ["Detr"]
-
-
-class ResNetMaskedBackbone(nn.Module):
-    """This is a thin wrapper around D2's backbone to provide padding masking"""
-
-    def __init__(self, cfg):
-        super().__init__()
-        self.backbone = build_backbone(cfg)
-        backbone_shape = self.backbone.output_shape()
-        if cfg.MODEL.DETR.NUM_FEATURE_LEVELS > 1:
-            self.strides = [8, 16, 32]
-        else:
-            self.strides = [32]
-
-        if cfg.MODEL.RESNETS.RES5_DILATION == 2:
-            # fix dilation from d2
-            self.backbone.stages[-1][0].conv2.dilation = (1, 1)
-            self.backbone.stages[-1][0].conv2.padding = (1, 1)
-            self.strides[-1] = self.strides[-1] // 2
-
-        self.feature_strides = [backbone_shape[f].stride for f in backbone_shape.keys()]
-        self.num_channels = [backbone_shape[k].channels for k in backbone_shape.keys()]
-
-    def forward(self, images):
-        features = self.backbone(images.tensor)
-        # one tensor per feature level. Each tensor has shape (B, maxH, maxW)
-        masks = self.mask_out_padding(
-            [features_per_level.shape for features_per_level in features.values()],
-            images.image_sizes,
-            images.tensor.device,
-        )
-        assert len(features) == len(masks)
-        for i, k in enumerate(features.keys()):
-            features[k] = NestedTensor(features[k], masks[i])
-        return features
-
-    def mask_out_padding(self, feature_shapes, image_sizes, device):
-        masks = []
-        assert len(feature_shapes) == len(self.feature_strides)
-        for idx, shape in enumerate(feature_shapes):
-            N, _, H, W = shape
-            masks_per_feature_level = torch.ones(
-                (N, H, W), dtype=torch.bool, device=device
-            )
-            for img_idx, (h, w) in enumerate(image_sizes):
-                masks_per_feature_level[
-                    img_idx,
-                    : int(np.ceil(float(h) / self.feature_strides[idx])),
-                    : int(np.ceil(float(w) / self.feature_strides[idx])),
-                ] = 0
-            masks.append(masks_per_feature_level)
-        return masks
-
-
-class FBNetMaskedBackbone(ResNetMaskedBackbone):
-    """This is a thin wrapper around D2's backbone to provide padding masking"""
-
-    def __init__(self, cfg):
-        nn.Module.__init__(self)
-        self.backbone = build_backbone(cfg)
-        self.out_features = cfg.MODEL.FBNET_V2.OUT_FEATURES
-        self.feature_strides = list(self.backbone._out_feature_strides.values())
-        self.num_channels = [
-            self.backbone._out_feature_channels[k] for k in self.out_features
-        ]
-        self.strides = [
-            self.backbone._out_feature_strides[k] for k in self.out_features
-        ]
-
-    def forward(self, images):
-        features = self.backbone(images.tensor)
-        masks = self.mask_out_padding(
-            [features_per_level.shape for features_per_level in features.values()],
-            images.image_sizes,
-            images.tensor.device,
-        )
-        assert len(features) == len(masks)
-        ret_features = {}
-        for i, k in enumerate(features.keys()):
-            if k in self.out_features:
-                ret_features[k] = NestedTensor(features[k], masks[i])
-        return ret_features
-
-
-class SimpleSingleStageBackbone(ResNetMaskedBackbone):
-    """This is a simple wrapper for single stage backbone,
-    please set the required configs:
-    cfg.MODEL.BACKBONE.SIMPLE == True,
-    cfg.MODEL.BACKBONE.STRIDE, cfg.MODEL.BACKBONE.CHANNEL
-    """
-
-    def __init__(self, cfg):
-        nn.Module.__init__(self)
-        self.backbone = build_backbone(cfg)
-        self.out_features = ["out"]
-        assert cfg.MODEL.BACKBONE.SIMPLE is True
-        self.feature_strides = [cfg.MODEL.BACKBONE.STRIDE]
-        self.num_channels = [cfg.MODEL.BACKBONE.CHANNEL]
-        self.strides = [cfg.MODEL.BACKBONE.STRIDE]
-
-    def forward(self, images):
-        y = self.backbone(images.tensor)
-        masks = self.mask_out_padding(
-            [y.shape],
-            images.image_sizes,
-            images.tensor.device,
-        )
-        assert len(masks) == 1
-        ret_features = {}
-        ret_features[self.out_features[0]] = NestedTensor(y, masks[0])
-        return ret_features
 
 
 @META_ARCH_REGISTRY.register()
@@ -143,18 +32,10 @@ class Detr(nn.Module):
         super().__init__()
 
         self.device = torch.device(cfg.MODEL.DEVICE)
-
+        self.use_focal_loss = cfg.MODEL.DETR.USE_FOCAL_LOSS
         self.num_classes = cfg.MODEL.DETR.NUM_CLASSES
         self.mask_on = cfg.MODEL.MASK_ON
-        hidden_dim = cfg.MODEL.DETR.HIDDEN_DIM
-        num_queries = cfg.MODEL.DETR.NUM_OBJECT_QUERIES
-        # Transformer parameters:
-        nheads = cfg.MODEL.DETR.NHEADS
-        dropout = cfg.MODEL.DETR.DROPOUT
-        dim_feedforward = cfg.MODEL.DETR.DIM_FEEDFORWARD
-        enc_layers = cfg.MODEL.DETR.ENC_LAYERS
         dec_layers = cfg.MODEL.DETR.DEC_LAYERS
-        pre_norm = cfg.MODEL.DETR.PRE_NORM
 
         # Loss parameters:
         giou_weight = cfg.MODEL.DETR.GIOU_WEIGHT
@@ -162,75 +43,9 @@ class Detr(nn.Module):
         cls_weight = cfg.MODEL.DETR.CLS_WEIGHT
         deep_supervision = cfg.MODEL.DETR.DEEP_SUPERVISION
         no_object_weight = cfg.MODEL.DETR.NO_OBJECT_WEIGHT
-        centered_position_encoding = cfg.MODEL.DETR.CENTERED_POSITION_ENCODIND
-        num_feature_levels = cfg.MODEL.DETR.NUM_FEATURE_LEVELS
 
-        N_steps = hidden_dim // 2
-        if "resnet" in cfg.MODEL.BACKBONE.NAME.lower():
-            d2_backbone = ResNetMaskedBackbone(cfg)
-        elif "fbnet" in cfg.MODEL.BACKBONE.NAME.lower():
-            d2_backbone = FBNetMaskedBackbone(cfg)
-        elif cfg.MODEL.BACKBONE.SIMPLE:
-            d2_backbone = SimpleSingleStageBackbone(cfg)
-        else:
-            raise NotImplementedError
+        self.detr = build_detr_model(cfg)
 
-        backbone = Joiner(
-            d2_backbone,
-            PositionEmbeddingSine(
-                N_steps, normalize=True, centered=centered_position_encoding
-            ),
-        )
-        backbone.num_channels = d2_backbone.num_channels
-        self.use_focal_loss = cfg.MODEL.DETR.USE_FOCAL_LOSS
-
-        if cfg.MODEL.DETR.DEFORMABLE:
-            transformer = DeformableTransformer(
-                d_model=hidden_dim,
-                nhead=nheads,
-                num_encoder_layers=enc_layers,
-                num_decoder_layers=dec_layers,
-                dim_feedforward=dim_feedforward,
-                dropout=dropout,
-                activation="relu",
-                return_intermediate_dec=True,
-                num_feature_levels=num_feature_levels,
-                dec_n_points=4,
-                enc_n_points=4,
-                two_stage=cfg.MODEL.DETR.TWO_STAGE,
-                two_stage_num_proposals=num_queries,
-            )
-
-            self.detr = DeformableDETR(
-                backbone,
-                transformer,
-                num_classes=self.num_classes,
-                num_queries=num_queries,
-                num_feature_levels=num_feature_levels,
-                aux_loss=deep_supervision,
-                with_box_refine=cfg.MODEL.DETR.WITH_BOX_REFINE,
-                two_stage=cfg.MODEL.DETR.TWO_STAGE,
-            )
-        else:
-            transformer = Transformer(
-                d_model=hidden_dim,
-                dropout=dropout,
-                nhead=nheads,
-                dim_feedforward=dim_feedforward,
-                num_encoder_layers=enc_layers,
-                num_decoder_layers=dec_layers,
-                normalize_before=pre_norm,
-                return_intermediate_dec=deep_supervision,
-            )
-
-            self.detr = DETR(
-                backbone,
-                transformer,
-                num_classes=self.num_classes,
-                num_queries=num_queries,
-                aux_loss=deep_supervision,
-                use_focal_loss=self.use_focal_loss,
-            )
         if self.mask_on:
             frozen_weights = cfg.MODEL.DETR.FROZEN_WEIGHTS
             if frozen_weights != "":
