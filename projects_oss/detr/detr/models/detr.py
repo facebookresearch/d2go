@@ -45,6 +45,7 @@ class DETR(nn.Module):
         num_queries,
         aux_loss=False,
         use_focal_loss=False,
+        query_embed=None,
     ):
         """Initializes the model.
         Parameters:
@@ -63,7 +64,11 @@ class DETR(nn.Module):
             hidden_dim, num_classes if use_focal_loss else num_classes + 1
         )
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
-        self.query_embed = nn.Embedding(num_queries, hidden_dim)
+        self.query_embed = (
+            query_embed
+            if query_embed is not None
+            else nn.Embedding(num_queries, hidden_dim)
+        )
         self.input_proj = nn.Conv2d(
             backbone.num_channels[-1], hidden_dim, kernel_size=1
         )
@@ -99,13 +104,19 @@ class DETR(nn.Module):
             num_decoder_layers=dec_layers,
             normalize_before=pre_norm,
             return_intermediate_dec=deep_supervision,
+            learnable_tgt=cfg.MODEL.DETR.LEARNABLE_TGT,
         )
+        if cfg.MODEL.DETR.LEARNABLE_TGT:
+            query_embed = nn.Embedding(num_queries, hidden_dim * 2)
+        else:
+            query_embed = nn.Embedding(num_queries, hidden_dim)
 
         return {
             "backbone": backbone,
             "transformer": transformer,
             "num_classes": num_classes,
             "num_queries": num_queries,
+            "query_embed": query_embed,
             "aux_loss": deep_supervision,
             "use_focal_loss": use_focal_loss,
         }

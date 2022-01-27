@@ -37,6 +37,7 @@ def add_detr_config(cfg):
     cfg.MODEL.DETR.WITH_BOX_REFINE = False
     cfg.MODEL.DETR.TWO_STAGE = False
     cfg.MODEL.DETR.DECODER_BLOCK_GRAD = True
+
     # TRANSFORMER
     cfg.MODEL.DETR.NHEADS = 8
     cfg.MODEL.DETR.DROPOUT = 0.1
@@ -49,5 +50,9 @@ def add_detr_config(cfg):
     cfg.MODEL.DETR.HIDDEN_DIM = 256
     cfg.MODEL.DETR.NUM_OBJECT_QUERIES = 100
 
+    # solver
     cfg.SOLVER.OPTIMIZER = "ADAMW"
     cfg.SOLVER.BACKBONE_MULTIPLIER = 0.1
+
+    # tgt & embeddings
+    cfg.MODEL.DETR.LEARNABLE_TGT = False

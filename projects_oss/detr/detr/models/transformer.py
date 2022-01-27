@@ -29,6 +29,7 @@ class Transformer(nn.Module):
         activation="relu",
         normalize_before=False,
         return_intermediate_dec=False,
+        learnable_tgt=False,
     ):
         super().__init__()
 
@@ -55,6 +56,7 @@ class Transformer(nn.Module):
 
         self.d_model = d_model
         self.nhead = nhead
+        self.learnable_tgt = learnable_tgt
 
     def _reset_parameters(self):
         for p in self.parameters():
@@ -71,10 +73,15 @@ class Transformer(nn.Module):
         bs, c, h, w = src.shape
         src = src.flatten(2).permute(2, 0, 1)  # shape (L, B, C)
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)  # shape (L, B, C)
-        query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # shape (M, B, C)
         mask = mask.flatten(1)  # shape (B, HxW)
 
-        tgt = torch.zeros_like(query_embed)
+        if self.learnable_tgt:
+            query_embed, tgt = torch.split(query_embed, c, dim=1)
+            query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # shape (M, B, C)
+            tgt = tgt.unsqueeze(1).repeat(1, bs, 1)  # shape (M, B, C)
+        else:
+            query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # shape (M, B, C)
+            tgt = torch.zeros_like(query_embed)
         # memory shape (L, B, C)
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
         # hs shape (NUM_LEVEL, S, B, C)
