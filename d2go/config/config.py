@@ -4,6 +4,7 @@
 
 import contextlib
 import logging
+from typing import List
 
 import mock
 import yaml
@@ -13,6 +14,8 @@ from fvcore.common.registry import Registry
 from .utils import reroute_config_path
 
 logger = logging.getLogger(__name__)
+
+CONFIG_CUSTOM_PARSE_REGISTRY = Registry("CONFIG_CUSTOM_PARSE")
 
 
 class CfgNode(_CfgNode):
@@ -28,7 +31,18 @@ class CfgNode(_CfgNode):
     def merge_from_file(self, cfg_filename: str, *args, **kwargs):
         cfg_filename = reroute_config_path(cfg_filename)
         with reroute_load_yaml_with_base():
-            return super().merge_from_file(cfg_filename, *args, **kwargs)
+            res = super().merge_from_file(cfg_filename, *args, **kwargs)
+            self._run_custom_processing(is_dump=False)
+            return res
+
+    def merge_from_list(self, cfg_list: List[str]):
+        res = super().merge_from_list(cfg_list)
+        self._run_custom_processing(is_dump=False)
+        return res
+
+    def dump(self, *args, **kwargs):
+        self._run_custom_processing(is_dump=True)
+        return super().dump(*args, **kwargs)
 
     @staticmethod
     def load_yaml_with_base(filename: str, *args, **kwargs):
@@ -38,6 +52,16 @@ class CfgNode(_CfgNode):
     def __hash__(self):
         # dump follows alphabetical order, thus good for hash use
         return hash(self.dump())
+
+    def _run_custom_processing(self, is_dump=False):
+        """Apply config load post custom processing from registry"""
+        frozen = self.is_frozen()
+        self.defrost()
+        for name, process_func in CONFIG_CUSTOM_PARSE_REGISTRY:
+            logger.info(f"Apply config processing: {name}, is_dump={is_dump}")
+            process_func(self, is_dump)
+        if frozen:
+            self.freeze()
 
 
 @contextlib.contextmanager

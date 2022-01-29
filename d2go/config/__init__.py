@@ -4,6 +4,7 @@
 
 # forward the namespace to avoid `d2go.config.config`
 from .config import (
+    CONFIG_CUSTOM_PARSE_REGISTRY,
     CONFIG_SCALING_METHOD_REGISTRY,
     CfgNode,
     auto_scale_world_size,
@@ -13,6 +14,7 @@ from .config import (
 
 
 __all__ = [
+    "CONFIG_CUSTOM_PARSE_REGISTRY",
     "CONFIG_SCALING_METHOD_REGISTRY",
     "CfgNode",
     "auto_scale_world_size",
