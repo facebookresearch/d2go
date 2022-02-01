@@ -1,5 +1,8 @@
+from typing import Dict
+
 import numpy as np
 import torch
+import torch.nn.functional as F
 from detectron2.modeling import build_backbone
 from detectron2.utils.registry import Registry
 from detr.models.backbone import Joiner
@@ -59,35 +62,15 @@ class ResNetMaskedBackbone(nn.Module):
         self.feature_strides = [backbone_shape[f].stride for f in backbone_shape.keys()]
         self.num_channels = [backbone_shape[k].channels for k in backbone_shape.keys()]
 
-    def forward(self, images):
-        features = self.backbone(images.tensor)
-        # one tensor per feature level. Each tensor has shape (B, maxH, maxW)
-        masks = self.mask_out_padding(
-            [features_per_level.shape for features_per_level in features.values()],
-            images.image_sizes,
-            images.tensor.device,
-        )
-        assert len(features) == len(masks)
-        for i, k in enumerate(features.keys()):
-            features[k] = NestedTensor(features[k], masks[i])
-        return features
-
-    def mask_out_padding(self, feature_shapes, image_sizes, device):
-        masks = []
-        assert len(feature_shapes) == len(self.feature_strides)
-        for idx, shape in enumerate(feature_shapes):
-            N, _, H, W = shape
-            masks_per_feature_level = torch.ones(
-                (N, H, W), dtype=torch.bool, device=device
-            )
-            for img_idx, (h, w) in enumerate(image_sizes):
-                masks_per_feature_level[
-                    img_idx,
-                    : int(np.ceil(float(h) / self.feature_strides[idx])),
-                    : int(np.ceil(float(w) / self.feature_strides[idx])),
-                ] = 0
-            masks.append(masks_per_feature_level)
-        return masks
+    def forward(self, tensor_list: NestedTensor):
+        xs = self.backbone(tensor_list.tensors)
+        out: Dict[str, NestedTensor] = {}
+        for name, x in xs.items():
+            m = tensor_list.mask
+            assert m is not None
+            mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
+            out[name] = NestedTensor(x, mask)
+        return out
 
 
 class FBNetMaskedBackbone(ResNetMaskedBackbone):
@@ -105,20 +88,6 @@ class FBNetMaskedBackbone(ResNetMaskedBackbone):
             self.backbone._out_feature_strides[k] for k in self.out_features
         ]
 
-    def forward(self, images):
-        features = self.backbone(images.tensor)
-        masks = self.mask_out_padding(
-            [features_per_level.shape for features_per_level in features.values()],
-            images.image_sizes,
-            images.tensor.device,
-        )
-        assert len(features) == len(masks)
-        ret_features = {}
-        for i, k in enumerate(features.keys()):
-            if k in self.out_features:
-                ret_features[k] = NestedTensor(features[k], masks[i])
-        return ret_features
-
 
 class SimpleSingleStageBackbone(ResNetMaskedBackbone):
     """This is a simple wrapper for single stage backbone,
@@ -135,15 +104,3 @@ class SimpleSingleStageBackbone(ResNetMaskedBackbone):
         self.feature_strides = [cfg.MODEL.BACKBONE.STRIDE]
         self.num_channels = [cfg.MODEL.BACKBONE.CHANNEL]
         self.strides = [cfg.MODEL.BACKBONE.STRIDE]
-
-    def forward(self, images):
-        y = self.backbone(images.tensor)
-        masks = self.mask_out_padding(
-            [y.shape],
-            images.image_sizes,
-            images.tensor.device,
-        )
-        assert len(masks) == 1
-        ret_features = {}
-        ret_features[self.out_features[0]] = NestedTensor(y, masks[0])
-        return ret_features
