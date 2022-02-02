@@ -297,7 +297,8 @@ def collate_fn(batch):
     return tuple(batch)
 
 
-def _max_by_axis(the_list: "List[List[int]]") -> "List[int]":
+def _max_by_axis(the_list):
+    # type: (List[List[int]]) -> List[int]
     maxes = the_list[0]
     for sublist in the_list[1:]:
         for index, item in enumerate(sublist):
@@ -310,7 +311,8 @@ class NestedTensor(object):
         self.tensors = tensors
         self.mask = mask
 
-    def to(self, device: torch.device) -> "NestedTensor":
+    def to(self, device):
+        # type: (Device) -> NestedTensor # noqa
         cast_tensor = self.tensors.to(device)
         mask = self.mask
         if mask is not None:
@@ -484,12 +486,9 @@ def accuracy(output, target, topk=(1,)):
 
 
 def interpolate(
-    input: "Tensor",
-    size: "Optional[List[int]]" = None,
-    scale_factor: "Optional[float]" = None,
-    mode: str = "nearest",
-    align_corners: "Optional[bool]" = None,
-) -> "Tensor":
+    input, size=None, scale_factor=None, mode="nearest", align_corners=None
+):
+    # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
     """
     Equivalent to nn.functional.interpolate, but with support for empty batch sizes.
     This will eventually be supported natively by PyTorch, and this
