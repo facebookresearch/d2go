@@ -40,6 +40,7 @@ from detectron2.solver import (
     build_optimizer as d2_build_optimizer,
 )
 from pytorch_lightning.utilities import rank_zero_only, rank_zero_info
+from pytorch_lightning.utilities.logger import _flatten_dict
 
 _STATE_DICT_KEY = "state_dict"
 _OLD_STATE_DICT_KEY = "model"
@@ -222,7 +223,7 @@ class DefaultTask(pl.LightningModule):
             nested_res[tag.lower()] = res
 
         self.eval_res = nested_res
-        flattened = pl.loggers.LightningLoggerBase._flatten_dict(nested_res)
+        flattened = _flatten_dict(nested_res)
 
         if self.trainer.global_rank:
             assert (
