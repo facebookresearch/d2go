@@ -124,8 +124,10 @@ class Detr(nn.Module):
             dict[str: Tensor]:
                 mapping from a named loss to a tensor storing the loss. Used during training only.
         """
-        images = self.preprocess_image(batched_inputs)
-        output = self.detr(images)
+        images_lists = self.preprocess_image(batched_inputs)
+        # convert images_lists to Nested Tensor?
+        nested_images = self.imagelist_to_nestedtensor(images_lists)
+        output = self.detr(nested_images)
 
         if self.training:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
@@ -144,10 +146,12 @@ class Detr(nn.Module):
             box_cls = output["pred_logits"]
             box_pred = output["pred_boxes"]
             mask_pred = output["pred_masks"] if self.mask_on else None
-            results = self.inference(box_cls, box_pred, mask_pred, images.image_sizes)
+            results = self.inference(
+                box_cls, box_pred, mask_pred, images_lists.image_sizes
+            )
             processed_results = []
             for results_per_image, input_per_image, image_size in zip(
-                results, batched_inputs, images.image_sizes
+                results, batched_inputs, images_lists.image_sizes
             ):
                 height = input_per_image.get("height", image_size[0])
                 width = input_per_image.get("width", image_size[1])
@@ -239,3 +243,12 @@ class Detr(nn.Module):
         images = [self.normalizer(x["image"].to(self.device)) for x in batched_inputs]
         images = ImageList.from_tensors(images)
         return images
+
+    def imagelist_to_nestedtensor(self, images):
+        tensor = images.tensor
+        device = tensor.device
+        N, _, H, W = tensor.shape
+        masks = torch.ones((N, H, W), dtype=torch.bool, device=device)
+        for idx, (h, w) in enumerate(images.image_sizes):
+            masks[idx, :h, :w] = False
+        return NestedTensor(tensor, masks)
