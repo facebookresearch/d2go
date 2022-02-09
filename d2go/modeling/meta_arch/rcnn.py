@@ -264,7 +264,11 @@ def default_rcnn_prepare_for_quant(self, cfg):
     # Modify the model for eager mode
     if cfg.QUANTIZATION.EAGER_MODE:
         model = _apply_eager_mode_quant(cfg, model)
-        model = fuse_utils.fuse_model(model, inplace=True)
+        model = fuse_utils.fuse_model(
+            model,
+            is_qat=cfg.QUANTIZATION.QAT.ENABLED,
+            inplace=True,
+        )
     else:
         _fx_quant_prepare(model, cfg)
 

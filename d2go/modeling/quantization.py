@@ -251,7 +251,11 @@ def default_prepare_for_quant(cfg, model):
     )
 
     if cfg.QUANTIZATION.EAGER_MODE:
-        model = fuse_utils.fuse_model(model, inplace=True)
+        model = fuse_utils.fuse_model(
+            model,
+            is_qat=cfg.QUANTIZATION.QAT.ENABLED,
+            inplace=True,
+        )
 
         torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
         model.qconfig = qconfig
