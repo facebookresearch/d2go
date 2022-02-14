@@ -34,6 +34,13 @@ def main(
     compare_accuracy: bool = False,
     skip_if_fail: bool = False,
 ):
+    if compare_accuracy:
+        raise NotImplementedError(
+            "compare_accuracy functionality isn't currently supported."
+        )
+        # NOTE: dict for metrics of all exported models (and original pytorch model)
+        # ret["accuracy_comparison"] = accuracy_comparison
+
     cfg = copy.deepcopy(cfg)
     setup_after_launch(cfg, output_dir, runner)
 
@@ -72,10 +79,6 @@ def main(
                 raise e
 
     ret = {"predictor_paths": predictor_paths, "accuracy_comparison": {}}
-    if compare_accuracy:
-        raise NotImplementedError()
-        # NOTE: dict for metrics of all exported models (and original pytorch model)
-        # ret["accuracy_comparison"] = accuracy_comparison
 
     return ret
 
