@@ -189,7 +189,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         num_epochs = 2
         qat = QuantizationAwareTraining()
         trainer = Trainer(
-            accelerator="ddp_cpu",
+            accelerator="cpu",
             num_processes=1,
             default_root_dir=os.path.join(root_dir, "quantized"),
             checkpoint_callback=False,
