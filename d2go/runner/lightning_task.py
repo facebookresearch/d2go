@@ -259,10 +259,9 @@ class DefaultTask(pl.LightningModule):
     def _reset_dataset_evaluators(self):
         """reset validation dataset evaluator to be run in EVAL_PERIOD steps"""
         assert (
-            not self.trainer._accelerator_connector.distributed_backend
-            or self.trainer._accelerator_connector.distributed_backend.lower()
-            in ["ddp", "ddp_cpu"]
-        ), ("Only DDP and DDP_CPU distributed backend are supported")
+            len(self.trainer._accelerator_connector.parallel_devices) == 1
+            or self.trainer._accelerator_connector.use_ddp
+        ), "Only DDP and DDP_CPU distributed backend are supported"
 
         def _get_inference_dir_name(
             base_dir, inference_type, dataset_name, model_tag: ModelTag
