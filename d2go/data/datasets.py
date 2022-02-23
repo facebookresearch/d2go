@@ -6,6 +6,7 @@ import functools
 import importlib
 import logging
 import os
+from collections import namedtuple
 
 from d2go.utils.helper import get_dir_path
 from d2go.utils.misc import fb_overwritable
@@ -25,6 +26,10 @@ ANN_FN = "annotation_file"
 
 COCO_REGISTER_FUNCTION_REGISTRY = Registry("COCO_REGISTER_FUNCTION_REGISTRY")
 COCO_REGISTER_FUNCTION_REGISTRY.__doc__ = "Registry - coco register function"
+
+
+InjectedCocoEntry = namedtuple("InjectedCocoEntry", ["func", "split_dict"])
+INJECTED_COCO_DATASETS_LUT = {}
 
 
 def get_coco_register_function(cfg):
@@ -134,6 +139,9 @@ def inject_coco_datasets(cfg):
             split_dict["meta_data"] = get_keypoint_metadata(metadata_type[ds_index])
         logger.info("Inject coco dataset {}: {}".format(name, split_dict))
         _register_func(name, split_dict)
+        INJECTED_COCO_DATASETS_LUT[name] = InjectedCocoEntry(
+            func=_register_func, split_dict=split_dict
+        )
 
 
 def register_dataset_split(dataset_name, split_dict):

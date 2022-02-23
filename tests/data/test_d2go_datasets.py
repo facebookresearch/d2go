@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 import d2go.data.extended_coco as extended_coco
+from d2go.data.datasets import COCO_REGISTER_FUNCTION_REGISTRY, ANN_FN, IM_DIR
 from d2go.data.keypoint_metadata_registry import (
     KEYPOINT_METADATA_REGISTRY,
     KeypointMetadata,
@@ -322,3 +323,87 @@ class TestD2GoDatasets(unittest.TestCase):
         )
         ds_list = DatasetCatalog.get("test_adhoc_ds2@1classes")
         self.assertEqual(len(ds_list), 5)
+
+    @tempdir
+    def test_register_coco_dataset_registry(self, tmp_dir):
+
+        dummy_buffer = []
+
+        @COCO_REGISTER_FUNCTION_REGISTRY.register()
+        def _register_dummy_function_coco(dataset_name, split_dict):
+            dummy_buffer.append((dataset_name, split_dict))
+
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
+
+        runner = Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_list(
+            [
+                str(x)
+                for x in [
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
+                    ["inj_test_registry"],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
+                    [image_dir],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
+                    [json_file],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.REGISTER_FUNCTION",
+                    "_register_dummy_function_coco",
+                ]
+            ]
+        )
+        runner.register(cfg)
+        self.assertTrue(len(dummy_buffer) == 1)
+
+    @tempdir
+    def test_adhoc_register_coco_dataset_registry(self, tmp_dir):
+
+        dummy_buffer = []
+
+        def _dummy_load_func():
+            return []
+
+        @COCO_REGISTER_FUNCTION_REGISTRY.register()
+        def _register_dummy_function_coco_adhoc(dataset_name, split_dict):
+
+            json_file = split_dict[ANN_FN]
+            image_root = split_dict[IM_DIR]
+
+            DatasetCatalog.register(dataset_name, _dummy_load_func)
+
+            MetadataCatalog.get(dataset_name).set(
+                evaluator_type="coco",
+                json_file=json_file,
+                image_root=image_root,
+            )
+            dummy_buffer.append((dataset_name, split_dict))
+
+        image_dir, json_file = create_test_images_and_dataset_json(tmp_dir)
+
+        runner = Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_list(
+            [
+                str(x)
+                for x in [
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.NAMES",
+                    ["inj_test_registry_adhoc"],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.IM_DIRS",
+                    [image_dir],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.JSON_FILES",
+                    [json_file],
+                    "D2GO_DATA.DATASETS.COCO_INJECTION.REGISTER_FUNCTION",
+                    "_register_dummy_function_coco_adhoc",
+                ]
+            ]
+        )
+        runner.register(cfg)
+        self.assertTrue(len(dummy_buffer) == 1)
+
+        # Add adhoc class that uses only the first class
+        AdhocDatasetManager.add(
+            COCOWithClassesToUse("inj_test_registry_adhoc", ["class_0"])
+        )
+
+        # Check that the correct register function is used
+        self.assertTrue(len(dummy_buffer) == 2)

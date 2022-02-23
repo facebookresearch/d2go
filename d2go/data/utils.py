@@ -19,7 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 from d2go.config import temp_defrost
-from d2go.data.datasets import register_dataset_split, ANN_FN, IM_DIR
+from d2go.data.datasets import (
+    register_dataset_split,
+    ANN_FN,
+    IM_DIR,
+    INJECTED_COCO_DATASETS_LUT,
+)
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.file_io import PathManager
 
@@ -137,6 +142,12 @@ class AdhocCOCODataset(AdhocDataset):
         if isinstance(load_func, CallFuncWithJsonFile):
             new_func = CallFuncWithJsonFile(func=load_func.func, json_file=tmp_file)
             DatasetCatalog.register(self.new_ds_name, new_func)
+        elif self.src_ds_name in INJECTED_COCO_DATASETS_LUT:
+            _src_func, _src_dict = INJECTED_COCO_DATASETS_LUT[self.src_ds_name]
+            _src_func(
+                self.new_ds_name,
+                split_dict={**_src_dict, ANN_FN: tmp_file, IM_DIR: metadata.image_root},
+            )
         else:
             # NOTE: only supports COCODataset as DS_TYPE since we cannot reconstruct
             # the split_dict
