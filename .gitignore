@@ -15,6 +15,9 @@ downloads/
 eggs/
 .eggs/
 lib/
+!d2go/*/lib/
+!projects/*/lib/
+!projects_oss/*/lib/
 lib64/
 parts/
 sdist/
