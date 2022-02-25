@@ -34,6 +34,10 @@ def add_d2go_data_default_configs(_C):
     # by specifying the filename (without .py).
     _C.D2GO_DATA.DATASETS.DYNAMIC_DATASETS = []
 
+    # Config for caching the dataset annotations on local disk
+    _C.D2GO_DATA.DATASETS.DISK_CACHE = CN()
+    _C.D2GO_DATA.DATASETS.DISK_CACHE.ENABLED = False
+
     # TODO: potentially add this config
     # # List of extra keys in annotation, the item will be forwarded by
     # # extended_coco_load.
