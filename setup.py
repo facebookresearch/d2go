@@ -29,7 +29,7 @@ requirements = [
     "Pillow",
     "mock",
     "torch",
-    "pytorch_lightning",
+    "pytorch-lightning @ git+https://github.com/PyTorchLightning/pytorch-lightning.git@86b177ebe",
     "opencv-python",
     "parameterized",
 ]
