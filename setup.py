@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import glob
-import io
 import os
 import shutil
-import subprocess
 from os import path
 from typing import List
 
@@ -29,7 +27,7 @@ requirements = [
     "Pillow",
     "mock",
     "torch",
-    "pytorch_lightning",
+    "pytorch-lightning @ git+https://github.com/PyTorchLightning/pytorch-lightning.git@86b177ebe",
     "opencv-python",
     "parameterized",
 ]
