@@ -213,6 +213,7 @@ class QuantizationMixin(ABC):
                 rsetattr(root, name, convert_fx(prepared))
         for attr, value in old_attrs.items():
             rsetattr(converted, attr, value)
+            rsetattr(root, attr, value)
         return converted
 
 
