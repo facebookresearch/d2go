@@ -470,6 +470,7 @@ class Detectron2GoRunner(BaseRunner):
             hooks.EvalHook(
                 cfg.TEST.EVAL_PERIOD,
                 lambda: self.do_test(cfg, model, train_iter=trainer.iter),
+                eval_after_train=False,  # done by a separate do_test call in tools/train_net.py
             ),
             kmeans_anchors.compute_kmeans_anchors_hook(self, cfg),
             self._create_qat_hook(cfg) if cfg.QUANTIZATION.QAT.ENABLED else None,
