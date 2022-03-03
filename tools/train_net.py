@@ -6,6 +6,7 @@ Detection Training Script.
 """
 
 import logging
+import sys
 
 import detectron2.utils.comm as comm
 from d2go.distributed import launch
@@ -89,7 +90,7 @@ def run_with_cmdline_args(args):
     )
 
 
-def cli():
+def cli(args):
     parser = basic_argument_parser(requires_output_dir=False)
     parser.add_argument(
         "--eval-only", action="store_true", help="perform evaluation only"
@@ -99,8 +100,8 @@ def cli():
         action="store_true",
         help="whether to attempt to resume from the checkpoint directory",
     )
-    run_with_cmdline_args(parser.parse_args())
+    run_with_cmdline_args(parser.parse_args(args))
 
 
 if __name__ == "__main__":
-    cli()
+    cli(sys.argv)

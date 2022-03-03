@@ -9,6 +9,7 @@ Similar to detectron2.engine.launch, may support a few more things:
 """
 
 import logging
+import os
 import tempfile
 
 import detectron2.utils.comm as comm
@@ -87,10 +88,8 @@ def launch(
         prefix = f"detectron2go_{main_func.__module__}.{main_func.__name__}_return"
         with tempfile.NamedTemporaryFile(prefix=prefix, suffix=".pth") as f:
             return_file = f.name
-            mp.spawn(
-                _distributed_worker,
-                nprocs=num_processes_per_machine,
-                args=(
+            if dist_url.startswith("env://"):
+                _run_with_dist_env(
                     main_func,
                     world_size,
                     num_processes_per_machine,
@@ -99,13 +98,67 @@ def launch(
                     backend,
                     return_file,
                     args,
-                ),
-                daemon=False,
-            )
-            if machine_rank == 0:
+                )
+            else:
+                mp.spawn(
+                    _distributed_worker,
+                    nprocs=num_processes_per_machine,
+                    args=(
+                        main_func,
+                        world_size,
+                        num_processes_per_machine,
+                        machine_rank,
+                        dist_url,
+                        backend,
+                        return_file,
+                        args,
+                    ),
+                    daemon=False,
+                )
+            if machine_rank == 0 and get_local_rank() == 0:
                 return torch.load(return_file)
     else:
         return main_func(*args)
+
+
+def _run_with_dist_env(
+    main_func,
+    world_size,
+    num_processes_per_machine,
+    machine_rank,
+    dist_url,
+    backend,
+    return_file,
+    args,
+):
+    assert dist_url.startswith("env://")
+
+    # Read torch.distributed params from env according to the contract in
+    # https://pytorch.org/docs/stable/distributed.html#environment-variable-initialization
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    num_processes_per_machine = int(os.environ.get("LOCAL_WORLD_SIZE", 1))
+    machine_rank = int(os.environ.get("GROUP_RANK", 0))
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+
+    num_machines = int(world_size / num_processes_per_machine)
+
+    logger.info(
+        "Loaded distributed params from env."
+        f" Run with num_processes_per_machine: {num_processes_per_machine},"
+        f" num_machines: {num_machines}, machine_rank: {machine_rank},"
+    )
+
+    _distributed_worker(
+        local_rank,
+        main_func,
+        world_size,
+        num_processes_per_machine,
+        machine_rank,
+        dist_url,
+        backend,
+        return_file,
+        args,
+    )
 
 
 def _distributed_worker(
