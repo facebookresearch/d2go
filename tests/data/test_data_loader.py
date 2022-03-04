@@ -7,7 +7,8 @@ import shutil
 import unittest
 
 import torch
-from d2go.data.utils import DiskCachedDatasetFromList, enable_disk_cached_dataset
+from d2go.data.disk_cache import DiskCachedDatasetFromList
+from d2go.data.utils import enable_disk_cached_dataset
 from d2go.runner import create_runner
 from d2go.utils.testing.data_loader_helper import (
     create_fake_detection_data_loader,
