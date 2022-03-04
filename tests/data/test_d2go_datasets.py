@@ -86,6 +86,7 @@ class TestD2GoDatasets(unittest.TestCase):
         img_list = [
             {"id": 0, "width": 50, "height": 50, "file_name": "a.png"},
             {"id": 1, "width": 50, "height": 50, "file_name": "b.png"},
+            {"id": 2, "width": 50, "height": 50, "file_name": "b.png"},
         ]
         ann_list = [
             [
@@ -140,16 +141,17 @@ class TestD2GoDatasets(unittest.TestCase):
                     "bbox": [0, 0, 0, 0],
                 },
             ],
+            [],
         ]
 
-        out_dict_list = extended_coco.convert_to_dict_list(
-            "",
-            [0],
-            img_list,
-            ann_list,
-        )
+        out_dict_list = extended_coco.convert_to_dict_list("", [0], img_list, ann_list)
         self.assertEqual(len(out_dict_list), 1)
         self.assertEqual(len(out_dict_list[0]["annotations"]), 1)
+
+        out_dict_list = extended_coco.convert_to_dict_list(
+            "", [0], img_list, ann_list, filter_empty_annotations=False
+        )
+        self.assertEqual(len(out_dict_list), 3)
 
     @tempdir
     def test_coco_injection(self, tmp_dir):

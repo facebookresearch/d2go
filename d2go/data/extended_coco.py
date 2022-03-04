@@ -249,6 +249,7 @@ def convert_to_dict_list(
     anns: List[Dict],
     dataset_name: Optional[str] = None,
     image_direct_copy_keys: Optional[List[str]] = None,
+    filter_empty_annotations: Optional[bool] = True,
 ) -> List[Dict]:
 
     ann_error_report = {
@@ -263,7 +264,10 @@ def convert_to_dict_list(
         name: ErrorEntry(name, msg, 0)
         for name, msg in [
             ("ignore_image_root", f"Image root ignored {image_root}"),
-            ("no_annotations", "Image filtered"),
+            (
+                "no_annotations",
+                "Image filtered" if filter_empty_annotations else "Warning",
+            ),
         ]
     }
     ex_warning_fn = None
@@ -299,7 +303,8 @@ def convert_to_dict_list(
         )
         if len(converted_anns) == 0:
             image_error_report["no_annotations"].cnt += 1
-            continue
+            if filter_empty_annotations:
+                continue
         record["annotations"] = converted_anns
 
         # Copy keys if additionally asked
@@ -352,6 +357,7 @@ def extended_coco_load(
     dataset_name: Optional[str] = None,
     loaded_json: Optional[str] = None,
     image_direct_copy_keys: List[str] = None,
+    filter_empty_annotations: Optional[bool] = True,
 ) -> List[Dict]:
     """
     Load a json file with COCO's annotation format.
@@ -419,6 +425,7 @@ def extended_coco_load(
         anns,
         dataset_name,
         image_direct_copy_keys=image_direct_copy_keys,
+        filter_empty_annotations=filter_empty_annotations,
     )
 
 
