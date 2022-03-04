@@ -149,6 +149,7 @@ class TestD2GoDatasets(unittest.TestCase):
             ann_list,
         )
         self.assertEqual(len(out_dict_list), 1)
+        self.assertEqual(len(out_dict_list[0]["annotations"]), 1)
 
     @tempdir
     def test_coco_injection(self, tmp_dir):
