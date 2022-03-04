@@ -37,7 +37,7 @@ class TestLightningTask(unittest.TestCase):
             limit_train_batches=1,
             num_sanity_val_steps=0,
             callbacks=[checkpoint_callback],
-            logger=None,
+            logger=False,
         )
 
     def _compare_state_dict(
@@ -200,7 +200,7 @@ class TestLightningTask(unittest.TestCase):
             limit_train_batches=1,
             num_sanity_val_steps=0,
             callbacks=callbacks,
-            logger=None,
+            logger=False,
         )
         with EventStorage() as storage:
             task.storage = storage

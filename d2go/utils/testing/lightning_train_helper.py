@@ -14,7 +14,7 @@ def get_lt_trainer(output_dir: str, cfg):
         if cfg.TEST.EVAL_PERIOD > 0
         else cfg.SOLVER.MAX_ITER,
         callbacks=[checkpoint_callback],
-        logger=None,
+        logger=False,
     )
 
 
