@@ -222,6 +222,11 @@ class TestLightningTask(unittest.TestCase):
                 assert batch
                 assert opt
                 assert manual_backward
+                # We take step the optimizer for progress tracking to occur
+                # This is reflected in the Trainer's global_step property
+                # which is used to determine when to stop training
+                # when specifying the loop bounds with Trainer(max_steps=N)
+                opt.step()
                 return {"total_loss": 0.4}
 
         cfg = self._get_cfg(tmp_dir)
