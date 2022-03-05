@@ -104,4 +104,4 @@ def cli(args):
 
 
 if __name__ == "__main__":
-    cli(sys.argv)
+    cli(sys.argv[1:])
