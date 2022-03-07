@@ -431,24 +431,30 @@ def enable_disk_cached_dataset(cfg):
         logger.info("Patch DatasetFromList with DiskCachedDatasetFromList")
         return DiskCachedDatasetFromList(lst)
 
+    dataset_from_list_patch_locations = []
+
+    def _maybe_add_dataset_from_list_patch_location(module_name):
+        try:
+            __import__(module_name)
+            dataset_from_list_patch_locations.append(f"{module_name}.DatasetFromList")
+        except ImportError:
+            pass
+
+    _maybe_add_dataset_from_list_patch_location("detectron2.data.build")
+    _maybe_add_dataset_from_list_patch_location("d2go.data.build")
+    _maybe_add_dataset_from_list_patch_location("d2go.data.build_fb")
+    _maybe_add_dataset_from_list_patch_location("d2go.data.build_oss")
+
     with contextlib.ExitStack() as stack:
         for ctx in [
             mock.patch(
                 "detectron2.data.build.get_detection_dataset_dicts",
                 side_effect=local_master_get_detection_dataset_dicts,
             ),
-            mock.patch(
-                "detectron2.data.build.DatasetFromList",
-                side_effect=_patched_dataset_from_list,
-            ),
-            mock.patch(
-                "d2go.data.build.DatasetFromList",
-                side_effect=_patched_dataset_from_list,
-            ),
-            mock.patch(
-                "d2go.data.build_fb.DatasetFromList",
-                side_effect=_patched_dataset_from_list,
-            ),
+            *[
+                mock.patch(m, side_effect=_patched_dataset_from_list)
+                for m in dataset_from_list_patch_locations
+            ],
         ]:
             stack.enter_context(ctx)
         yield
