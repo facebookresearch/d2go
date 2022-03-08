@@ -20,15 +20,13 @@ jobs:
         run: |
           conda install pytorch torchvision -c pytorch-nightly
           python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
-          python -m pip install 'git+https://github.com/PyTorchLightning/pytorch-lightning.git'
           pip install git+https://github.com/facebookresearch/mobile-vision
           pip install scikit-learn
           pip install pytest
           pip install -e .
-            
+
       - name: Run pytest
         env:
             OSSRUN: 1
         run: |
-          python -m unittest discover tests 
-
+          python -m unittest discover tests

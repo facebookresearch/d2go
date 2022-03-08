@@ -27,7 +27,7 @@ requirements = [
     "Pillow",
     "mock",
     "torch",
-    "pytorch-lightning @ git+https://github.com/PyTorchLightning/pytorch-lightning.git@86b177ebe",
+    "pytorch-lightning @ git+https://github.com/PyTorchLightning/pytorch-lightning@15364c18c",
     "opencv-python",
     "parameterized",
     "diskcache",  # TODO: move to mobile_cv
