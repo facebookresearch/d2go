@@ -190,14 +190,12 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         qat = QuantizationAwareTraining()
         trainer = Trainer(
             accelerator="cpu",
-            num_processes=1,
+            devices=1,
             default_root_dir=os.path.join(root_dir, "quantized"),
             checkpoint_callback=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
-            strategy="ddp_find_unused_parameters_false",
-            plugins=[],
         )
         trainer.fit(model)
 
