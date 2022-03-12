@@ -114,14 +114,13 @@ def convert_predictor(
                 logger.warn("Post training quantized model has bn inside fused ops")
         logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
 
-        if cfg.QUANTIZATION.EAGER_MODE:
-            # TODO(T93870278): move this logic to prepare_for_quant_convert
-            pytorch_model = convert(pytorch_model, inplace=False)
-        else:  # FX graph mode quantization
-            if hasattr(pytorch_model, "prepare_for_quant_convert"):
-                pytorch_model = pytorch_model.prepare_for_quant_convert(cfg)
-            else:
-                # TODO(T93870381): move this to a default function
+        if hasattr(pytorch_model, "prepare_for_quant_convert"):
+            pytorch_model = pytorch_model.prepare_for_quant_convert(cfg)
+        else:
+            # TODO(T93870381): move this to a default function
+            if cfg.QUANTIZATION.EAGER_MODE:
+                pytorch_model = convert(pytorch_model, inplace=False)
+            else:  # FX graph mode quantization
                 pytorch_model = convert_fx(pytorch_model)
 
         logger.info("Quantized Model:\n{}".format(pytorch_model))

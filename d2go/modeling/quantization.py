@@ -48,7 +48,7 @@ class QATCheckpointer(DetectionCheckpointer):
 
         if model_is_qat and not checkpoint_is_qat:
             logger.info("Loading QAT model with non-QAT checkpoint, ignore observers!")
-            mapping = getattr(self.model, "_non_qat_to_qat_state_dict_map", {})
+            mapping = getattr(self.model, "non_qat_to_qat_state_dict_map", {})
 
             # map the key from non-QAT model to QAT model if possible
             checkpoint_state_dict = {
@@ -361,7 +361,7 @@ def setup_qat_model(
 ):
     assert cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD in ["default", "learnable"]
 
-    if hasattr(model_fp32, "_non_qat_to_qat_state_dict_map"):
+    if hasattr(model_fp32, "non_qat_to_qat_state_dict_map"):
         raise RuntimeError("The model is already setup to be QAT, cannot setup again!")
 
     device = model_fp32.device
@@ -393,9 +393,10 @@ def setup_qat_model(
         model.apply(qat_utils.disable_lqat_learnable_observer)
 
     # qat state dict mapper
-    model = _setup_non_qat_to_qat_state_dict_map(
-        model_fp32_state_dict, model, is_eager_mode=cfg.QUANTIZATION.EAGER_MODE
-    )
+    if not getattr(model, "non_qat_to_qat_state_dict_map", None):
+        model = _setup_non_qat_to_qat_state_dict_map(
+            model_fp32_state_dict, model, is_eager_mode=cfg.QUANTIZATION.EAGER_MODE
+        )
 
     # qat optimizer group for learnable qat
     model = qat_utils.setup_qat_get_optimizer_param_groups(model, qat_method)
@@ -419,9 +420,11 @@ def _setup_non_qat_to_qat_state_dict_map(
         for n_k, o_k in zip(
             new_state_dict_non_observer_keys, original_state_dict_shapes
         ):
-            assert new_state_dict_shapes[n_k] == original_state_dict_shapes[o_k]
+            assert (
+                new_state_dict_shapes[n_k] == original_state_dict_shapes[o_k]
+            ), f"QAT model shapes is inconsistent. FP32.{o_k}={original_state_dict_shapes[o_k]} , QAT.{n_k}={new_state_dict_shapes[n_k]}"
         # _q_state_dict_map will store
-        model_qat._non_qat_to_qat_state_dict_map = dict(
+        model_qat.non_qat_to_qat_state_dict_map = dict(
             zip(original_state_dict_shapes, new_state_dict_non_observer_keys)
         )
     else:
@@ -441,14 +444,14 @@ def _setup_non_qat_to_qat_state_dict_map(
             #     - bn
             return old_bn_key.replace(".bn.", ".conv.bn.")
 
-        model_qat._non_qat_to_qat_state_dict_map = {}
+        model_qat.non_qat_to_qat_state_dict_map = {}
         for key in original_state_dict_shapes.keys():
             if key in new_state_dict_non_observer_keys:
-                model_qat._non_qat_to_qat_state_dict_map[key] = key
+                model_qat.non_qat_to_qat_state_dict_map[key] = key
             else:
                 maybe_new_bn_key = get_new_bn_key(key)
                 if maybe_new_bn_key in new_state_dict_non_observer_keys:
-                    model_qat._non_qat_to_qat_state_dict_map[key] = maybe_new_bn_key
+                    model_qat.non_qat_to_qat_state_dict_map[key] = maybe_new_bn_key
     return model_qat
 
 
