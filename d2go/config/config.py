@@ -18,6 +18,21 @@ logger = logging.getLogger(__name__)
 CONFIG_CUSTOM_PARSE_REGISTRY = Registry("CONFIG_CUSTOM_PARSE")
 
 
+def _opts_to_dict(opts: List[str]):
+    ret = {}
+    if opts is None:
+        return ret
+    for full_key, v in zip(opts[0::2], opts[1::2]):
+        keys = full_key.split(".")
+        cur = ret
+        for key in keys[:-1]:
+            if key not in cur:
+                cur[key] = {}
+            cur = cur[key]
+        cur[keys[-1]] = v
+    return ret
+
+
 class CfgNode(_CfgNode):
     @classmethod
     def cast_from_other_class(cls, other_cfg):
@@ -36,7 +51,10 @@ class CfgNode(_CfgNode):
             return res
 
     def merge_from_list(self, cfg_list: List[str]):
-        res = super().merge_from_list(cfg_list)
+        # NOTE: YACS's orignal merge_from_list could not handle non-existed keys even if
+        # new_allow is set, override the method for support this.
+        override_cfg = _opts_to_dict(cfg_list)
+        res = super().merge_from_other_cfg(CfgNode(override_cfg))
         self._run_custom_processing(is_dump=False)
         return res
 

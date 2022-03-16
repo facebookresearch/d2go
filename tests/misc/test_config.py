@@ -7,6 +7,7 @@ import logging
 import os
 import unittest
 
+from d2go.config import CfgNode
 from d2go.config import auto_scale_world_size, reroute_config_path
 from d2go.config.utils import (
     config_dict_to_list_str,
@@ -91,6 +92,25 @@ class TestConfig(unittest.TestCase):
             default_cfg.merge_from_list,
             ["QUANTIZATION.QAT.BACKEND", "fbgemm"],
         )
+
+    def test_merge_from_list_with_new_allowed(self):
+        """
+        YACS's merge_from_list doesn't take new_allowed into account, D2Go override its behavior, and this test covers it.
+        """
+        # new_allowed is not set
+        cfg = CfgNode()
+        cfg.A = CfgNode()
+        cfg.A.X = 1
+        self.assertRaises(Exception, cfg.merge_from_list, ["A.Y", "2"])
+
+        # new_allowed is set for sub key
+        cfg = CfgNode()
+        cfg.A = CfgNode(new_allowed=True)
+        cfg.A.X = 1
+        cfg.merge_from_list(["A.Y", "2"])
+        self.assertEqual(cfg.A.Y, 2)  # note that the string will be converted to number
+        # however new_allowed is not set for root key
+        self.assertRaises(Exception, cfg.merge_from_list, ["B", "3"])
 
 
 class TestConfigUtils(unittest.TestCase):
