@@ -168,7 +168,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         )
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
@@ -192,7 +192,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
             accelerator="cpu",
             devices=1,
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
@@ -227,7 +227,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         qat = QuantizationAwareTraining()
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
@@ -254,7 +254,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         )
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
@@ -318,7 +318,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         qat = _CustomQAT()
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
@@ -357,7 +357,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
         )
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[qat],
             max_epochs=num_epochs,
             logger=False,
@@ -396,7 +396,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[static_quantization],
             max_epochs=num_epochs,
             logger=False,
@@ -433,7 +433,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[dynamic_quant],
             max_epochs=num_epochs,
             logger=False,
@@ -480,7 +480,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         static_quantization = _CustomStaticQuant()
         trainer = Trainer(
             default_root_dir=os.path.join(root_dir, "quantized"),
-            checkpoint_callback=False,
+            enable_checkpointing=False,
             callbacks=[static_quantization],
             max_epochs=num_epochs,
             logger=False,
