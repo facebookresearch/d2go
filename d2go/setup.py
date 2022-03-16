@@ -161,10 +161,11 @@ def prepare_for_launch(args):
         - returned output_dir will always be non empty, args.output_dir has higher
             priority than cfg.OUTPUT_DIR.
     """
-    print(args)
+    logger.info(args)
     runner = create_runner(args.runner)
 
     cfg = runner.get_default_cfg()
+
     if args.config_file:
         with PathManager.open(reroute_config_path(args.config_file), "r") as f:
             print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
