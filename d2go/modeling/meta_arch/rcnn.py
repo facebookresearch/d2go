@@ -20,6 +20,7 @@ from mobile_cv.arch.utils.quantize_utils import (
     QuantWrapper,
 )
 from mobile_cv.predictor.api import FuncInfo
+from torch.ao.quantization import convert
 from torch.ao.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
 
 logger = logging.getLogger(__name__)
@@ -278,32 +279,32 @@ def default_rcnn_prepare_for_quant(self, cfg):
 @RCNN_PREPARE_FOR_QUANT_CONVERT_REGISTRY.register()
 def default_rcnn_prepare_for_quant_convert(self, cfg):
     if cfg.QUANTIZATION.EAGER_MODE:
-        raise NotImplementedError()
-
-    assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
-    self.backbone = convert_fx(
-        self.backbone,
-        convert_custom_config_dict={"preserved_attributes": ["size_divisibility"]},
-    )
-    self.proposal_generator.rpn_head.rpn_feature = convert_fx(
-        self.proposal_generator.rpn_head.rpn_feature
-    )
-    self.proposal_generator.rpn_head.rpn_regressor.cls_logits = convert_fx(
-        self.proposal_generator.rpn_head.rpn_regressor.cls_logits
-    )
-    self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = convert_fx(
-        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred
-    )
-    self.roi_heads.box_head.roi_box_conv = convert_fx(
-        self.roi_heads.box_head.roi_box_conv
-    )
-    self.roi_heads.box_head.avgpool = convert_fx(self.roi_heads.box_head.avgpool)
-    self.roi_heads.box_predictor.cls_score = convert_fx(
-        self.roi_heads.box_predictor.cls_score
-    )
-    self.roi_heads.box_predictor.bbox_pred = convert_fx(
-        self.roi_heads.box_predictor.bbox_pred
-    )
+        convert(self, inplace=True)
+    else:
+        assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
+        self.backbone = convert_fx(
+            self.backbone,
+            convert_custom_config_dict={"preserved_attributes": ["size_divisibility"]},
+        )
+        self.proposal_generator.rpn_head.rpn_feature = convert_fx(
+            self.proposal_generator.rpn_head.rpn_feature
+        )
+        self.proposal_generator.rpn_head.rpn_regressor.cls_logits = convert_fx(
+            self.proposal_generator.rpn_head.rpn_regressor.cls_logits
+        )
+        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = convert_fx(
+            self.proposal_generator.rpn_head.rpn_regressor.bbox_pred
+        )
+        self.roi_heads.box_head.roi_box_conv = convert_fx(
+            self.roi_heads.box_head.roi_box_conv
+        )
+        self.roi_heads.box_head.avgpool = convert_fx(self.roi_heads.box_head.avgpool)
+        self.roi_heads.box_predictor.cls_score = convert_fx(
+            self.roi_heads.box_predictor.cls_score
+        )
+        self.roi_heads.box_predictor.bbox_pred = convert_fx(
+            self.roi_heads.box_predictor.bbox_pred
+        )
     return self
 
 

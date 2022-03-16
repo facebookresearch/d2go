@@ -393,9 +393,10 @@ def setup_qat_model(
         model.apply(qat_utils.disable_lqat_learnable_observer)
 
     # qat state dict mapper
-    model = _setup_non_qat_to_qat_state_dict_map(
-        model_fp32_state_dict, model, is_eager_mode=cfg.QUANTIZATION.EAGER_MODE
-    )
+    if not getattr(model, "_non_qat_to_qat_state_dict_map", None):
+        model = _setup_non_qat_to_qat_state_dict_map(
+            model_fp32_state_dict, model, is_eager_mode=cfg.QUANTIZATION.EAGER_MODE
+        )
 
     # qat optimizer group for learnable qat
     model = qat_utils.setup_qat_get_optimizer_param_groups(model, qat_method)
@@ -419,7 +420,9 @@ def _setup_non_qat_to_qat_state_dict_map(
         for n_k, o_k in zip(
             new_state_dict_non_observer_keys, original_state_dict_shapes
         ):
-            assert new_state_dict_shapes[n_k] == original_state_dict_shapes[o_k]
+            assert (
+                new_state_dict_shapes[n_k] == original_state_dict_shapes[o_k]
+            ), f"QAT model shapes is inconsistent. FP32.{o_k}={original_state_dict_shapes[o_k]} , QAT.{n_k}={new_state_dict_shapes[n_k]}"
         # _q_state_dict_map will store
         model_qat._non_qat_to_qat_state_dict_map = dict(
             zip(original_state_dict_shapes, new_state_dict_non_observer_keys)
