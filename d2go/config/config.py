@@ -20,8 +20,6 @@ CONFIG_CUSTOM_PARSE_REGISTRY = Registry("CONFIG_CUSTOM_PARSE")
 
 def _opts_to_dict(opts: List[str]):
     ret = {}
-    if opts is None:
-        return ret
     for full_key, v in zip(opts[0::2], opts[1::2]):
         keys = full_key.split(".")
         cur = ret

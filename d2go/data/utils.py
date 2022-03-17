@@ -384,7 +384,7 @@ def update_cfg_if_using_adhoc_dataset(cfg):
     return cfg
 
 
-class _FakeListObj(list):
+class _FakeListObj(object):
     def __init__(self, size):
         self.size = size
 
@@ -392,7 +392,9 @@ class _FakeListObj(list):
         return self.size
 
     def __getitem__(self, idx):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "This is a fake list, accessing this list should not happen"
+        )
 
 
 def local_master_get_detection_dataset_dicts(*args, **kwargs):

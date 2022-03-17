@@ -57,14 +57,13 @@ class DiskCachedDatasetFromList(data.Dataset):
             return np.frombuffer(buffer, dtype=np.uint8)
 
         logger.info(
-            "Serializing {} elements to byte tensors and concatenating them all ...".format(
-                len(self._lst)
-            )
+            "Serializing {} elements to byte tensors ...".format(len(self._lst))
         )
         self._lst = [_serialize(x) for x in self._lst]
+        total_size = sum(len(x) for x in self._lst)
         # TODO: only enabling DiskCachedDataset for large enough dataset
         logger.info(
-            "Serialized dataset takes {:.2f} MiB".format(len(self._lst) / 1024 ** 2)
+            "Serialized dataset takes {:.2f} MiB".format(total_size / 1024 ** 2)
         )
         self._initialize_diskcache()
 
@@ -138,9 +137,11 @@ class DiskCachedDatasetFromList(data.Dataset):
             self._chuck_size = _local_master_gather(
                 lambda: self._chuck_size, check_equal=True
             )[0]
+            logger.info("Gathered chuck size: {}".format(self._chuck_size))
 
         # free the memory of self._lst
         self._size = _local_master_gather(lambda: len(self._lst), check_equal=True)[0]
+        logger.info("Gathered list size: {}".format(self._size))
         del self._lst
 
     def _write_to_local_db(self, task):
