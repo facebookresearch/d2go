@@ -133,7 +133,6 @@ dmypy.json
 *.swp
 *.DS_Store
 version.py
-TARGETS
 
 # internal
 */**/fb/*
