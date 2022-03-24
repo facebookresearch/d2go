@@ -7,6 +7,7 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 """
 
 import logging
+import sys
 
 import torch
 from d2go.distributed import launch
@@ -73,7 +74,7 @@ def run_with_cmdline_args(args):
     )
 
 
-if __name__ == "__main__":
+def cli(args):
     parser = basic_argument_parser()
     parser.add_argument(
         "--predictor-path",
@@ -100,3 +101,7 @@ if __name__ == "__main__":
         help="Control the --caffe2_logging_print_net_summary in GlobalInit",
     )
     run_with_cmdline_args(parser.parse_args())
+
+
+if __name__ == "__main__":
+    cli(sys.argv[1:])

@@ -8,6 +8,7 @@ deployable format (such as torchscript, caffe2, ...)
 
 import copy
 import logging
+import sys
 import typing
 
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
@@ -125,9 +126,9 @@ def get_parser():
     return parser
 
 
-def cli():
-    run_with_cmdline_args(get_parser().parse_args())
+def cli(args):
+    run_with_cmdline_args(get_parser().parse_args(args))
 
 
 if __name__ == "__main__":
-    cli()
+    cli(sys.argv[1:])
