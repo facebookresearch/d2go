@@ -3,7 +3,6 @@
 
 
 import copy
-import inspect
 import logging
 import math
 from typing import Tuple
@@ -137,27 +136,12 @@ def add_quantization_default_configs(_C):
 
 # TODO: model.to(device) might not work for detection meta-arch, this function is the
 # workaround, in general, we might need a meta-arch API for this if needed.
-def _cast_detection_model(model, device):
-    # check model is an instance of one of the meta arch
-    from detectron2.export.caffe2_modeling import Caffe2MetaArch
-    from detectron2.modeling import META_ARCH_REGISTRY
+def _cast_model_to_device(model, device):
+    from d2go.modeling.meta_arch.rcnn import _cast_detection_model
+    from detectron2.modeling import GeneralizedRCNN
 
-    if isinstance(model, Caffe2MetaArch):
-        model._wrapped_model = _cast_detection_model(model._wrapped_model, device)
-        return model
-
-    assert isinstance(model, tuple(META_ARCH_REGISTRY._obj_map.values()))
-    model.to(device)
-    # cast normalizer separately
-    if hasattr(model, "normalizer") and not (
-        hasattr(model, "pixel_mean") and hasattr(model, "pixel_std")
-    ):
-        pixel_mean = inspect.getclosurevars(model.normalizer).nonlocals["pixel_mean"]
-        pixel_std = inspect.getclosurevars(model.normalizer).nonlocals["pixel_std"]
-        pixel_mean = pixel_mean.to(device)
-        pixel_std = pixel_std.to(device)
-        model.normalizer = lambda x: (x - pixel_mean) / pixel_std
-    return model
+    assert isinstance(model, GeneralizedRCNN), "Currently only availabe for RCNN"
+    return _cast_detection_model(model, device)
 
 
 def add_d2_quant_mapping(mappings):
@@ -304,7 +288,7 @@ def post_training_quantize(cfg, model, data_loader):
     if calibration_force_on_gpu:
         # NOTE: model.to(device) may not handle cases such as normalizer, FPN, only
         # do move to GPU if specified.
-        _cast_detection_model(model, "cuda")
+        _cast_model_to_device(model, "cuda")
 
     calibration_iters = cfg.QUANTIZATION.PTQ.CALIBRATION_NUM_IMAGES
     for idx, inputs in enumerate(data_loader):
@@ -327,7 +311,7 @@ def post_training_quantize(cfg, model, data_loader):
 
     # cast model back to the original device
     if calibration_force_on_gpu:
-        _cast_detection_model(model, cfg.MODEL.DEVICE)
+        _cast_model_to_device(model, cfg.MODEL.DEVICE)
 
     return model
 

@@ -19,6 +19,14 @@ from mobile_cv.common.misc.file_utils import make_temp_directory
 patch_d2_meta_arch()
 
 
+def _maybe_skip_test(self, predictor_type):
+    if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+        self.skipTest("Caffe2 is not available for OSS")
+
+    if not torch.cuda.is_available() and "_gpu" in predictor_type:
+        self.skipTest("GPU is not available for exporting GPU model")
+
+
 class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
     def setup_custom_test(self):
         super().setup_custom_test()
@@ -31,13 +39,13 @@ class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
         [
             ["torchscript@c2_ops", True],
             ["torchscript", True],
+            ["torchscript_gpu", False],  # can't compare across device
             ["torchscript_int8@c2_ops", False],
             ["torchscript_int8", False],
         ]
     )
     def test_export(self, predictor_type, compare_match):
-        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
-            self.skipTest("Caffe2 is not available for OSS")
+        _maybe_skip_test(self, predictor_type)
         self._test_export(predictor_type, compare_match=compare_match)
 
 
@@ -58,8 +66,7 @@ class TestFBNetV3MaskRCNNFPNFP32(RCNNBaseTestCases.TemplateTestCase):
         ]
     )
     def test_export(self, predictor_type, compare_match):
-        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
-            self.skipTest("Caffe2 is not available for OSS")
+        _maybe_skip_test(self, predictor_type)
         self._test_export(predictor_type, compare_match=compare_match)
 
 
@@ -89,8 +96,7 @@ class TestFBNetV3MaskRCNNQATEager(RCNNBaseTestCases.TemplateTestCase):
         ]
     )
     def test_export(self, predictor_type, compare_match):
-        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
-            self.skipTest("Caffe2 is not available for OSS")
+        _maybe_skip_test(self, predictor_type)
         self._test_export(predictor_type, compare_match=compare_match)
 
 

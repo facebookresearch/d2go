@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import inspect
 import logging
 
 import torch
@@ -59,6 +60,16 @@ class GeneralizedRCNNPatch:
 
 @RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()
 def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
+    pytorch_model = self
+
+    # NOTE: currently Exporter doesn't support specifying exporting GPU model via
+    # `model_export_method` in a general way. For RCNN model, we only need to cast
+    # the model to GPU and trace the model (scripting might not work) normally to
+    # get the GPU torchscripts.
+    if "_gpu" in predictor_type:
+        pytorch_model = _cast_detection_model(pytorch_model, "cuda")
+        predictor_type = predictor_type.replace("_gpu", "", 1)
+
     if (
         "@c2_ops" in predictor_type
         or "caffe2" in predictor_type
@@ -67,7 +78,7 @@ def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
         from detectron2.export.caffe2_modeling import META_ARCH_CAFFE2_EXPORT_TYPE_MAP
 
         C2MetaArch = META_ARCH_CAFFE2_EXPORT_TYPE_MAP[cfg.MODEL.META_ARCHITECTURE]
-        c2_compatible_model = C2MetaArch(cfg, self)
+        c2_compatible_model = C2MetaArch(cfg, pytorch_model)
 
         preprocess_info = FuncInfo.gen_func_info(
             D2Caffe2MetaArchPreprocessFunc,
@@ -100,8 +111,9 @@ def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
         )
         preprocess_func = preprocess_info.instantiate()
         return PredictorExportConfig(
-            model=D2RCNNInferenceWrapper(self),
+            model=D2RCNNInferenceWrapper(pytorch_model),
             data_generator=lambda x: (preprocess_func(x),),
+            model_export_method=predictor_type,
             preprocess_info=preprocess_info,
             postprocess_info=FuncInfo.gen_func_info(
                 D2RCNNInferenceWrapper.Postprocess, params={}
@@ -430,3 +442,28 @@ class D2RCNNInferenceWrapper(nn.Module):
             width, height = batch[0]["width"], batch[0]["height"]
             r = detector_postprocess(outputs, height, width)
             return [{"instances": r}]
+
+
+# TODO: model.to(device) might not work for detection meta-arch, this function is the
+# workaround, in general, we might need a meta-arch API for this if needed.
+def _cast_detection_model(model, device):
+    # check model is an instance of one of the meta arch
+    from detectron2.export.caffe2_modeling import Caffe2MetaArch
+    from detectron2.modeling import META_ARCH_REGISTRY
+
+    if isinstance(model, Caffe2MetaArch):
+        model._wrapped_model = _cast_detection_model(model._wrapped_model, device)
+        return model
+
+    assert isinstance(model, tuple(META_ARCH_REGISTRY._obj_map.values()))
+    model.to(device)
+    # cast normalizer separately
+    if hasattr(model, "normalizer") and not (
+        hasattr(model, "pixel_mean") and hasattr(model, "pixel_std")
+    ):
+        pixel_mean = inspect.getclosurevars(model.normalizer).nonlocals["pixel_mean"]
+        pixel_std = inspect.getclosurevars(model.normalizer).nonlocals["pixel_std"]
+        pixel_mean = pixel_mean.to(device)
+        pixel_std = pixel_std.to(device)
+        model.normalizer = lambda x: (x - pixel_mean) / pixel_std
+    return model
