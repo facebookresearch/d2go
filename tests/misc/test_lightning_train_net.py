@@ -5,6 +5,7 @@ import os
 import unittest
 
 import numpy as np
+import torch.distributed as dist
 from d2go.config import CfgNode
 from d2go.config.utils import flatten_config_dict
 from d2go.runner.lightning_task import GeneralizedRCNNTask
@@ -56,3 +57,7 @@ class TestLightningTrainNet(unittest.TestCase):
         accuracy2 = flatten_config_dict(out2.accuracy)
         for k in accuracy:
             np.testing.assert_equal(accuracy[k], accuracy2[k])
+
+    def tearDown(self):
+        if dist.is_initialized():
+            dist.destroy_process_group()
