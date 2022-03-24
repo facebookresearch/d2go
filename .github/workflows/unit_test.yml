@@ -29,4 +29,4 @@ jobs:
         env:
             OSSRUN: 1
         run: |
-          python -m unittest discover tests
+          python -m unittest discover -v -s tests
