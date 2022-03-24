@@ -1,9 +1,13 @@
-name: Unit Test
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"  # @daily
 
 jobs:
-  build:
+  python-unittest:
 
     runs-on: ubuntu-latest
 
