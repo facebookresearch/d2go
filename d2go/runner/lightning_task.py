@@ -425,7 +425,7 @@ class DefaultTask(pl.LightningModule):
                 device=self.cfg.MODEL_EMA.DEVICE or self.cfg.MODEL.DEVICE,
             )
 
-    def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx) -> None:
+    def on_train_batch_end(self, *_) -> None:
         if self.ema_state:
             self.ema_state.update(self.model)
 
