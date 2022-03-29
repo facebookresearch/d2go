@@ -259,13 +259,24 @@ def _fx_quant_prepare(self, cfg):
 def default_rcnn_prepare_for_quant(self, cfg):
     model = self
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
-    model.qconfig = (
-        get_qat_qconfig(
+    model.qconfig = None
+    if model.training:
+        model.qconfig = get_qat_qconfig(
             cfg.QUANTIZATION.BACKEND, cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
         )
-        if model.training
-        else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
-    )
+        assert (
+            not cfg.QUANTIZATION.USE_SYMMETRIC_QCONFIG
+        ), "Symmetric quantization w/ QAT is not supported yet"
+    else:
+        if cfg.QUANTIZATION.USE_SYMMETRIC_QCONFIG:
+            assert (
+                cfg.QUANTIZATION.BACKEND == "qnnpack"
+            ), "Symmetric qconfig is support only with qnnpack"
+            model.qconfig = torch.ao.quantization.default_symmetric_qnnpack_qconfig
+        else:
+            model.qconfig = torch.ao.quantization.get_default_qconfig(
+                cfg.QUANTIZATION.BACKEND
+            )
     if (
         hasattr(model, "roi_heads")
         and hasattr(model.roi_heads, "mask_head")
