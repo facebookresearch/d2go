@@ -134,9 +134,5 @@ dmypy.json
 *.DS_Store
 version.py
 
-# internal
-*/**/fb/*
-*/**/*_fb.py
-defs.bzl
-datasets/
+# output dir
 output/
