@@ -91,7 +91,8 @@ def add_quantization_default_configs(_C):
     _C.QUANTIZATION.MODULES = []
     # Lightning quantization callback name
     _C.QUANTIZATION.NAME = ""
-
+    # Use Symmetric qconfig
+    _C.QUANTIZATION.USE_SYMMETRIC_QCONFIG = False
     # quantization-aware training
     _C.QUANTIZATION.QAT = CfgNode()
     _C.QUANTIZATION.QAT.ENABLED = False
@@ -226,13 +227,24 @@ def default_prepare_for_quant(cfg, model):
     Return:
         nn.Module: a ready model for QAT training or PTQ calibration
     """
-    qconfig = (
-        qat_utils.get_qat_qconfig(
+    qconfig = None
+    if model.training:
+        qconfig = qat_utils.get_qat_qconfig(
             cfg.QUANTIZATION.BACKEND, cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
         )
-        if model.training
-        else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
-    )
+        assert (
+            not cfg.QUANTIZATION.USE_SYMMETRIC_QCONFIG
+        ), "Symmetric quantization w/ QAT is not supported yet"
+    else:
+        if cfg.QUANTIZATION.USE_SYMMETRIC_QCONFIG:
+            assert (
+                cfg.QUANTIZATION.BACKEND == "qnnpack"
+            ), "Symmetric qconfig is support only with qnnpack"
+            qconfig = torch.ao.quantization.default_symmetric_qnnpack_qconfig
+        else:
+            qconfig = torch.ao.quantization.get_default_qconfig(
+                cfg.QUANTIZATION.BACKEND
+            )
 
     if cfg.QUANTIZATION.EAGER_MODE:
         model = fuse_utils.fuse_model(
