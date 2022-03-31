@@ -12,7 +12,11 @@ import torch
 from d2go.utils.helper import run_once
 from detectron2.utils.analysis import FlopCountAnalysis
 from detectron2.utils.file_io import PathManager
+from detectron2.utils.registry import Registry
 from fvcore.nn import flop_count_table, flop_count_str
+
+
+PROFILER_REGISTRY = Registry("PROFILER")
 
 
 logger = logging.getLogger(__name__)
@@ -40,6 +44,10 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
     except Exception:
         logger.info("Failed to deepcopy the model and skip FlopsEstimation.")
         return
+
+    # delete other forward_pre_hooks so they are not simultaneously called
+    for k in model._forward_pre_hooks:
+        del model._forward_pre_hooks[k]
 
     if use_eval_mode:
         model.eval()
@@ -111,6 +119,12 @@ def add_flop_printing_hook(
     handle = model.register_forward_pre_hook(hook)
 
 
+@PROFILER_REGISTRY.register()
+def default_flop_counter(model, cfg):
+
+    return add_flop_printing_hook(model, cfg.OUTPUT_DIR)
+
+
 # NOTE: the logging can be too long and messsy when printing flops multiple
 # times, especially when running eval during training, thus using `run_once`
 # to limit it. `dump_flops_info` can log flops more concisely.
@@ -156,3 +170,12 @@ def add_print_flops_callback(cfg, model, disable_after_callback=True):
     logger.info("Added callback to log flops info after the first inference")
     fest.set_enable(True)
     return fest
+
+
+def attach_profiler(profiler_name):
+    return PROFILER_REGISTRY.get(profiler_name)
+
+
+def attach_profilers(cfg, model):
+    for profiler in cfg.PROFILERS:
+        attach_profiler(profiler)(model, cfg)
