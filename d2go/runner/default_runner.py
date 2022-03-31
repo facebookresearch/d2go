@@ -38,7 +38,7 @@ from d2go.modeling.quantization import (
     QATHook,
 )
 from d2go.optimizer import build_optimizer_mapper
-from d2go.utils.flop_calculator import add_flop_printing_hook
+from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.get_default_cfg import get_default_cfg
 from d2go.utils.helper import TensorboardXWriter, D2Trainer
 from d2go.utils.misc import get_tensorboard_log_dir
@@ -176,6 +176,9 @@ class BaseRunner(object):
         )  # upgrade from D2's CfgNode to D2Go's CfgNode
 
         cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
+
+        cfg.PROFILERS = ["default_flop_counter"]
+
         return cfg
 
     def build_model(self, cfg, eval_only=False):
@@ -314,7 +317,7 @@ class Detectron2GoRunner(BaseRunner):
                 dataset_name,
             )
 
-        add_flop_printing_hook(model, cfg.OUTPUT_DIR)
+        attach_profilers(cfg, model)
 
         results = OrderedDict()
         results[model_tag] = OrderedDict()
@@ -419,7 +422,7 @@ class Detectron2GoRunner(BaseRunner):
     def do_train(self, cfg, model, resume):
         # Note that flops at the beginning of training is often inaccurate,
         # if a model has input-dependent logic
-        add_flop_printing_hook(model, cfg.OUTPUT_DIR)
+        attach_profilers(cfg, model)
 
         optimizer = self.build_optimizer(cfg, model)
         scheduler = self.build_lr_scheduler(cfg, optimizer)
