@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import contextlib
 import copy
 import shutil
 import tempfile
@@ -11,7 +12,9 @@ import torch
 from d2go.export.api import convert_and_export_predictor
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.runner import GeneralizedRCNNRunner
-from d2go.utils.testing.data_loader_helper import create_fake_detection_data_loader
+from d2go.utils.testing.data_loader_helper import (
+    create_detection_data_loader_on_toy_dataset,
+)
 from detectron2.structures import (
     Boxes,
     Instances,
@@ -295,10 +298,25 @@ class RCNNBaseTestCases:
             # forcing test on CPU
             self.cfg.merge_from_list(["MODEL.DEVICE", "cpu"])
 
+        @contextlib.contextmanager
+        def _create_data_loader(self, image_height, image_width, is_train):
+            """
+            Creating the data loader used for the test case. Note that it's better
+            to use "fake" data for quick test and isolating I/O.
+            """
+            with create_detection_data_loader_on_toy_dataset(
+                self.cfg,
+                image_height,
+                image_width,
+                is_train=is_train,
+                runner=self.runner,
+            ) as data_loader:
+                yield data_loader
+
         def _test_export(self, predictor_type, compare_match=True):
             size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
             h, w = size_divisibility, size_divisibility * 2
-            with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
+            with self._create_data_loader(h, w, is_train=False) as data_loader:
                 inputs = next(iter(data_loader))
 
                 # TODO: the export may change model it self, need to fix this
@@ -333,7 +351,7 @@ class RCNNBaseTestCases:
             size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
             h, w = size_divisibility, size_divisibility * 2
 
-            with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
+            with self._create_data_loader(h, w, is_train=False) as data_loader:
                 inputs = next(iter(data_loader))
 
             with torch.no_grad():

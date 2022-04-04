@@ -201,25 +201,34 @@ class LocalImageGenerator:
 
 
 @contextlib.contextmanager
-def create_fake_detection_data_loader(height, width, is_train):
-    runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
-    cfg = runner.get_default_cfg()
-    cfg.DATASETS.TRAIN = ["default_dataset_train"]
-    cfg.DATASETS.TEST = ["default_dataset_test"]
-    min_size = min(width, height)
-    max_size = max(width, height)
-    cfg.INPUT.MIN_SIZE_TRAIN = (min_size,)
-    cfg.INPUT.MAX_SIZE_TRAIN = max_size
-    cfg.INPUT.MIN_SIZE_TEST = min_size
-    cfg.INPUT.MAX_SIZE_TEST = max_size
+def create_detection_data_loader_on_toy_dataset(
+    cfg, height, width, is_train, runner=None
+):
+    """
+    Args:
+        cfg (CfgNode): the config used to create data loader, it can control things like
+            resizing, augmentation.
+        height, width (int): the height/width of the image files (not the resized image size)
+        is_train (bool): training or testing
+    """
+    if runner is None:
+        runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
+
+    # change dataset name to toy dataset
+    cfg.DATASETS.TRAIN = ["_toy_dataset_train_"]
+    cfg.DATASETS.TEST = ["_toy_dataset_test_"]
 
     if is_train:
-        with register_toy_coco_dataset("default_dataset_train", num_images=3):
+        with register_toy_coco_dataset(
+            "_toy_dataset_train_", num_images=3, image_size=(width, height)
+        ):
             train_loader = runner.build_detection_train_loader(cfg)
             yield train_loader
     else:
-        with register_toy_coco_dataset("default_dataset_test", num_images=3):
+        with register_toy_coco_dataset(
+            "_toy_dataset_test_", num_images=3, image_size=(width, height)
+        ):
             test_loader = runner.build_detection_test_loader(
-                cfg, dataset_name="default_dataset_test"
+                cfg, dataset_name="_toy_dataset_test_"
             )
             yield test_loader

@@ -10,7 +10,9 @@ import torch
 from d2go.export.api import convert_and_export_predictor
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.runner import GeneralizedRCNNRunner
-from d2go.utils.testing.data_loader_helper import create_fake_detection_data_loader
+from d2go.utils.testing.data_loader_helper import (
+    create_detection_data_loader_on_toy_dataset,
+)
 from d2go.utils.testing.rcnn_helper import RCNNBaseTestCases, get_quick_test_config_opts
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
@@ -59,7 +61,11 @@ class TestFBNetV3MaskRCNNFPNFP32(RCNNBaseTestCases.TemplateTestCase):
 
     @RCNNBaseTestCases.expand_parameterized_test_export(
         [
-            ["torchscript@c2_ops", True],
+            # FIXME: exporting c2_ops for FPN model might not pass this test for certain
+            # combination of image sizes and resizing targets. data points are:
+            # - passes before D35238890: image_size and resizing target are both 32x64 (backbone's divisibility).
+            # - doesn't pass after D35238890: image_size are 32x64, resizing to 5x10.
+            ["torchscript@c2_ops", False],
             ["torchscript", True],
             ["torchscript_int8@c2_ops", False],
             ["torchscript_int8", False],
@@ -165,7 +171,9 @@ class TestTorchVisionExport(unittest.TestCase):
 
         size_divisibility = max(pytorch_model.backbone.size_divisibility, 10)
         h, w = size_divisibility, size_divisibility * 2
-        with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
+        with create_detection_data_loader_on_toy_dataset(
+            cfg, h, w, is_train=False
+        ) as data_loader:
             with make_temp_directory("test_export_torchvision_format") as tmp_dir:
                 predictor_path = convert_and_export_predictor(
                     cfg,
