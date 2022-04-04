@@ -2,7 +2,9 @@ import os
 import tempfile
 
 from d2go.utils.flop_calculator import dump_flops_info
-from d2go.utils.testing.data_loader_helper import create_fake_detection_data_loader
+from d2go.utils.testing.data_loader_helper import (
+    create_detection_data_loader_on_toy_dataset,
+)
 from d2go.utils.testing.rcnn_helper import RCNNBaseTestCases
 
 
@@ -14,7 +16,9 @@ class TestFlopCount(RCNNBaseTestCases.TemplateTestCase):
     def test_flop_count(self):
         size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
         h, w = size_divisibility, size_divisibility * 2
-        with create_fake_detection_data_loader(h, w, is_train=False) as data_loader:
+        with create_detection_data_loader_on_toy_dataset(
+            self.cfg, h, w, is_train=False
+        ) as data_loader:
             inputs = (next(iter(data_loader)),)
 
         with tempfile.TemporaryDirectory(prefix="d2go_test") as output_dir:
