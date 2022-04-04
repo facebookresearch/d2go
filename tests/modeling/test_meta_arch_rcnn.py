@@ -191,5 +191,19 @@ class TestTorchVisionExport(unittest.TestCase):
                 scripted_model.save(os.path.join(tmp_dir, "new_file.pt"))
 
 
+class TestMaskRCNNExportOptions(RCNNBaseTestCases.TemplateTestCase):
+    def setup_custom_test(self):
+        super().setup_custom_test()
+        self.cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3a_dsmask_C4.yaml")
+
+    def _get_test_image_sizes(self, is_train):
+        # postprocessing requires no resize from "data loader"
+        return self._get_test_image_size_no_resize(is_train)
+
+    def test_tracing_with_postprocess(self):
+        self.cfg.merge_from_list(["RCNN_EXPORT.INCLUDE_POSTPROCESS", True])
+        self._test_export("torchscript@tracing", compare_match=True)
+
+
 if __name__ == "__main__":
     unittest.main()

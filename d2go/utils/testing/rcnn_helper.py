@@ -229,13 +229,13 @@ def get_quick_test_config_opts(
         ret.extend(
             [
                 "INPUT.MIN_SIZE_TRAIN",
-                (10,),
+                (8,),
                 "INPUT.MAX_SIZE_TRAIN",
-                10,
+                9,
                 "INPUT.MIN_SIZE_TEST",
                 10,
                 "INPUT.MAX_SIZE_TEST",
-                10,
+                11,
             ]
         )
     return [str(x) for x in ret]
@@ -279,6 +279,29 @@ class RCNNBaseTestCases:
             self.test_dir = tempfile.mkdtemp(prefix="test_export_")
             self.addCleanup(shutil.rmtree, self.test_dir)
 
+        def _get_test_image_sizes_default(self, is_train):
+            # model should work for any size, so don't alway use power of 2 or multiple
+            # of size_divisibility for testing.
+            side_length = max(self.test_model.backbone.size_divisibility, 10)
+            # make it non-square to cover error caused by messing up width & height
+            h, w = side_length, side_length * 2
+            return h, w
+
+        def _get_test_image_size_no_resize(self, is_train):
+            # use cfg.INPUT to make sure data loader doesn't resize the image
+            if is_train:
+                assert len(self.cfg.INPUT.MAX_SIZE_TRAIN) == 1
+                h = self.cfg.INPUT.MIN_SIZE_TRAIN[0]
+                w = self.cfg.INPUT.MAX_SIZE_TRAIN
+            else:
+                h = self.cfg.INPUT.MIN_SIZE_TEST
+                w = self.cfg.INPUT.MAX_SIZE_TEST
+            return h, w
+
+        def _get_test_image_sizes(self, is_train):
+            """override this method to use other image size strategy"""
+            return self._get_test_image_sizes_default(is_train)
+
         def setup_custom_test(self):
             """
             Override this when using different runner, using different base config file,
@@ -299,11 +322,12 @@ class RCNNBaseTestCases:
             self.cfg.merge_from_list(["MODEL.DEVICE", "cpu"])
 
         @contextlib.contextmanager
-        def _create_data_loader(self, image_height, image_width, is_train):
+        def _create_data_loader(self, is_train):
             """
             Creating the data loader used for the test case. Note that it's better
             to use "fake" data for quick test and isolating I/O.
             """
+            image_height, image_width = self._get_test_image_sizes(is_train=False)
             with create_detection_data_loader_on_toy_dataset(
                 self.cfg,
                 image_height,
@@ -314,9 +338,7 @@ class RCNNBaseTestCases:
                 yield data_loader
 
         def _test_export(self, predictor_type, compare_match=True):
-            size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
-            h, w = size_divisibility, size_divisibility * 2
-            with self._create_data_loader(h, w, is_train=False) as data_loader:
+            with self._create_data_loader(is_train=False) as data_loader:
                 inputs = next(iter(data_loader))
 
                 # TODO: the export may change model it self, need to fix this
@@ -341,6 +363,7 @@ class RCNNBaseTestCases:
                     assert_instances_allclose(
                         predictor_outputs[0]["instances"],
                         pytorch_outputs[0]["instances"],
+                        size_as_tensor=True,
                     )
 
             return predictor_path
@@ -348,10 +371,7 @@ class RCNNBaseTestCases:
         # TODO: add test_train
 
         def _test_inference(self):
-            size_divisibility = max(self.test_model.backbone.size_divisibility, 10)
-            h, w = size_divisibility, size_divisibility * 2
-
-            with self._create_data_loader(h, w, is_train=False) as data_loader:
+            with self._create_data_loader(is_train=False) as data_loader:
                 inputs = next(iter(data_loader))
 
             with torch.no_grad():
