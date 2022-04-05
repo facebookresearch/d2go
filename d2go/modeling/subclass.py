@@ -43,6 +43,9 @@ class SubclassFetcher(ABC):
     to use with custom projects.
     """
 
+    def __init__(self, cfg):
+        raise NotImplementedError()
+
     @property
     @abstractmethod
     def subclass_names(self) -> List[str]:

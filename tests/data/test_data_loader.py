@@ -11,7 +11,7 @@ from d2go.data.disk_cache import DiskCachedDatasetFromList
 from d2go.data.utils import enable_disk_cached_dataset
 from d2go.runner import create_runner
 from d2go.utils.testing.data_loader_helper import (
-    create_fake_detection_data_loader,
+    create_detection_data_loader_on_toy_dataset,
     register_toy_coco_dataset,
 )
 
@@ -102,16 +102,16 @@ class TestDiskCachedDataLoader(unittest.TestCase):
             # no cache dir in the beginning
             self.assertEqual(self._count_cache_dirs(), 0)
 
-            with create_fake_detection_data_loader(
-                height, width, is_train=True
+            with create_detection_data_loader_on_toy_dataset(
+                cfg, height, width, is_train=True
             ) as train_loader:
                 # train loader should create one cache dir
                 self.assertEqual(self._count_cache_dirs(), 1)
 
                 _test_data_loader(train_loader)
 
-                with create_fake_detection_data_loader(
-                    height, width, is_train=False
+                with create_detection_data_loader_on_toy_dataset(
+                    cfg, height, width, is_train=False
                 ) as test_loader:
                     # test loader should create another cache dir
                     self.assertEqual(self._count_cache_dirs(), 2)
