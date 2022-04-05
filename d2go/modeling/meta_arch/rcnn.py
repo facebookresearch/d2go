@@ -106,17 +106,22 @@ def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
         )
 
     else:
+        do_postprocess = cfg.RCNN_EXPORT.INCLUDE_POSTPROCESS
         preprocess_info = FuncInfo.gen_func_info(
             D2RCNNInferenceWrapper.Preprocess, params={}
         )
         preprocess_func = preprocess_info.instantiate()
         return PredictorExportConfig(
-            model=D2RCNNInferenceWrapper(pytorch_model),
+            model=D2RCNNInferenceWrapper(
+                pytorch_model,
+                do_postprocess=do_postprocess,
+            ),
             data_generator=lambda x: (preprocess_func(x),),
             model_export_method=predictor_type,
             preprocess_info=preprocess_info,
             postprocess_info=FuncInfo.gen_func_info(
-                D2RCNNInferenceWrapper.Postprocess, params={}
+                D2RCNNInferenceWrapper.Postprocess,
+                params={"detector_postprocess_done_in_model": do_postprocess},
             ),
         )
 
@@ -407,9 +412,14 @@ class D2Caffe2MetaArchPostprocessFunc(object):
 
 
 class D2RCNNInferenceWrapper(nn.Module):
-    def __init__(self, model):
+    def __init__(
+        self,
+        model,
+        do_postprocess=False,
+    ):
         super().__init__()
         self.model = model
+        self.do_postprocess = do_postprocess
 
     def forward(self, image):
         """
@@ -417,8 +427,22 @@ class D2RCNNInferenceWrapper(nn.Module):
         contains non-tensor, therefore the TracingAdaptedTorchscriptExport must be used in
         order to convert the output back from flattened tensors.
         """
-        inputs = [{"image": image}]
-        return self.model.inference(inputs, do_postprocess=False)[0]
+        if self.do_postprocess:
+            inputs = [
+                {
+                    "image": image,
+                    # NOTE: the width/height is not available since the model takes a
+                    # single image tensor as input. Therefore even though post-process
+                    # is specified, the wrapped model doesn't resize the output to its
+                    # original width/height.
+                    # TODO: If this is needed, we might make the model take extra
+                    # width/height info like the C2-style inputs.
+                }
+            ]
+            return self.model.forward(inputs)[0]["instances"]
+        else:
+            inputs = [{"image": image}]
+            return self.model.inference(inputs, do_postprocess=False)[0]
 
     @staticmethod
     class Preprocess(object):
@@ -432,6 +456,14 @@ class D2RCNNInferenceWrapper(nn.Module):
             return batch[0]["image"]
 
     class Postprocess(object):
+        def __init__(self, detector_postprocess_done_in_model=False):
+            """
+            Args:
+                detector_postprocess_done_in_model (bool): whether `detector_postprocess`
+                has already applied in the D2RCNNInferenceWrapper
+            """
+            self.detector_postprocess_done_in_model = detector_postprocess_done_in_model
+
         def __call__(self, batch, inputs, outputs):
             """
             This function describes how to run the predictor using exported model. Note
@@ -440,8 +472,20 @@ class D2RCNNInferenceWrapper(nn.Module):
             """
             assert len(batch) == 1, "only support single batch"
             width, height = batch[0]["width"], batch[0]["height"]
-            r = detector_postprocess(outputs, height, width)
-            return [{"instances": r}]
+            if self.detector_postprocess_done_in_model:
+                image_shape = batch[0]["image"].shape  # chw
+                if image_shape[1] != height or image_shape[2] != width:
+                    raise NotImplementedError(
+                        f"Image tensor (shape: {image_shape}) doesn't match the"
+                        f" input width ({width}) height ({height}). Since post-process"
+                        f" has been done inside the torchscript without width/height"
+                        f" information, can't recover the post-processed output to "
+                        f"orignail resolution."
+                    )
+                return [{"instances": outputs}]
+            else:
+                r = detector_postprocess(outputs, height, width)
+                return [{"instances": r}]
 
 
 # TODO: model.to(device) might not work for detection meta-arch, this function is the

@@ -618,6 +618,12 @@ def _add_rcnn_default_config(_C):
     _C.EXPORT_CAFFE2 = CfgNode()
     _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
 
+    # Options about how to export the model
+    _C.RCNN_EXPORT = CfgNode()
+    # whether or not to include the postprocess (GeneralizedRCNN._postprocess) step
+    # inside the exported model
+    _C.RCNN_EXPORT.INCLUDE_POSTPROCESS = False
+
     _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
     _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
     _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
