@@ -298,6 +298,30 @@ def update_export_kwargs_from_export_method(old_f):
     model_export_kwargs of the PredictorExportConfig, user can simply put the `_mobile`
     trigger word in the --predictor-type (which will then be forwarded as `export_method`
     in most cases) to enable mobile optimizaiton.
+
+    Please note that there's a finite set of allowed "export_method" values,
+    and an error will be raised if the string cannot be fully parsed.
+    The recognized values generally follow a pattern of:
+        "torchscript[_mobile][_int8][-vulkan | -metal][@scripting | @tracing]"
+
+    Some examples (not comprehensive because flag words' order can be swapped):
+        "torchscript"
+        "torchscript_mobile"
+        "torchscript_mobile-metal"
+        "torchscript_mobile-vulkan"
+        "torchscript_mobile_int8"
+        "torchscript@scripting"
+        "torchscript_int8@scripting"
+        "torchscript_mobile@scripting"
+        "torchscript_mobile-metal@scripting"
+        "torchscript_mobile-vulkan@scripting"
+        "torchscript_mobile_int8@scripting"
+        "torchscript@tracing"
+        "torchscript_int8@tracing"
+        "torchscript_mobile@tracing"
+        "torchscript_mobile-metal@tracing"
+        "torchscript_mobile-vulkan@tracing"
+        "torchscript_mobile_int8@tracing"
     """
 
     def new_f(cls, model, input_args, save_path, export_method, **export_kwargs):
@@ -311,7 +335,18 @@ def update_export_kwargs_from_export_method(old_f):
                         "`mobile_optimization` is already specified, keep using it"
                     )
                 else:
-                    export_kwargs["mobile_optimization"] = MobileOptimizationConfig()
+                    # Infer a MobileOptimizationConfig if none was provided
+                    # "CPU" backend default. If found appropriate suffix, update the backend
+                    if "-metal" in export_method:
+                        mobile_opt_config = MobileOptimizationConfig(backend="metal")
+                        export_method.replace("-metal", "", 1)
+                    elif "-vulkan" in export_method:
+                        mobile_opt_config = MobileOptimizationConfig(backend="vulkan")
+                        export_method.replace("-vulkan", "", 1)
+                    else:
+                        mobile_opt_config = MobileOptimizationConfig()
+                    export_kwargs["mobile_optimization"] = mobile_opt_config
+
                 export_method = export_method.replace("_mobile", "", 1)
 
             if "@scripting" in export_method:
@@ -375,14 +410,20 @@ class DefaultTorchscriptExport(ModelExportMethod):
 @ModelExportMethodRegistry.register("torchscript")
 @ModelExportMethodRegistry.register("torchscript_int8")
 @ModelExportMethodRegistry.register("torchscript_mobile")
+@ModelExportMethodRegistry.register("torchscript_mobile-metal")
+@ModelExportMethodRegistry.register("torchscript_mobile-vulkan")
 @ModelExportMethodRegistry.register("torchscript_mobile_int8")
 @ModelExportMethodRegistry.register("torchscript@scripting")
 @ModelExportMethodRegistry.register("torchscript_int8@scripting")
 @ModelExportMethodRegistry.register("torchscript_mobile@scripting")
+@ModelExportMethodRegistry.register("torchscript_mobile-metal@scripting")
+@ModelExportMethodRegistry.register("torchscript_mobile-vulkan@scripting")
 @ModelExportMethodRegistry.register("torchscript_mobile_int8@scripting")
 @ModelExportMethodRegistry.register("torchscript@tracing")
 @ModelExportMethodRegistry.register("torchscript_int8@tracing")
 @ModelExportMethodRegistry.register("torchscript_mobile@tracing")
+@ModelExportMethodRegistry.register("torchscript_mobile-metal@tracing")
+@ModelExportMethodRegistry.register("torchscript_mobile-vulkan@tracing")
 @ModelExportMethodRegistry.register("torchscript_mobile_int8@tracing")
 class TracingAdaptedTorchscriptExport(DefaultTorchscriptExport):
     @classmethod
