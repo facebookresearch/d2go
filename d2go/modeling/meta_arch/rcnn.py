@@ -62,14 +62,6 @@ class GeneralizedRCNNPatch:
 def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
     pytorch_model = self
 
-    # NOTE: currently Exporter doesn't support specifying exporting GPU model via
-    # `model_export_method` in a general way. For RCNN model, we only need to cast
-    # the model to GPU and trace the model (scripting might not work) normally to
-    # get the GPU torchscripts.
-    if "_gpu" in predictor_type:
-        pytorch_model = _cast_detection_model(pytorch_model, "cuda")
-        predictor_type = predictor_type.replace("_gpu", "", 1)
-
     if (
         "@c2_ops" in predictor_type
         or "caffe2" in predictor_type

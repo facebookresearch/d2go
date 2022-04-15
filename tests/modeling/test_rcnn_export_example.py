@@ -12,7 +12,7 @@ from d2go.utils.testing.rcnn_helper import get_quick_test_config_opts
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
 
-def maskrcnn_export_caffe2_vs_torchvision_opset_format_example():
+def maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
     with make_temp_directory("export_demo") as tmp_dir:
         # use a fake dataset for ci
         dataset_name = create_local_dataset(tmp_dir, 5, 224, 224)
@@ -48,6 +48,9 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example():
 
         # Running inference using torchvision-style format
         image = torch.zeros(1, 64, 96)  # chw 3D tensor
+        # The exported model can run on both cpu/gpu
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        torchvision_ops_model = torchvision_ops_model.to(device)
         torchvision_style_outputs = torchvision_ops_model(
             image
         )  # suppose N instances are detected
@@ -56,10 +59,20 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example():
         # be difficult to figure out just from model.jit file. The predictor_info.json from
         # the same directory contains the `outputs_schema`, which indicate how the final output
         # is constructed from flattened tensors.
-        pred_boxes = torchvision_style_outputs[0]  # torch.Size([N, 4])
-        pred_classes = torchvision_style_outputs[1]  # torch.Size([N])
-        pred_masks = torchvision_style_outputs[2]  # torch.Size([N, 1, Hmask, Wmask])
-        scores = torchvision_style_outputs[3]  # torch.Size([N])
+        (
+            pred_boxes,  # torch.Size([N, 4])
+            pred_classes,  # torch.Size([N])
+            pred_masks,  # torch.Size([N, 1, Hmask, Wmask])
+            scores,  # torch.Size([N])
+            image_sizes,  # torch.Size([2])
+        ) = torchvision_style_outputs
+        self.assertTrue(
+            all(
+                x.device == torch.device(device) for x in torchvision_style_outputs[:4]
+            ),
+            torchvision_style_outputs,
+        )
+        torch.testing.assert_close(image_sizes, torch.tensor([64, 96]))
 
         # Running inference using caffe2-style format
         data = torch.zeros(1, 1, 64, 96)
@@ -73,16 +86,20 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example():
         mask_fcn_probs = caffe2_style_outputs[3]  # torch.Size([N, Cmask, Hmask, Wmask])
 
         # relations between torchvision-style outputs and caffe2-style outputs
-        torch.testing.assert_allclose(pred_boxes, roi_bbox_nms)
-        torch.testing.assert_allclose(pred_classes, roi_class_nms)
-        torch.testing.assert_allclose(
-            pred_masks, mask_fcn_probs[:, roi_class_nms.to(torch.int64), :, :]
+        torch.testing.assert_close(pred_boxes, roi_bbox_nms, check_device=False)
+        torch.testing.assert_close(
+            pred_classes, roi_class_nms.to(torch.int64), check_device=False
         )
-        torch.testing.assert_allclose(scores, roi_score_nms)
+        torch.testing.assert_close(
+            pred_masks,
+            mask_fcn_probs[:, roi_class_nms.to(torch.int64), :, :],
+            check_device=False,
+        )
+        torch.testing.assert_close(scores, roi_score_nms, check_device=False)
         # END_WIKI_EXAMPLE_TAG
 
 
 class TestOptimizer(unittest.TestCase):
     @unittest.skipIf(os.getenv("OSSRUN") == "1", "Caffe2 is not available for OSS")
     def test_maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
-        maskrcnn_export_caffe2_vs_torchvision_opset_format_example()
+        maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self)
