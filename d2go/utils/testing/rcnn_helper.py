@@ -183,10 +183,8 @@ class MockRCNNInference(object):
         return results
 
 
-def _validate_outputs(inputs, outputs, is_gpu=False):
+def _validate_outputs(inputs, outputs):
     assert len(inputs) == len(outputs)
-    if is_gpu:
-        assert outputs[0]["instances"].pred_classes.device.type == "cuda"
     # TODO: figure out how to validate outputs
 
 
@@ -353,8 +351,7 @@ class RCNNBaseTestCases:
 
                 predictor = create_predictor(predictor_path)
                 predictor_outputs = predictor(inputs)
-                is_gpu = self.cfg.MODEL.DEVICE != "cpu" or "_gpu" in predictor_type
-                _validate_outputs(inputs, predictor_outputs, is_gpu=is_gpu)
+                _validate_outputs(inputs, predictor_outputs)
 
                 if compare_match:
                     with torch.no_grad():

@@ -41,7 +41,6 @@ class TestFBNetV3MaskRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
         [
             ["torchscript@c2_ops", True],
             ["torchscript", True],
-            ["torchscript_gpu", False],  # can't compare across device
             ["torchscript_int8@c2_ops", False],
             ["torchscript_int8", False],
         ]
