@@ -145,8 +145,6 @@ class KeypointRCNNConvUpsamplePredictorNoUpscale(nn.Module):
         self.out_channels = num_keypoints
 
     def forward(self, x):
-        x = layers.interpolate(
-            x, scale_factor=(2, 2), mode="nearest", align_corners=False
-        )
+        x = layers.interpolate(x, scale_factor=(2, 2), mode="nearest")
         x = self.kps_score_lowres(x)
         return x
