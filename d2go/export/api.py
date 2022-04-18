@@ -26,7 +26,7 @@ import logging
 import os
 import sys
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, NamedTuple, Optional, Union, Tuple
+from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 
 if sys.version_info >= (3, 8):
     from typing import final

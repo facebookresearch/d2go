@@ -2,9 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from typing import Type, Optional
+from typing import Optional, Type
 
-from detectron2.data import DatasetCatalog, MetadataCatalog, detection_utils as utils
+from detectron2.data import DatasetCatalog, detection_utils as utils, MetadataCatalog
 from detectron2.evaluation import DatasetEvaluator
 from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.utils.events import get_event_storage

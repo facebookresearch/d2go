@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import functools
-from typing import Tuple, List, Any, Union
+from typing import Any, List, Tuple, Union
 
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
@@ -11,7 +11,7 @@ from detectron2.config import CfgNode
 from detectron2.data.transforms.transform import Transform
 from detectron2.structures.boxes import Boxes
 
-from .build import TRANSFORM_OP_REGISTRY, _json_load
+from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 def get_box_union(boxes: Boxes):

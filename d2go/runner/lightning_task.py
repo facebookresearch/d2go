@@ -13,14 +13,10 @@ import torch
 from d2go.config import CfgNode
 from d2go.data.build import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
-from d2go.data.utils import (
-    update_cfg_if_using_adhoc_dataset,
-)
+from d2go.data.utils import update_cfg_if_using_adhoc_dataset
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import build_model
-from d2go.modeling.model_freezing_utils import (
-    set_requires_grad,
-)
+from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.modeling.quantization import (
     default_prepare_for_quant,
     default_prepare_for_quant_convert,
@@ -28,9 +24,9 @@ from d2go.modeling.quantization import (
 from d2go.optimizer import build_optimizer_mapper
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
+    _get_tbx_writer,
     Detectron2GoRunner,
     GeneralizedRCNNRunner,
-    _get_tbx_writer,
 )
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
@@ -39,7 +35,7 @@ from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
     build_optimizer as d2_build_optimizer,
 )
-from pytorch_lightning.utilities import rank_zero_only, rank_zero_info
+from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.logger import _flatten_dict
 
 _STATE_DICT_KEY = "state_dict"

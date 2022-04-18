@@ -11,8 +11,7 @@ import d2go.utils.qat_utils as qat_utils
 import detectron2.utils.comm as comm
 import torch
 from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.engine import HookBase
-from detectron2.engine import SimpleTrainer
+from detectron2.engine import HookBase, SimpleTrainer
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate

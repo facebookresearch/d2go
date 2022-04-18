@@ -3,9 +3,7 @@
 
 
 # NOTE: making necessary imports to register with Registery
-from . import backbone  # noqa
-from . import meta_arch  # noqa
-from . import modeldef  # noqa
+from . import backbone, meta_arch, modeldef  # noqa  # noqa  # noqa
 
 # namespace forwarding
 from .meta_arch.build import build_model

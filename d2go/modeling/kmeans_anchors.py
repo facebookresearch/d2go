@@ -8,7 +8,7 @@ from typing import List
 import detectron2.utils.comm as comm
 import numpy as np
 import torch
-from d2go.config import temp_defrost, CfgNode as CN
+from d2go.config import CfgNode as CN, temp_defrost
 from detectron2.engine import hooks
 from detectron2.layers import ShapeSpec
 from detectron2.modeling import GeneralizedRCNN

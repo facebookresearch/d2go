@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
 from detectron2.config import CfgNode
 from detectron2.data.transforms import NoOpTransform, Transform
 
-from .build import TRANSFORM_OP_REGISTRY, _json_load
+from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 class LocalizedBoxMotionBlurTransform(Transform):

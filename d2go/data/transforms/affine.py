@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import torchvision.transforms as T
 from detectron2.config import CfgNode
-from detectron2.data.transforms import Transform, TransformGen, NoOpTransform
+from detectron2.data.transforms import NoOpTransform, Transform, TransformGen
 
 from .build import TRANSFORM_OP_REGISTRY
 

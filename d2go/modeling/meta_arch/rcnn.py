@@ -16,13 +16,13 @@ from detectron2.projects.point_rend import PointRendMaskHead
 from detectron2.utils.registry import Registry
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.arch.utils.quantize_utils import (
+    QuantWrapper,
     wrap_non_quant_group_norm,
     wrap_quant_subclass,
-    QuantWrapper,
 )
 from mobile_cv.predictor.api import FuncInfo
 from torch.ao.quantization import convert
-from torch.ao.quantization.quantize_fx import prepare_fx, prepare_qat_fx, convert_fx
+from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
 logger = logging.getLogger(__name__)
 

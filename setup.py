@@ -6,7 +6,7 @@ import shutil
 from os import path
 from typing import List
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 

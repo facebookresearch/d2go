@@ -3,7 +3,7 @@
 
 
 import importlib
-from typing import Type, Union, Optional
+from typing import Optional, Type, Union
 
 from .default_runner import (
     BaseRunner,

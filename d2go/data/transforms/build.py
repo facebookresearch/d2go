@@ -4,7 +4,7 @@
 
 import json
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from detectron2.config import CfgNode
 from detectron2.data import transforms as d2T

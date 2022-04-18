@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from typing import List, Callable, Union
+from typing import Callable, List, Union
 
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
@@ -11,7 +11,7 @@ from detectron2.data import detection_utils as du
 from detectron2.data.transforms.transform import Transform
 from fvcore.transforms.transform import BlendTransform
 
-from .build import TRANSFORM_OP_REGISTRY, _json_load
+from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 class InvertibleColorTransform(Transform):
