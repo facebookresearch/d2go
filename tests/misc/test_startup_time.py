@@ -4,11 +4,7 @@
 
 import unittest
 
-from d2go.initializer import (
-    REGISTER_D2_DATASETS_TIME,
-    REGISTER_TIME,
-    SETUP_ENV_TIME,
-)
+from d2go.initializer import REGISTER_D2_DATASETS_TIME, REGISTER_TIME, SETUP_ENV_TIME
 
 
 class TestStartupTime(unittest.TestCase):

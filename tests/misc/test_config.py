@@ -7,8 +7,7 @@ import logging
 import os
 import unittest
 
-from d2go.config import CfgNode
-from d2go.config import auto_scale_world_size, reroute_config_path
+from d2go.config import auto_scale_world_size, CfgNode, reroute_config_path
 from d2go.config.utils import (
     config_dict_to_list_str,
     flatten_config_dict,

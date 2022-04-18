@@ -8,17 +8,15 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
 import pytorch_lightning as pl  # type: ignore
-from d2go.config import CfgNode, temp_defrost, auto_scale_world_size
+from d2go.config import auto_scale_world_size, CfgNode, temp_defrost
 from d2go.runner import create_runner
-from d2go.runner.callbacks.quantization import (
-    QuantizationAwareTraining,
-)
+from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.setup import basic_argument_parser
 from d2go.utils.misc import dump_trained_model_configs
 from detectron2.utils.events import EventStorage
 from detectron2.utils.file_io import PathManager
-from pytorch_lightning.callbacks import Callback, TQDMProgressBar, LearningRateMonitor
+from pytorch_lightning.callbacks import Callback, LearningRateMonitor, TQDMProgressBar
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy

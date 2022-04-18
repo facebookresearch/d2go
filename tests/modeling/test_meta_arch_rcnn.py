@@ -13,7 +13,7 @@ from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.data_loader_helper import (
     create_detection_data_loader_on_toy_dataset,
 )
-from d2go.utils.testing.rcnn_helper import RCNNBaseTestCases, get_quick_test_config_opts
+from d2go.utils.testing.rcnn_helper import get_quick_test_config_opts, RCNNBaseTestCases
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
 # Add APIs to D2's meta arch, this is usually called in runner's setup, however in
@@ -144,7 +144,7 @@ class TestTorchVisionExport(unittest.TestCase):
         cfg.merge_from_list(["MODEL.DEVICE", "cpu"])
         pytorch_model = runner.build_model(cfg, eval_only=True)
 
-        from typing import List, Dict
+        from typing import Dict, List
 
         class Wrapper(torch.nn.Module):
             def __init__(self, model):

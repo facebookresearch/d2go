@@ -7,18 +7,18 @@ import unittest
 import mock
 import torch
 from d2go.runner.callbacks.quantization import (
+    get_default_qat_qconfig,
+    ModelTransform,
     PostTrainingQuantization,
     QuantizationAwareTraining,
-    ModelTransform,
-    get_default_qat_qconfig,
     rgetattr,
-    rsetattr,
     rhasattr,
+    rsetattr,
 )
 from d2go.utils.misc import mode
 from d2go.utils.testing.helper import tempdir
 from d2go.utils.testing.lightning_test_module import TestModule
-from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch.ao.quantization import (  # @manual; @manual
     default_dynamic_qconfig,
