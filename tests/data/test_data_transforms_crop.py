@@ -162,10 +162,7 @@ class TestDataTransformsCrop(unittest.TestCase):
 
     def test_random_instance_crop(self):
         from detectron2.data import detection_utils as du
-        from detectron2.data.transforms.augmentation import (
-            AugInput,
-            AugmentationList,
-        )
+        from detectron2.data.transforms.augmentation import AugInput, AugmentationList
         from detectron2.structures import BoxMode
 
         aug = tf_crop.RandomInstanceCrop([1.0, 1.0])

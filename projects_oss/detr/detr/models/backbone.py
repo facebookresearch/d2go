@@ -18,7 +18,7 @@ from typing import Dict, List
 import torch
 import torch.nn.functional as F
 import torchvision
-from detr.util.misc import NestedTensor, is_main_process
+from detr.util.misc import is_main_process, NestedTensor
 from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 

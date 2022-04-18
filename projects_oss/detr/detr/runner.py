@@ -6,7 +6,7 @@ from d2go.data.dataset_mappers.d2go_dataset_mapper import D2GoDatasetMapper
 from d2go.runner import GeneralizedRCNNRunner
 from detr.backbone.deit import add_deit_backbone_config
 from detr.backbone.pit import add_pit_backbone_config
-from detr.d2 import DetrDatasetMapper, add_detr_config
+from detr.d2 import add_detr_config, DetrDatasetMapper
 
 
 @D2GO_DATA_MAPPER_REGISTRY.register()

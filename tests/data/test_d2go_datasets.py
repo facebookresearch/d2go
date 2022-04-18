@@ -8,21 +8,21 @@ import tempfile
 import unittest
 
 import d2go.data.extended_coco as extended_coco
-from d2go.data.datasets import COCO_REGISTER_FUNCTION_REGISTRY, ANN_FN, IM_DIR
+from d2go.data.datasets import ANN_FN, COCO_REGISTER_FUNCTION_REGISTRY, IM_DIR
 from d2go.data.keypoint_metadata_registry import (
+    get_keypoint_metadata,
     KEYPOINT_METADATA_REGISTRY,
     KeypointMetadata,
-    get_keypoint_metadata,
 )
 from d2go.data.utils import (
-    maybe_subsample_n_images,
     AdhocDatasetManager,
     COCOWithClassesToUse,
+    maybe_subsample_n_images,
 )
 from d2go.runner import Detectron2GoRunner
 from d2go.utils.testing.data_loader_helper import (
-    LocalImageGenerator,
     create_toy_dataset,
+    LocalImageGenerator,
 )
 from d2go.utils.testing.helper import tempdir
 from detectron2.data import DatasetCatalog, MetadataCatalog

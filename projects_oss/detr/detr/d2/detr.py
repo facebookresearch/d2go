@@ -3,8 +3,8 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from detectron2.modeling import META_ARCH_REGISTRY, detector_postprocess
-from detectron2.structures import Boxes, ImageList, Instances, BitMasks
+from detectron2.modeling import detector_postprocess, META_ARCH_REGISTRY
+from detectron2.structures import BitMasks, Boxes, ImageList, Instances
 from detr.datasets.coco import convert_coco_poly_to_mask
 from detr.models.backbone import Joiner
 from detr.models.build import build_detr_model
@@ -14,7 +14,7 @@ from detr.models.detr import DETR
 from detr.models.matcher import HungarianMatcher
 from detr.models.position_encoding import PositionEmbeddingSine
 from detr.models.segmentation import DETRsegm, PostProcessSegm
-from detr.models.setcriterion import SetCriterion, FocalLossSetCriterion
+from detr.models.setcriterion import FocalLossSetCriterion, SetCriterion
 from detr.util.box_ops import box_cxcywh_to_xyxy, box_xyxy_to_cxcywh
 from detr.util.misc import NestedTensor
 from torch import nn

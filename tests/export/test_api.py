@@ -10,8 +10,8 @@ import torch
 import torch.nn as nn
 from d2go.export.api import (
     convert_and_export_predictor,
-    PredictorExportConfig,
     FuncInfo,
+    PredictorExportConfig,
 )
 from d2go.export.fb.caffe2 import DefaultCaffe2Export
 from d2go.export.torchscript import (

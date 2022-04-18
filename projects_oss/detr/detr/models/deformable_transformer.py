@@ -12,7 +12,7 @@ import math
 import torch
 import torch.nn.functional as F
 from torch import nn
-from torch.nn.init import xavier_uniform_, constant_, normal_
+from torch.nn.init import constant_, normal_, xavier_uniform_
 
 from ..modules import MSDeformAttn
 from ..util.misc import inverse_sigmoid

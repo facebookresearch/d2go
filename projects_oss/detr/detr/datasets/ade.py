@@ -10,7 +10,7 @@ import torch.utils.data as data
 import torchvision
 import torchvision.transforms as transform
 from detectron2.utils.file_io import PathManager
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 
 from .coco import make_coco_transforms
 

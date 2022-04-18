@@ -14,8 +14,8 @@ from functools import wraps
 
 import torch
 from detr.functions.ms_deform_attn_func import (
-    MSDeformAttnFunction,
     ms_deform_attn_core_pytorch,
+    MSDeformAttnFunction,
 )
 from torch.autograd import gradcheck
 
