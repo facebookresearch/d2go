@@ -8,9 +8,7 @@
 # Modified from https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/tree/pytorch_1.0.0
 # ------------------------------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import math
 import warnings
@@ -18,7 +16,7 @@ import warnings
 import torch
 import torch.nn.functional as F
 from torch import nn
-from torch.nn.init import xavier_uniform_, constant_
+from torch.nn.init import constant_, xavier_uniform_
 
 from ..functions import MSDeformAttnFunction
 

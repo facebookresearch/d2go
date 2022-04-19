@@ -13,7 +13,7 @@ import subprocess
 import time
 from collections import defaultdict, deque
 from distutils.version import LooseVersion
-from typing import Optional, List
+from typing import List, Optional
 
 import torch
 import torch.distributed as dist

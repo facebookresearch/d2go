@@ -14,7 +14,7 @@ from detectron2.utils.file_io import PathManager
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.layers import trunc_normal_
 from timm.models.registry import register_model
-from timm.models.vision_transformer import VisionTransformer, PatchEmbed
+from timm.models.vision_transformer import PatchEmbed, VisionTransformer
 
 
 def monkey_patch_forward(self, x):

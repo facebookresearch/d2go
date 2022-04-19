@@ -20,22 +20,22 @@ from torch import nn
 
 from ..util import box_ops
 from ..util.misc import (
-    NestedTensor,
-    nested_tensor_from_tensor_list,
     accuracy,
     get_world_size,
     interpolate,
     is_dist_avail_and_initialized,
+    nested_tensor_from_tensor_list,
+    NestedTensor,
 )
 from .backbone import build_backbone
-from .build import DETR_MODEL_REGISTRY, build_detr_backbone
+from .build import build_detr_backbone, DETR_MODEL_REGISTRY
 from .deformable_transformer import DeformableTransformer
 from .matcher import build_matcher
 from .segmentation import (
     DETRsegm,
+    dice_loss,
     PostProcessPanoptic,
     PostProcessSegm,
-    dice_loss,
     sigmoid_focal_loss,
 )
 from .setcriterion import FocalLossSetCriterion

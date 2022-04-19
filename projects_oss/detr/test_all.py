@@ -9,8 +9,8 @@ from detr.hub import detr_resnet50, detr_resnet50_panoptic
 from detr.models.backbone import Backbone
 from detr.models.matcher import HungarianMatcher
 from detr.models.position_encoding import (
-    PositionEmbeddingSine,
     PositionEmbeddingLearned,
+    PositionEmbeddingSine,
 )
 from detr.util import box_ops
 from detr.util.misc import nested_tensor_from_tensor_list
