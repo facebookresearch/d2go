@@ -110,6 +110,8 @@ class BaseSemanticSegTestCase:
 class TestR50FPN(BaseSemanticSegTestCase.TemplateTestCase):
     def setup_custom_test(self):
         self.cfg.merge_from_file("detectron2://Misc/semantic_R_50_FPN_1x.yaml")
+        # discard pretrained backbone weights
+        self.cfg.merge_from_list(["MODEL.WEIGHTS", ""])
 
     def test_export_torchscript(self):
         self._test_export("torchscript", compare_match=True)

@@ -10,6 +10,7 @@ from typing import Dict
 import pytorch_lightning as pl  # type: ignore
 import torch
 from d2go.config import CfgNode, temp_defrost
+from d2go.modeling.quantization import set_backend_and_create_qconfig
 from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import (
     QuantizationAwareTraining,
@@ -175,7 +176,7 @@ class TestLightningTask(unittest.TestCase):
             def prepare_for_quant(self, cfg):
                 self.avgpool = prepare_qat_fx(
                     self.avgpool,
-                    {"": torch.ao.quantization.get_default_qat_qconfig()},
+                    {"": set_backend_and_create_qconfig(cfg, is_train=self.training)},
                     self.custom_config_dict,
                 )
                 return self

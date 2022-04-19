@@ -5,10 +5,9 @@
 import inspect
 import logging
 
-import torch
 import torch.nn as nn
 from d2go.export.api import PredictorExportConfig
-from d2go.utils.qat_utils import get_qat_qconfig
+from d2go.modeling.quantization import set_backend_and_create_qconfig
 from detectron2.modeling import GeneralizedRCNN
 from detectron2.modeling.backbone.fpn import FPN
 from detectron2.modeling.postprocessing import detector_postprocess
@@ -255,14 +254,7 @@ def _fx_quant_prepare(self, cfg):
 @RCNN_PREPARE_FOR_QUANT_REGISTRY.register()
 def default_rcnn_prepare_for_quant(self, cfg):
     model = self
-    torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
-    model.qconfig = (
-        get_qat_qconfig(
-            cfg.QUANTIZATION.BACKEND, cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
-        )
-        if model.training
-        else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
-    )
+    model.qconfig = set_backend_and_create_qconfig(cfg, is_train=model.training)
     if (
         hasattr(model, "roi_heads")
         and hasattr(model.roi_heads, "mask_head")

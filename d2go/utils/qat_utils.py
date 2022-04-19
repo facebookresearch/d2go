@@ -38,7 +38,7 @@ def check_for_learnable_fake_quant_ops(qat_method, model):
     if qat_method == "learnable":
         if not _has_module(model, _LearnableFakeQuantize):
             raise Exception(
-                "No learnable fake quant is used for learnable quantzation, please use d2go.utils.qat_utils.get_qat_qconfig() to get proper qconfig"
+                "No learnable fake quant is used for learnable quantzation, please use d2go.utils.qat_utils.get_learnable_qat_qconfig() to get proper qconfig"
             )
 
 
@@ -57,11 +57,8 @@ def iterate_module_named_parameters(model, check_requires_grad=True):
             yield module_name, module, module_param_name, value
 
 
-def get_qat_qconfig(backend, qat_method="default"):
+def get_learnable_qat_qconfig(backend):
     assert backend in ["qnnpack", "fbgemm"]
-    assert qat_method in ["default", "learnable"]
-    if qat_method == "default":
-        return torch.quantization.get_default_qat_qconfig(backend)
 
     ACT_CONFIGS = {
         # follow `get_default_qat_qconfig()`
