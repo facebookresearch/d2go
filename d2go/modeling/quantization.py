@@ -16,6 +16,7 @@ from detectron2.engine import SimpleTrainer
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
+from mobile_cv.common.misc.registry import Registry
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):
@@ -83,6 +84,8 @@ def add_quantization_default_configs(_C):
     _C.QUANTIZATION = CfgNode()
     # Note: EAGER_MODE == False currently represents FX graph mode quantization
     _C.QUANTIZATION.EAGER_MODE = True
+    # Available backends include PyTorch's natively supported backends (i.e. fbgemm and
+    # qnnpack), plus D2Go-defined backends such as "qnnpack@symmetric".
     _C.QUANTIZATION.BACKEND = "fbgemm"
 
     # used to enable metarch set_custom_qscheme (need to implement)
@@ -202,6 +205,109 @@ def mock_quantization_type(quant_func):
     return wrapper
 
 
+def holistic_get_qconfig(backend, is_qat, use_symmetric=False):
+    """
+    Config-less vanilla way to create the QConfig, suitable for explicitly creating qconfig.
+    """
+
+    if use_symmetric:
+        if not backend == "qnnpack":
+            raise ValueError(
+                f"Only qnnpack supports Symmetric quantization, given: {backend}"
+            )
+        if is_qat:
+            return torch.ao.quantization.default_symmetric_qnnpack_qat_qconfig
+        else:
+            return torch.ao.quantization.default_symmetric_qnnpack_qconfig
+    else:
+        if is_qat:
+            return torch.ao.quantization.get_default_qat_qconfig(backend)
+        else:
+            return torch.ao.quantization.get_default_qconfig(backend)
+
+
+def validate_native_backend(backend):
+    _PYTORCH_NATIVE_BACKENDS = ["fbgemm", "qnnpack"]
+    if backend not in _PYTORCH_NATIVE_BACKENDS:
+        raise ValueError(
+            f"Unrecognized backend: {backend}, PyTorch"
+            f" supported backends are: {_PYTORCH_NATIVE_BACKENDS}"
+        )
+
+
+def _smart_parse_extended_backend(extended_backend):
+    """
+    D2Go extends the definition of quantization "backend". In addition to PyTorch's
+    native backends (i.e. qnnpack and fbgemm), we allow other type of backend so users
+    can easily express different settings. Here are the supported cases:
+        1. Symmetric quantization: "qnnpack@symmetric" refers to using QNNPACK with
+            symmetric QConfig.
+    """
+    backend = extended_backend
+    # default options
+    options = {
+        "is_symmetric": False,
+    }
+
+    if "@symmetric" in backend:
+        options["is_symmetric"] = True
+        backend = backend.replace("@symmetric", "", 1)
+
+    validate_native_backend(backend)
+    return backend, options
+
+
+def _smart_decode_backend(extended_backend):
+    """
+    Since we extend the definition of quantization backend, user shouldn't directly use
+    cfg.QUANTIZATION.BACKEND under PyTorch's context, this is the translation function
+    if direct use is necessary.
+    """
+    return _smart_parse_extended_backend(extended_backend)[0]
+
+
+QCONFIG_CREATOR_REGISTRY = Registry("QCONFIG_CREATOR_REGISTRY")
+
+
+@QCONFIG_CREATOR_REGISTRY.register("smart")
+def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
+    """
+    This is the default / "smart" way to create qconfig based on various of configs,
+    supports:
+        - learnable QAT
+        - set symmetric quantization via backend.
+    """
+
+    backend, options = _smart_parse_extended_backend(cfg.QUANTIZATION.BACKEND)
+    is_symmetric = options["is_symmetric"]
+
+    # Set backend
+    torch.backends.quantized.engine = backend
+
+    qat_method = cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
+    assert qat_method in ["default", "learnable"]
+
+    if is_train and qat_method == "learnable":
+        qconfig = qat_utils.get_learnable_qat_qconfig(backend)
+    else:
+        qconfig = holistic_get_qconfig(
+            backend=backend, is_qat=is_train, use_symmetric=is_symmetric
+        )
+
+    return qconfig
+
+
+def set_backend_and_create_qconfig(cfg, *, is_train):
+    """
+    Recommended function to create qconfig given D2Go's quantization config.
+    """
+
+    # In case we need different implmentation, we can add a new key called
+    # QUANTIZATION.QCONFIG_CREATOR with "smart" as default value, and use this key
+    # to toggle between registries.
+    return QCONFIG_CREATOR_REGISTRY.get("smart")(cfg, is_train=is_train)
+
+
 def default_prepare_for_quant(cfg, model):
     """
     Default implementation of preparing a model for quantization. This function will
@@ -226,13 +332,7 @@ def default_prepare_for_quant(cfg, model):
     Return:
         nn.Module: a ready model for QAT training or PTQ calibration
     """
-    qconfig = (
-        qat_utils.get_qat_qconfig(
-            cfg.QUANTIZATION.BACKEND, cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
-        )
-        if model.training
-        else torch.ao.quantization.get_default_qconfig(cfg.QUANTIZATION.BACKEND)
-    )
+    qconfig = set_backend_and_create_qconfig(cfg, is_train=model.training)
 
     if cfg.QUANTIZATION.EAGER_MODE:
         model = fuse_utils.fuse_model(
@@ -241,7 +341,6 @@ def default_prepare_for_quant(cfg, model):
             inplace=True,
         )
 
-        torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
         model.qconfig = qconfig
         # TODO(future diff): move the torch.ao.quantization.prepare(...) call
         # here, to be consistent with the FX branch
@@ -261,6 +360,20 @@ def default_prepare_for_quant_convert(cfg, model):
     return convert_fx(model)
 
 
+def apply_prepare_for_quant(cfg, model):
+    # TODO: create a warning for the direct use of `torch.ao.quantization.get_default_qconfig`
+    # or `torch.ao.quantization.get_default_qat_qconfig` without calling D2Go's high-level
+    # `set_backend_and_create_qconfig` API.
+
+    if hasattr(model, "prepare_for_quant"):
+        model = model.prepare_for_quant(cfg)
+    else:
+        logger.info("Using default implementation for prepare_for_quant")
+        model = default_prepare_for_quant(cfg, model)
+
+    return model
+
+
 @mock_quantization_type
 def post_training_quantize(cfg, model, data_loader):
     """Calibrate a model, convert it to a quantized pytorch model"""
@@ -270,12 +383,7 @@ def post_training_quantize(cfg, model, data_loader):
     for param in model.parameters():
         param.requires_grad = False
 
-    if hasattr(model, "prepare_for_quant"):
-        model = model.prepare_for_quant(cfg)
-    else:
-        logger.info("Using default implementation for prepare_for_quant")
-        model = default_prepare_for_quant(cfg, model)
-
+    model = apply_prepare_for_quant(cfg, model)
     if cfg.QUANTIZATION.EAGER_MODE:
         torch.ao.quantization.prepare(model, inplace=True)
     logger.info("Prepared the PTQ model for calibration:\n{}".format(model))
@@ -316,25 +424,6 @@ def post_training_quantize(cfg, model, data_loader):
     return model
 
 
-def _prepare_model_for_qat(cfg, model):
-    if cfg.QUANTIZATION.EAGER_MODE:
-        if hasattr(model, "prepare_for_quant"):
-            model = model.prepare_for_quant(cfg)
-        else:
-            logger.info("Using default implementation for prepare_for_quant")
-            model = default_prepare_for_quant(cfg, model)
-
-        # TODO(future diff): move this into prepare_for_quant to match FX branch
-        torch.ao.quantization.prepare_qat(model, inplace=True)
-    else:  # FX graph mode quantization
-        if hasattr(model, "prepare_for_quant"):
-            model = model.prepare_for_quant(cfg)
-        else:
-            logger.info("Using default implementation for prepare_for_quant")
-            model = default_prepare_for_quant(cfg, model)
-    return model
-
-
 @mock_quantization_type
 def setup_qat_model(
     cfg,
@@ -349,14 +438,17 @@ def setup_qat_model(
         raise RuntimeError("The model is already setup to be QAT, cannot setup again!")
 
     device = model_fp32.device
-    torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
+    # FIXME: seems that we can remove this
+    torch.backends.quantized.engine = _smart_decode_backend(cfg.QUANTIZATION.BACKEND)
     qat_method = cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
 
     # prepare for qat may modify the fp32 model directly so we create a copy
     model_fp32_state_dict = model_fp32.state_dict()
 
     # prepare model for qat
-    model = _prepare_model_for_qat(cfg, model_fp32)
+    model = apply_prepare_for_quant(cfg, model_fp32)
+    if cfg.QUANTIZATION.EAGER_MODE:
+        torch.ao.quantization.prepare_qat(model, inplace=True)
 
     # make sure the proper qconfig are used in the model
     qat_utils.check_for_learnable_fake_quant_ops(qat_method, model)
