@@ -57,53 +57,40 @@ def iterate_module_named_parameters(model, check_requires_grad=True):
             yield module_name, module, module_param_name, value
 
 
-def get_learnable_qat_qconfig(backend):
-    assert backend in ["qnnpack", "fbgemm"]
+def convert_to_learnable_qconfig(qconfig):
+    """
+    Convert a QConfig to its learnable counterpart.
+    """
 
-    ACT_CONFIGS = {
-        # follow `get_default_qat_qconfig()`
-        # fbcode/caffe2/torch/quantization/qconfig.py
-        "fbgemm": {
-            "reduce_range": True,
-        },
-        "qnnpack": {
-            "reduce_range": False,
-        },
+    def _update_fused_moving_avg_obs_fake_quantize(keywords):
+        # requires setting use_grad_scaling to True, all other parameters are the same
+        # as default setting of FusedMovingAvgObsFakeQuantize (both qnnpack and fbgemm).
+        assert "use_grad_scaling" not in keywords
+        keywords["use_grad_scaling"] = True
+        return keywords
+
+    _OVERWRITE_PARAMS = {
+        # map from supported FakeQuant type to the its new parameters in order to convert
+        # it to a learnable FakeQuant
+        torch.ao.quantization.fake_quantize.FusedMovingAvgObsFakeQuantize: _update_fused_moving_avg_obs_fake_quantize
     }
 
-    WEIGHT_CONFIGS = {
-        # follow `default_per_channel_weight_fake_quant`
-        # fbcode/caffe2/torch/quantization/fake_quantize.py
-        "fbgemm": {
-            "observer": torch.quantization.MovingAveragePerChannelMinMaxObserver,
-            "qscheme": torch.per_channel_symmetric,
-            "reduce_range": False,
-            "ch_axis": 0,
-        },
-        # follow `default_weight_fake_quant`
-        # fbcode/caffe2/torch/quantization/fake_quantize.py
-        "qnnpack": {
-            "observer": torch.quantization.MovingAverageMinMaxObserver,
-            "qscheme": torch.per_tensor_symmetric,
-            "reduce_range": False,
-        },
-    }
+    def _update_to_learnable(wrapper):
+        assert isinstance(
+            wrapper, torch.ao.quantization.observer._PartialWrapper
+        ), wrapper
+        assert isinstance(wrapper.p, partial), wrapper
 
-    act = _LearnableFakeQuantize.with_args(
-        observer=torch.quantization.MovingAverageMinMaxObserver,
-        quant_min=0,
-        quant_max=255,
-        use_grad_scaling=True,
-        **ACT_CONFIGS[backend],
-    )
-    weight = _LearnableFakeQuantize.with_args(
-        quant_min=-128,
-        quant_max=127,
-        dtype=torch.qint8,
-        use_grad_scaling=True,
-        **WEIGHT_CONFIGS[backend],
-    )
-    return torch.quantization.QConfig(activation=act, weight=weight)
+        keywords_updater = _OVERWRITE_PARAMS[wrapper.p.func]
+        keywords = keywords_updater(wrapper.p.keywords)
+
+        new_p = partial(_LearnableFakeQuantize, *wrapper.p.args, **keywords)
+        wrapper.p = new_p
+        return wrapper
+
+    activation = _update_to_learnable(qconfig.activation)
+    weight = _update_to_learnable(qconfig.weight)
+    return torch.quantization.QConfig(activation=activation, weight=weight)
 
 
 def get_world_size() -> int:
