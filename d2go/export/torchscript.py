@@ -112,7 +112,7 @@ def export_optimize_and_save_torchscript(
                 liteopt_model._save_for_lite_interpreter(
                     lite_path, _extra_files=_extra_files
                 )
-            # liteopt_model(*inputs)  # sanity check
+
             op_names = torch.jit.export_opnames(liteopt_model)
             logger.info(
                 "Operator names from lite interpreter:\n{}".format("\n".join(op_names))
@@ -126,7 +126,16 @@ def export_optimize_and_save_torchscript(
                     iters.send(torch.zeros_like(x).contiguous())
             inputs = iters.value
             augment_model_with_bundled_inputs(liteopt_model, [inputs])
-            liteopt_model(*liteopt_model.get_all_bundled_inputs()[0])  # sanity check
+
+            # For non-cpu backends (e.g. Metal, Vulkan) the bundled inputs need to be
+            # converted with `torch.to(<myDevice>)` in order to predict successfully
+            # This is a temporary bypass until PT Edge supports automatic backend
+            # conversion in the bundled inputs interface, or we can auto-add a input tensor
+            # conversion op to Metal and Vulkan models.
+            target_backend = mobile_optimization.backend.lower()
+            if target_backend == "cpu":
+                # Sanity check by running
+                liteopt_model(*liteopt_model.get_all_bundled_inputs()[0])
             name, ext = os.path.splitext(torchscript_filename)
             with _synced_local_file(name + "_bundled" + ext) as lite_path:
                 liteopt_model._save_for_lite_interpreter(lite_path)
@@ -339,10 +348,10 @@ def update_export_kwargs_from_export_method(old_f):
                     # "CPU" backend default. If found appropriate suffix, update the backend
                     if "-metal" in export_method:
                         mobile_opt_config = MobileOptimizationConfig(backend="metal")
-                        export_method.replace("-metal", "", 1)
+                        export_method = export_method.replace("-metal", "", 1)
                     elif "-vulkan" in export_method:
                         mobile_opt_config = MobileOptimizationConfig(backend="vulkan")
-                        export_method.replace("-vulkan", "", 1)
+                        export_method = export_method.replace("-vulkan", "", 1)
                     else:
                         mobile_opt_config = MobileOptimizationConfig()
                     export_kwargs["mobile_optimization"] = mobile_opt_config
