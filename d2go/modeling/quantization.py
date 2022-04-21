@@ -287,12 +287,11 @@ def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
     qat_method = cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD
     assert qat_method in ["default", "learnable"]
 
+    qconfig = holistic_get_qconfig(
+        backend=backend, is_qat=is_train, use_symmetric=is_symmetric
+    )
     if is_train and qat_method == "learnable":
-        qconfig = qat_utils.get_learnable_qat_qconfig(backend)
-    else:
-        qconfig = holistic_get_qconfig(
-            backend=backend, is_qat=is_train, use_symmetric=is_symmetric
-        )
+        qconfig = qat_utils.convert_to_learnable_qconfig(qconfig)
 
     return qconfig
 
