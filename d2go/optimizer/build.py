@@ -251,9 +251,11 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     Build an optimizer from config.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
-        params, cfg.SOLVER.BASE_LR
+
+    optim = maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
+        params, cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS
     )
+    return optim
 
 
 @D2GO_OPTIM_MAPPER_REGISTRY.register()
