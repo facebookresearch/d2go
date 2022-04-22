@@ -3,4 +3,5 @@
 
 
 # import to make sure Registry works
+# @fb-only: from . import fb  # noqa 
 from . import flop_calculator  # noqa
