@@ -3,7 +3,7 @@
 
 
 import math
-from typing import List, Optional, Tuple, Union, Any
+from typing import Any, List, Optional, Tuple, Union
 
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
@@ -13,7 +13,7 @@ from detectron2.structures import BoxMode
 from fvcore.transforms.transform import CropTransform, NoOpTransform, Transform
 
 from . import box_utils as bu
-from .build import TRANSFORM_OP_REGISTRY, _json_load
+from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 class CropBoundary(aug.Augmentation):

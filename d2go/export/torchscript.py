@@ -5,13 +5,13 @@
 import contextlib
 import logging
 import os
-from typing import Any, Tuple, Optional, Dict, NamedTuple, List, AnyStr, Set
+from typing import Any, AnyStr, Dict, List, NamedTuple, Optional, Set, Tuple
 
 import torch
-from d2go.export.api import ModelExportMethodRegistry, ModelExportMethod
+from d2go.export.api import ModelExportMethod, ModelExportMethodRegistry
 from detectron2.config.instantiate import dump_dataclass, instantiate
 from detectron2.export import dump_torchscript_IR
-from detectron2.export.flatten import TracingAdapter, flatten_to_tuple
+from detectron2.export.flatten import flatten_to_tuple, TracingAdapter
 from detectron2.export.torchscript_patch import patch_builtin_len
 from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory

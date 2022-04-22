@@ -2,11 +2,11 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 
 import numpy as np
 import torch
-from detectron2.data.transforms.augmentation import AugmentationList, Augmentation
+from detectron2.data.transforms.augmentation import Augmentation, AugmentationList
 from detectron2.structures import Boxes
 from fvcore.transforms.transform import Transform, TransformList
 

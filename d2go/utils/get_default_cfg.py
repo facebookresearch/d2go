@@ -2,8 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from d2go.config import CfgNode as CN
 from d2go.data.build import (
-    add_weighted_training_sampler_default_configs,
     add_random_subset_training_sampler_default_configs,
+    add_weighted_training_sampler_default_configs,
 )
 from d2go.data.config import add_d2go_data_default_configs
 from d2go.modeling import kmeans_anchors, model_ema

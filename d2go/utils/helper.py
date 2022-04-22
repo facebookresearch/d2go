@@ -19,8 +19,7 @@ import typing
 import warnings
 import zipfile
 from contextlib import contextmanager
-from functools import partial
-from functools import wraps
+from functools import partial, wraps
 from random import random
 from typing import (
     Any,
@@ -44,9 +43,9 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine import (
-    DefaultTrainer,
     default_argument_parser,
     default_setup,
+    DefaultTrainer,
     hooks,
     launch,
 )

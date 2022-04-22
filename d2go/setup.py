@@ -10,8 +10,8 @@ import time
 import detectron2.utils.comm as comm
 import torch
 from d2go.config import (
-    CfgNode as CN,
     auto_scale_world_size,
+    CfgNode as CN,
     reroute_config_path,
     temp_defrost,
 )
