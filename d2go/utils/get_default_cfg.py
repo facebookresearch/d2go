@@ -70,6 +70,9 @@ def get_default_cfg(_C):
     _C.SOLVER.LR_MULTIPLIER_OVERWRITE = []
     _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
 
+    # Betas are used in the AdamW optimizer
+    _C.SOLVER.BETAS = (0.9, 0.999)
+
     # RECOMPUTE_BOXES for LSJ Training
     _C.INPUT.RECOMPUTE_BOXES = False
 
