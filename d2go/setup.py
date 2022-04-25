@@ -15,6 +15,7 @@ from d2go.config import (
     reroute_config_path,
     temp_defrost,
 )
+from d2go.config.utils import get_diff_cfg
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
 from d2go.runner import create_runner, GeneralizedRCNNRunner
 from d2go.utils.helper import run_once
@@ -24,7 +25,6 @@ from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import setup_logger
 from detectron2.utils.serialize import PicklableWrapper
 from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem_if_fail
-
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +209,10 @@ def setup_after_launch(cfg: CN, output_dir: str, runner):
     runner = initialize_runner(runner, cfg)
 
     log_info(cfg, runner)
-
+    dump_cfg(
+        get_diff_cfg(runner.get_default_cfg(), cfg),
+        os.path.join(output_dir, "diff_config.yaml"),
+    )
     auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
 
 
