@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-
 import contextlib
+import copy
 import logging
 from typing import List
 
@@ -57,8 +57,9 @@ class CfgNode(_CfgNode):
         return res
 
     def dump(self, *args, **kwargs):
-        self._run_custom_processing(is_dump=True)
-        return super().dump(*args, **kwargs)
+        cfg = copy.deepcopy(self)
+        cfg._run_custom_processing(is_dump=True)
+        return super(CfgNode, cfg).dump(*args, **kwargs)
 
     @staticmethod
     def load_yaml_with_base(filename: str, *args, **kwargs):

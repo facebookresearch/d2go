@@ -170,7 +170,7 @@ class DefaultTask(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         if hasattr(self.model, "training_step"):
-            self._meta_arch_training_step(batch, batch_idx)
+            return self._meta_arch_training_step(batch, batch_idx)
 
         return self._standard_training_step(batch, batch_idx)
 
