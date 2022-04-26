@@ -38,7 +38,7 @@ def check_for_learnable_fake_quant_ops(qat_method, model):
     if qat_method == "learnable":
         if not _has_module(model, _LearnableFakeQuantize):
             raise Exception(
-                "No learnable fake quant is used for learnable quantzation, please use d2go.utils.qat_utils.get_learnable_qat_qconfig() to get proper qconfig"
+                "No learnable fake quant is used for learnable quantzation, please use d2go.quantization.learnable_qat.get_learnable_qat_qconfig() to get proper qconfig"
             )
 
 

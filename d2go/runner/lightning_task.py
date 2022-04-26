@@ -21,11 +21,11 @@ from d2go.modeling import build_model
 from d2go.modeling.model_freezing_utils import (
     set_requires_grad,
 )
-from d2go.modeling.quantization import (
+from d2go.optimizer import build_optimizer_mapper
+from d2go.quantization.modeling import (
     default_prepare_for_quant,
     default_prepare_for_quant_convert,
 )
-from d2go.optimizer import build_optimizer_mapper
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
     Detectron2GoRunner,
