@@ -106,7 +106,7 @@ def convert_predictor(
                 " training quantization ..."
             )
             # delayed import to avoid circular import since d2go.modeling depends on d2go.export
-            from d2go.modeling.quantization import post_training_quantize
+            from d2go.quantization.modeling import post_training_quantize
 
             pytorch_model = post_training_quantize(cfg, pytorch_model, data_loader)
             # only check bn exists in ptq as qat still has bn inside fused ops

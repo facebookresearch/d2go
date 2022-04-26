@@ -7,7 +7,7 @@ import random
 
 import torch
 import torch.nn as nn
-from d2go.modeling.quantization import QATCheckpointer
+from d2go.quantization.modeling import QATCheckpointer
 from d2go.runner.default_runner import BaseRunner
 from d2go.utils.get_default_cfg import add_tensorboard_default_configs
 from detectron2.utils.file_io import PathManager

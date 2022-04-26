@@ -10,8 +10,8 @@ from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.backbone.fbnet_cfg import add_fbnet_v2_default_configs
 from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
-from d2go.modeling.quantization import add_quantization_default_configs
 from d2go.modeling.subclass import add_subclass_configs
+from d2go.quantization.modeling import add_quantization_default_configs
 
 
 def add_tensorboard_default_configs(_C):

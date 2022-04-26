@@ -7,9 +7,9 @@ import logging
 import math
 from typing import Tuple
 
-import d2go.utils.qat_utils as qat_utils
 import detectron2.utils.comm as comm
 import torch
+from d2go.quantization import learnable_qat
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.engine import HookBase
 from detectron2.engine import SimpleTrainer
@@ -291,7 +291,7 @@ def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
         backend=backend, is_qat=is_train, use_symmetric=is_symmetric
     )
     if is_train and qat_method == "learnable":
-        qconfig = qat_utils.convert_to_learnable_qconfig(qconfig)
+        qconfig = learnable_qat.convert_to_learnable_qconfig(qconfig)
 
     return qconfig
 
@@ -450,7 +450,7 @@ def setup_qat_model(
         torch.ao.quantization.prepare_qat(model, inplace=True)
 
     # make sure the proper qconfig are used in the model
-    qat_utils.check_for_learnable_fake_quant_ops(qat_method, model)
+    learnable_qat.check_for_learnable_fake_quant_ops(qat_method, model)
 
     # Move newly added observers to the original device
     model.to(device)
@@ -458,14 +458,14 @@ def setup_qat_model(
     if not enable_fake_quant:
         logger.info("Disabling fake quant ...")
         model.apply(torch.ao.quantization.disable_fake_quant)
-        model.apply(qat_utils.disable_lqat_fake_quant)
+        model.apply(learnable_qat.disable_lqat_fake_quant)
     if not enable_observer:
         logger.info("Disabling static observer ...")
         model.apply(torch.ao.quantization.disable_observer)
-        model.apply(qat_utils.disable_lqat_static_observer)
+        model.apply(learnable_qat.disable_lqat_static_observer)
     if not enable_learnable_observer and qat_method == "learnable":
         logger.info("Disabling learnable observer ...")
-        model.apply(qat_utils.disable_lqat_learnable_observer)
+        model.apply(learnable_qat.disable_lqat_learnable_observer)
 
     # qat state dict mapper
     if not getattr(model, "_non_qat_to_qat_state_dict_map", None):
@@ -474,7 +474,7 @@ def setup_qat_model(
         )
 
     # qat optimizer group for learnable qat
-    model = qat_utils.setup_qat_get_optimizer_param_groups(model, qat_method)
+    model = learnable_qat.setup_qat_get_optimizer_param_groups(model, qat_method)
 
     return model
 
@@ -560,7 +560,7 @@ class QATHook(HookBase):
                 "[QAT] enable fake quant to start QAT, iter = {}".format(cur_iter)
             )
             model.apply(torch.ao.quantization.enable_fake_quant)
-            model.apply(qat_utils.enable_lqat_fake_quant)
+            model.apply(learnable_qat.enable_lqat_fake_quant)
             self._applied["enable_fake_quant"] = True
 
             _reset_qat_data_loader_if_needed(
@@ -574,7 +574,7 @@ class QATHook(HookBase):
         ):
             logger.info("[QAT] enable static observer, iter = {}".format(cur_iter))
             model.apply(torch.ao.quantization.enable_observer)
-            model.apply(qat_utils.enable_lqat_static_observer)
+            model.apply(learnable_qat.enable_lqat_static_observer)
             self._applied["enable_observer"] = True
 
         if (
@@ -582,7 +582,7 @@ class QATHook(HookBase):
             and cur_iter >= cfg.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER
         ):
             logger.info(f"[QAT] enabling learnable observer, iter = {cur_iter}")
-            model.apply(qat_utils.enable_lqat_learnable_observer)
+            model.apply(learnable_qat.enable_lqat_learnable_observer)
             self._applied["enable_learnable_observer"] = True
 
         if (
@@ -593,8 +593,8 @@ class QATHook(HookBase):
                 "[QAT] disabling observer for sub seq iters, iter = {}".format(cur_iter)
             )
             model.apply(torch.ao.quantization.disable_observer)
-            model.apply(qat_utils.disable_lqat_static_observer)
-            model.apply(qat_utils.disable_lqat_learnable_observer)
+            model.apply(learnable_qat.disable_lqat_static_observer)
+            model.apply(learnable_qat.disable_lqat_learnable_observer)
             self._applied["disable_observer"] = True
 
         if (

@@ -32,12 +32,12 @@ from d2go.modeling.model_freezing_utils import (
     freeze_matched_bn,
     set_requires_grad,
 )
-from d2go.modeling.quantization import (
+from d2go.optimizer import build_optimizer_mapper
+from d2go.quantization.modeling import (
     QATCheckpointer,
     setup_qat_model,
     QATHook,
 )
-from d2go.optimizer import build_optimizer_mapper
 from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.get_default_cfg import get_default_cfg
 from d2go.utils.helper import TensorboardXWriter, D2Trainer

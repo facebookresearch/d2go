@@ -10,7 +10,7 @@ from typing import Dict
 import pytorch_lightning as pl  # type: ignore
 import torch
 from d2go.config import CfgNode, temp_defrost
-from d2go.modeling.quantization import set_backend_and_create_qconfig
+from d2go.quantization.modeling import set_backend_and_create_qconfig
 from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import (
     QuantizationAwareTraining,
