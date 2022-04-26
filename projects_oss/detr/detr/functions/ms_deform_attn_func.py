@@ -8,7 +8,6 @@
 # Modified from https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/tree/pytorch_1.0.0
 # ------------------------------------------------------------------------------------------------
 
-from __future__ import absolute_import, division, print_function
 
 import torch
 import torch.nn.functional as F
