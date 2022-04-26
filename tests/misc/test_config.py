@@ -10,6 +10,7 @@ import unittest
 from d2go.config import CfgNode
 from d2go.config import auto_scale_world_size, reroute_config_path
 from d2go.config.utils import (
+    get_diff_cfg,
     config_dict_to_list_str,
     flatten_config_dict,
     get_cfg_diff_table,
@@ -147,6 +148,48 @@ class TestConfigUtils(unittest.TestCase):
         self.assertEqual(
             get_from_flattened_config_dict(d, "MODEL.MODEL.INPUT_SIZE"), None
         )  # non-exist
+
+    def test_get_diff_cfg(self):
+        """check config that is diff from default config, no new keys"""
+        # create base config
+        cfg1 = CfgNode()
+        cfg1.A = CfgNode()
+        cfg1.A.Y = 2
+        # case 1: new allowed not set, new config has only old keys
+        cfg2 = cfg1.clone()
+        cfg2.set_new_allowed(False)
+        cfg2.A.Y = 3
+        gt = CfgNode()
+        gt.A = CfgNode()
+        gt.A.Y = 3
+        self.assertEqual(gt, get_diff_cfg(cfg1, cfg2))
+
+    def test_diff_cfg_no_new_allowed(self):
+        """check that if new_allowed is False, new keys cause key error"""
+        # create base config
+        cfg1 = CfgNode()
+        cfg1.A = CfgNode()
+        cfg1.A.set_new_allowed(False)
+        cfg1.A.Y = 2
+        # case 2: new allowed not set, new config has new keys
+        cfg2 = cfg1.clone()
+        cfg2.A.X = 2
+        self.assertRaises(KeyError, get_diff_cfg, cfg1, cfg2)
+
+    def test_diff_cfg_with_new_allowed(self):
+        """diff config with new keys and new_allowed set to True"""
+        # create base config
+        cfg1 = CfgNode()
+        cfg1.A = CfgNode()
+        cfg1.A.set_new_allowed(True)
+        cfg1.A.Y = 2
+        # case 3: new allowed set, new config has new keys
+        cfg2 = cfg1.clone()
+        cfg2.A.X = 2
+        gt = CfgNode()
+        gt.A = CfgNode()
+        gt.A.X = 2
+        self.assertEqual(gt, get_diff_cfg(cfg1, cfg2))
 
     def test_get_cfg_diff_table(self):
         """Check compare two dicts"""

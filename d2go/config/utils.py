@@ -135,3 +135,55 @@ def get_cfg_diff_table(cfg, original_cfg):
         headers=["config key", "old value", "new value"],
     )
     return table
+
+
+def get_diff_cfg(old_cfg, new_cfg):
+    """
+    outputs a CfgNode containing keys, values appearing in new_cfg and not in old_cfg.
+    If `new_allowed` is not set, then new keys will throw a KeyError
+    old_cfg: CfgNode, the original config, usually the dafulat
+    new_cfg: CfgNode, the full config being passed by the user
+
+    if new allowed is not set on new_cfg, key error is raised
+    returns: CfgNode, a config containing only key, value changes between old_cfg and new_cfg
+
+    example:
+        Cfg1:
+            SYSTEM:
+                NUM_GPUS: 2
+            TRAIN:
+                SCALES: (1, 2)
+            DATASETS:
+                train_2017:
+                    17: 1
+                    18: 1
+        Cfg2:
+            SYSTEM:
+                NUM_GPUS: 2
+            TRAIN:
+                SCALES: (4, 5, 8)
+            DATASETS:
+                train_2017:
+                    17: 1
+                    18: 1
+
+        get_diff_cfg(Cfg1, Cfg2) gives:
+            TRAIN:
+                SCALES: (8, 16, 32)
+    """
+
+    def get_diff_cfg_rec(old_cfg, new_cfg, out):
+        for key in new_cfg.keys():
+            if key not in old_cfg.keys() and old_cfg.is_new_allowed():
+                out[key] = new_cfg[key]
+            elif old_cfg[key] != new_cfg[key]:
+                if type(new_cfg[key]) is type(out):
+                    out[key] = out.__class__()
+                    out[key] = get_diff_cfg_rec(old_cfg[key], new_cfg[key], out[key])
+                else:
+
+                    out[key] = new_cfg[key]
+        return out
+
+    out = new_cfg.__class__()
+    return get_diff_cfg_rec(old_cfg, new_cfg, out)
