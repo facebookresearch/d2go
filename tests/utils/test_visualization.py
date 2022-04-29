@@ -17,7 +17,7 @@ from d2go.utils.testing.data_loader_helper import (
 )
 from d2go.utils.testing.helper import tempdir
 from d2go.utils.visualization import VisualizerWrapper, DataLoaderVisWrapper
-from detectron2.data import DatasetCatalog
+from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, Instances
 from detectron2.utils.events import EventStorage
@@ -34,7 +34,7 @@ def create_test_images_and_dataset_json(
         num_images=num_images,
         num_classes=num_classes,
     )
-    json_file = os.path.join(data_dir, "{}.json".format("inj_ds1"))
+    json_file = os.path.join(data_dir, "annotation.json")
 
     with open(json_file, "w") as f:
         json.dump(json_dataset, f)
@@ -75,6 +75,16 @@ class MockTbxWriter:
 
 
 class TestVisualization(unittest.TestCase):
+    def setUp(self):
+        self._builtin_datasets = set(DatasetCatalog)
+
+    def tearDown(self):
+        # Need to remove injected dataset
+        injected_dataset = set(DatasetCatalog) - self._builtin_datasets
+        for ds in injected_dataset:
+            DatasetCatalog.remove(ds)
+            MetadataCatalog.remove(ds)
+
     @tempdir
     def test_visualizer_wrapper(self, tmp_dir: str):
         image_dir, json_file = create_test_images_and_dataset_json(tmp_dir, 60, 60)

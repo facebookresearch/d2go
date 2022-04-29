@@ -38,7 +38,7 @@ def create_test_images_and_dataset_json(data_dir, num_images=10, num_classes=-1)
         num_images=num_images,
         num_classes=num_classes,
     )
-    json_file = os.path.join(data_dir, "{}.json".format("inj_ds1"))
+    json_file = os.path.join(data_dir, "annotation.json")
     with open(json_file, "w") as f:
         json.dump(json_dataset, f)
 
@@ -46,6 +46,16 @@ def create_test_images_and_dataset_json(data_dir, num_images=10, num_classes=-1)
 
 
 class TestD2GoDatasets(unittest.TestCase):
+    def setUp(self):
+        self._builtin_datasets = set(DatasetCatalog)
+
+    def tearDown(self):
+        # Need to remove injected dataset
+        injected_dataset = set(DatasetCatalog) - self._builtin_datasets
+        for ds in injected_dataset:
+            DatasetCatalog.remove(ds)
+            MetadataCatalog.remove(ds)
+
     def test_coco_conversions(self):
         test_data_0 = {
             "info": {},

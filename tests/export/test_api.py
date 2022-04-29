@@ -13,7 +13,6 @@ from d2go.export.api import (
     FuncInfo,
     PredictorExportConfig,
 )
-from d2go.export.fb.caffe2 import DefaultCaffe2Export
 from d2go.export.torchscript import (
     DefaultTorchscriptExport,
     TracingAdaptedTorchscriptExport,
@@ -220,17 +219,31 @@ class MultiDictInMultiDictOut(nn.Module):
         torch.testing.assert_allclose(second["sub"], torch.tensor([-2]))
 
 
-class TestModelExportMethods(unittest.TestCase):
-    @parameterized.expand(
+MODEL_EXPORT_METHOD_TEST_CASES = [
+    [DefaultTorchscriptExport, MultiTensorInSingleTensorOut],
+    [DefaultTorchscriptExport, SingleListInSingleListOut],
+    [TracingAdaptedTorchscriptExport, MultiTensorInSingleTensorOut],
+    [TracingAdaptedTorchscriptExport, SingleListInSingleListOut],
+    [TracingAdaptedTorchscriptExport, MultiDictInMultiDictOut],
+]
+
+
+try:
+    from d2go.export.fb.caffe2 import DefaultCaffe2Export
+
+    MODEL_EXPORT_METHOD_TEST_CASES.extend(
         [
-            [DefaultTorchscriptExport, MultiTensorInSingleTensorOut],
-            [DefaultTorchscriptExport, SingleListInSingleListOut],
             # [DefaultCaffe2Export, MultiTensorInSingleTensorOut],  # TODO: make caffe2 support this
             [DefaultCaffe2Export, SingleListInSingleListOut],
-            [TracingAdaptedTorchscriptExport, MultiTensorInSingleTensorOut],
-            [TracingAdaptedTorchscriptExport, SingleListInSingleListOut],
-            [TracingAdaptedTorchscriptExport, MultiDictInMultiDictOut],
-        ],
+        ]
+    )
+except ImportError:
+    pass
+
+
+class TestModelExportMethods(unittest.TestCase):
+    @parameterized.expand(
+        MODEL_EXPORT_METHOD_TEST_CASES,
         name_func=lambda testcase_func, param_num, param: (
             "{}_{}_{}".format(
                 testcase_func.__name__, param.args[0].__name__, param.args[1].__name__
