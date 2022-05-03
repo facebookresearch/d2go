@@ -24,23 +24,38 @@ def reroute_config_path(path: str) -> str:
     """
     assert isinstance(path, str), path
 
+    path = _reroute_d2go_config_path(path)
+    path = _reroute_detectron2go_config_path(path)
+    path = _reroute_detectron2_config_path(path)
+
+    return path
+
+
+def _reroute_d2go_config_path(path: str) -> str:
     if path.startswith("d2go://"):
         rel_path = path[len("d2go://") :]
         config_in_resource = pkg_resources.resource_filename("d2go", rel_path)
         return config_in_resource
-    elif path.startswith("detectron2go://"):
+    return path
+
+
+def _reroute_detectron2go_config_path(path: str) -> str:
+    if path.startswith("detectron2go://"):
         rel_path = path[len("detectron2go://") :]
         config_in_resource = pkg_resources.resource_filename(
             "d2go", os.path.join("configs", rel_path)
         )
         return config_in_resource
-    elif path.startswith("detectron2://"):
+    return path
+
+
+def _reroute_detectron2_config_path(path: str) -> str:
+    if path.startswith("detectron2://"):
         rel_path = path[len("detectron2://") :]
         config_in_resource = pkg_resources.resource_filename(
             "detectron2.model_zoo", os.path.join("configs", rel_path)
         )
         return config_in_resource
-
     return path
 
 
