@@ -12,8 +12,10 @@ from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
+from d2go.utils.oss_helper import fb_overwritable
 
 
+@fb_overwritable()
 def add_tensorboard_default_configs(_C):
     _C.TENSORBOARD = CN()
     # Output from dataloader will be written to tensorboard at this frequency
@@ -28,12 +30,14 @@ def add_tensorboard_default_configs(_C):
     _C.register_deprecated_key("TENSORBOARD.LOG_DIR")
 
 
+@fb_overwritable()
 def add_abnormal_checker_configs(_C):
     _C.ABNORMAL_CHECKER = CN()
     # check and log the iteration with bad losses if enabled
     _C.ABNORMAL_CHECKER.ENABLED = False
 
 
+@fb_overwritable()
 def get_default_cfg(_C):
     # _C.MODEL.FBNET...
     add_fbnet_v2_default_configs(_C)
