@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
-from d2go.export.api import PredictorExportConfig
+from d2go.export.predictor_export_config import PredictorExportConfig
 from detectron2.modeling.postprocessing import sem_seg_postprocess
 from detectron2.structures import ImageList
 from mobile_cv.predictor.api import FuncInfo
