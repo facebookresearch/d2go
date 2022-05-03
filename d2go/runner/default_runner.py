@@ -17,7 +17,7 @@ from d2go.config import (
     temp_defrost,
 )
 from d2go.config.utils import get_cfg_diff_table
-from d2go.data.build import build_d2go_train_loader
+from d2go.data import build_d2go_train_loader
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.transforms.build import build_transform_gen

@@ -444,8 +444,7 @@ def enable_disk_cached_dataset(cfg):
 
     _maybe_add_dataset_from_list_patch_location("detectron2.data.build")
     _maybe_add_dataset_from_list_patch_location("d2go.data.build")
-    _maybe_add_dataset_from_list_patch_location("d2go.data.build_fb")
-    _maybe_add_dataset_from_list_patch_location("d2go.data.build_oss")
+    _maybe_add_dataset_from_list_patch_location("d2go.data.fb.build")
 
     with contextlib.ExitStack() as stack:
         for ctx in [
