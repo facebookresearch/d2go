@@ -12,7 +12,6 @@ import torch
 from d2go.config import CfgNode
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.utils import ClipLengthGroupedDataset
-from d2go.utils.oss_helper import fb_overwritable
 from detectron2.data import (
     build_batch_data_loader,
     build_detection_train_loader,
@@ -146,28 +145,9 @@ def build_clip_grouping_data_loader(dataset, sampler, total_batch_size, num_work
     return ClipLengthGroupedDataset(data_loader, batch_size)
 
 
-@fb_overwritable()
 def build_mapped_train_loader(cfg, mapper):
     if cfg.DATALOADER.SAMPLER_TRAIN == "WeightedTrainingSampler":
         data_loader = build_weighted_detection_train_loader(cfg, mapper=mapper)
     else:
         data_loader = build_detection_train_loader(cfg, mapper=mapper)
-    return data_loader
-
-
-def build_d2go_train_loader(cfg, mapper=None):
-    """
-    Build the dataloader for training in D2Go. This is the main entry and customizations
-    will be done by using Registry.
-
-    This interface is currently experimental.
-    """
-    logger.info("Building D2Go's train loader ...")
-    # TODO: disallow passing mapper and use registry for all mapper registering
-    mapper = mapper or build_dataset_mapper(cfg, is_train=True)
-    logger.info("Using dataset mapper:\n{}".format(mapper))
-
-    data_loader = build_mapped_train_loader(cfg, mapper)
-
-    # TODO: decide if move vis_wrapper inside this interface
     return data_loader
