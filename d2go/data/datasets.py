@@ -9,7 +9,6 @@ import os
 from collections import namedtuple
 
 from d2go.utils.helper import get_dir_path
-from d2go.utils.oss_helper import fb_overwritable
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.registry import Registry
 
@@ -43,7 +42,7 @@ def _import_dataset(module_name):
     )
 
 
-@COCO_REGISTER_FUNCTION_REGISTRY.register()
+@COCO_REGISTER_FUNCTION_REGISTRY.register() # @oss-only
 def _register_extended_coco(dataset_name, split_dict):
     json_file = split_dict[ANN_FN]
     image_root = split_dict[IM_DIR]
@@ -67,12 +66,6 @@ def _register_extended_coco(dataset_name, split_dict):
         image_root=image_root,
         **meta_data,
     )
-    _add_additional_extended_coco_metadata(dataset_name)
-
-
-@fb_overwritable()
-def _add_additional_extended_coco_metadata(dataset_name):
-    pass
 
 
 def _register_extended_lvis(dataset_name, split_dict):
