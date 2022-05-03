@@ -11,7 +11,7 @@ import detectron2.utils.comm as comm
 import pytorch_lightning as pl
 import torch
 from d2go.config import CfgNode
-from d2go.data.build import build_d2go_train_loader
+from d2go.data import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import (
     update_cfg_if_using_adhoc_dataset,
