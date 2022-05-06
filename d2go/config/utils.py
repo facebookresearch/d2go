@@ -25,35 +25,37 @@ def reroute_config_path(path: str) -> str:
     assert isinstance(path, str), path
 
     if path.startswith("d2go://"):
-        rel_path = path[len("d2go://") :]
-        config_in_resource = pkg_resources.resource_filename("d2go", rel_path)
-        return config_in_resource
+        return reroute_d2go_config_path(path)
     elif path.startswith("detectron2go://"):
-        rel_path = path[len("detectron2go://") :]
-        config_in_resource = pkg_resources.resource_filename(
-            "d2go", os.path.join("configs", rel_path)
-        )
-        return config_in_resource
+        return reroute_detectron2go_config_path(path)
     elif path.startswith("detectron2://"):
-        rel_path = path[len("detectron2://") :]
-        config_in_resource = pkg_resources.resource_filename(
-            "detectron2.model_zoo", os.path.join("configs", rel_path)
-        )
-        return config_in_resource
+        return reroute_detectron2_config_path(path)
 
     return path
 
 
-def _flatten_config_dict(x, reorder, prefix):
-    if not isinstance(x, dict):
-        return {prefix: x}
+def reroute_d2go_config_path(path: str) -> str:
+    assert path.startswith("d2go://")
+    rel_path = path[len("d2go://") :]
+    return get_package_resource_path("d2go", rel_path)
 
-    d = {}
-    for k in sorted(x.keys()) if reorder else x.keys():
-        v = x[k]
-        new_key = f"{prefix}.{k}" if prefix else k
-        d.update(_flatten_config_dict(v, reorder, new_key))
-    return d
+
+def reroute_detectron2go_config_path(path: str) -> str:
+    assert path.startswith("detectron2go://")
+    rel_path = path[len("detectron2go://") :]
+    return get_package_resource_path("d2go", os.path.join("configs", rel_path))
+
+
+def reroute_detectron2_config_path(path: str) -> str:
+    assert path.startswith("detectron2://")
+    rel_path = path[len("detectron2://") :]
+    return get_package_resource_path(
+        "detectron2.model_zoo", os.path.join("configs", rel_path)
+    )
+
+
+def get_package_resource_path(package: str, path_in_package: str) -> str:
+    return pkg_resources.resource_filename(package, path_in_package)
 
 
 def flatten_config_dict(dic, reorder=True):
@@ -78,6 +80,18 @@ def flatten_config_dict(dic, reorder=True):
         dic: a single-layer dict
     """
     return _flatten_config_dict(dic, reorder=reorder, prefix="")
+
+
+def _flatten_config_dict(x, reorder, prefix):
+    if not isinstance(x, dict):
+        return {prefix: x}
+
+    d = {}
+    for k in sorted(x.keys()) if reorder else x.keys():
+        v = x[k]
+        new_key = f"{prefix}.{k}" if prefix else k
+        d.update(_flatten_config_dict(v, reorder, new_key))
+    return d
 
 
 def config_dict_to_list_str(config_dict: Dict) -> List[str]:
