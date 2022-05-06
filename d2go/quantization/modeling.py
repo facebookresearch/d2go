@@ -16,7 +16,8 @@ from detectron2.engine import SimpleTrainer
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
-from mobile_cv.common.misc.registry import Registry
+
+from .qconfig import set_backend_and_create_qconfig, QCONFIG_CREATOR_REGISTRY
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):
@@ -140,11 +141,17 @@ def add_quantization_default_configs(_C):
 # TODO: model.to(device) might not work for detection meta-arch, this function is the
 # workaround, in general, we might need a meta-arch API for this if needed.
 def _cast_model_to_device(model, device):
-    from d2go.modeling.meta_arch.rcnn import _cast_detection_model
-    from detectron2.modeling import GeneralizedRCNN
-
-    assert isinstance(model, GeneralizedRCNN), "Currently only availabe for RCNN"
-    return _cast_detection_model(model, device)
+    if hasattr(
+        model, "_cast_model_to_device"
+    ):  # we can make this formal by removing "_"
+        return model._cast_model_to_device(device)
+    else:
+        logger.warning(
+            "model.to(device) doesn't guarentee moving the entire model, "
+            "if customization is needed, please implement _cast_model_to_device "
+            "for the MetaArch"
+        )
+        return model.to(device)
 
 
 def add_d2_quant_mapping(mappings):
@@ -266,9 +273,6 @@ def _smart_decode_backend(extended_backend):
     return _smart_parse_extended_backend(extended_backend)[0]
 
 
-QCONFIG_CREATOR_REGISTRY = Registry("QCONFIG_CREATOR_REGISTRY")
-
-
 @QCONFIG_CREATOR_REGISTRY.register("smart")
 def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
     """
@@ -294,17 +298,6 @@ def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
         qconfig = learnable_qat.convert_to_learnable_qconfig(qconfig)
 
     return qconfig
-
-
-def set_backend_and_create_qconfig(cfg, *, is_train):
-    """
-    Recommended function to create qconfig given D2Go's quantization config.
-    """
-
-    # In case we need different implmentation, we can add a new key called
-    # QUANTIZATION.QCONFIG_CREATOR with "smart" as default value, and use this key
-    # to toggle between registries.
-    return QCONFIG_CREATOR_REGISTRY.get("smart")(cfg, is_train=is_train)
 
 
 def default_prepare_for_quant(cfg, model):
