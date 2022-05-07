@@ -405,8 +405,18 @@ class DefaultTorchscriptExport(ModelExportMethod):
         export_method: Optional[str],
         **export_kwargs,
     ):
+        expected_arguments = {
+            "jit_mode",
+            "torchscript_filename",
+            "mobile_optimization",
+            "_extra_files",
+        }
+        filtered_kwargs = {
+            k: v for k, v in export_kwargs.items() if k in expected_arguments
+        }
+
         torchscript_filename = export_optimize_and_save_torchscript(
-            model, input_args, save_path, **export_kwargs
+            model, input_args, save_path, **filtered_kwargs
         )
         return {TORCHSCRIPT_FILENAME_KEY: torchscript_filename}
 
