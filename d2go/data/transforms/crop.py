@@ -227,7 +227,9 @@ class RandomInstanceCrop(aug.Augmentation):
         bbox_xywh = bu.scale_bbox_center(bbox_xywh, scale)
         bbox_xywh = bu.clip_box_xywh(bbox_xywh, image_size).int()
 
-        return CropTransform(*bbox_xywh.tolist())
+        return CropTransform(
+            *bbox_xywh.tolist(), orig_h=image_size[0], orig_w=image_size[1]
+        )
 
 
 # example repr: "RandomInstanceCropOp::{'crop_scale': [0.8, 1.6]}"
