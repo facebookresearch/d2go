@@ -14,7 +14,7 @@ from d2go.runner.callbacks.quantization import (
     QuantizationAwareTraining,
 )
 from d2go.runner.lightning_task import GeneralizedRCNNTask
-from d2go.setup import basic_argument_parser
+from d2go.setup import basic_argument_parser, setup_after_launch
 from d2go.utils.misc import dump_trained_model_configs
 from detectron2.utils.events import EventStorage
 from detectron2.utils.file_io import PathManager
@@ -37,16 +37,6 @@ class TrainOutput:
     accuracy: Optional[Dict[str, Any]] = None
     tensorboard_log_dir: Optional[str] = None
     model_configs: Optional[Dict[str, str]] = None
-
-
-def maybe_override_output_dir(cfg: CfgNode, output_dir: Optional[str]) -> None:
-    """Overrides the output directory if `output_dir` is not None."""
-    if output_dir is not None and output_dir != cfg.OUTPUT_DIR:
-        cfg.OUTPUT_DIR = output_dir
-        logger.warning(
-            f"Override cfg.OUTPUT_DIR ({cfg.OUTPUT_DIR}) to be the same as "
-            f"output_dir {output_dir}"
-        )
 
 
 def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
@@ -147,7 +137,7 @@ def do_test(trainer: pl.Trainer, task: GeneralizedRCNNTask):
 
 def main(
     cfg: CfgNode,
-    output_dir: Optional[str] = None,
+    output_dir: str,
     task_cls: Type[GeneralizedRCNNTask] = GeneralizedRCNNTask,
     eval_only: bool = False,
     num_machines: int = 1,
@@ -160,8 +150,9 @@ def main(
         num_processes: Number of processes on each node.
         eval_only: True if run evaluation only.
     """
-    auto_scale_world_size(cfg, num_machines * num_processes)
-    maybe_override_output_dir(cfg, output_dir)
+    # FIXME: make comm.get_world_size() work properly.
+    setup_after_launch(cfg, output_dir, _scale_world_size=False)
+    auto_scale_world_size(cfg, new_world_size=num_machines * num_processes)
 
     task = task_cls.from_config(cfg, eval_only)
     trainer_params = get_trainer_params(cfg, num_machines, num_processes)
