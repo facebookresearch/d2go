@@ -11,8 +11,8 @@ import torch.nn as nn
 from d2go.export.api import (
     convert_and_export_predictor,
     FuncInfo,
-    PredictorExportConfig,
 )
+from d2go.export.predictor_export_config import PredictorExportConfig
 from d2go.export.torchscript import (
     DefaultTorchscriptExport,
     TracingAdaptedTorchscriptExport,

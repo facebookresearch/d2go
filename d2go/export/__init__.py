@@ -3,3 +3,4 @@
 
 # enable registry
 from . import torchscript  # noqa
+from .predictor_export_config import PredictorExportConfig  # noqa

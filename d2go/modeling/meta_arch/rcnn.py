@@ -6,7 +6,7 @@ import inspect
 import logging
 
 import torch.nn as nn
-from d2go.export.api import PredictorExportConfig
+from d2go.export.predictor_export_config import PredictorExportConfig
 from d2go.quantization.modeling import set_backend_and_create_qconfig
 from detectron2.modeling import GeneralizedRCNN
 from detectron2.modeling.backbone.fpn import FPN
