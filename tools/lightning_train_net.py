@@ -14,7 +14,7 @@ from d2go.runner.callbacks.quantization import (
     QuantizationAwareTraining,
 )
 from d2go.runner.lightning_task import GeneralizedRCNNTask
-from d2go.setup import basic_argument_parser
+from d2go.setup import basic_argument_parser, setup_after_lightning_launch
 from d2go.utils.misc import dump_trained_model_configs
 from detectron2.utils.events import EventStorage
 from detectron2.utils.file_io import PathManager
@@ -23,7 +23,6 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from torch.distributed import get_rank
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("detectron2go.lightning.train_net")
@@ -116,6 +115,7 @@ def do_train(
     Returns:
         A map of model name to trained model config path.
     """
+    setup_after_lightning_launch(cfg, cfg.OUTPUT_DIR)
     with EventStorage() as storage:
         task.storage = storage
         trainer.fit(task)
@@ -131,7 +131,7 @@ def do_train(
     return model_configs
 
 
-def do_test(trainer: pl.Trainer, task: GeneralizedRCNNTask):
+def do_test(cfg: CfgNode, trainer: pl.Trainer, task: GeneralizedRCNNTask):
     """Runs the evaluation with a pre-trained model.
 
     Args:
@@ -140,6 +140,9 @@ def do_test(trainer: pl.Trainer, task: GeneralizedRCNNTask):
         task: Lightning module instance.
 
     """
+
+    setup_after_lightning_launch(cfg, cfg.OUTPUT_DIR)
+
     with EventStorage() as storage:
         task.storage = storage
         trainer.test(task)
@@ -175,7 +178,7 @@ def main(
     trainer = pl.Trainer(**trainer_params)
     model_configs = None
     if eval_only:
-        do_test(trainer, task)
+        do_test(cfg, trainer, task)
     else:
         model_configs = do_train(cfg, trainer, task)
 

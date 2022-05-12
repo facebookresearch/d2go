@@ -12,7 +12,7 @@ import torch
 from d2go.config import CfgNode
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.utils import ClipLengthGroupedDataset
-from d2go.utils.misc import fb_overwritable
+from d2go.utils.oss_helper import fb_overwritable
 from detectron2.data import (
     build_batch_data_loader,
     build_detection_train_loader,

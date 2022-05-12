@@ -9,7 +9,7 @@ import os
 from collections import namedtuple
 
 from d2go.utils.helper import get_dir_path
-from d2go.utils.misc import fb_overwritable
+from d2go.utils.oss_helper import fb_overwritable
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.registry import Registry
 
