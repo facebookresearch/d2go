@@ -159,7 +159,7 @@ class DeformableTransformer(nn.Module):
             # grid shape (bs, H_l, W_l, 2). Value could be > 1
             grid = (grid.unsqueeze(0).expand(N_, -1, -1, -1) + 0.5) / scale
             # wh shape (bs, H_l, W_l, 2)
-            wh = torch.ones_like(grid) * base_object_scale * (2.0 ** lvl)
+            wh = torch.ones_like(grid) * base_object_scale * (2.0**lvl)
             # proposal shape (bs, H_l * W_l, 4)
             proposal = torch.cat((grid, wh), -1).view(N_, -1, 4)
             proposals.append(proposal)

@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 def get_lt_trainer(output_dir: str, cfg):
     checkpoint_callback = ModelCheckpoint(dirpath=output_dir, save_last=True)
     return pl.Trainer(
-        max_epochs=10 ** 8,
+        max_epochs=10**8,
         max_steps=cfg.SOLVER.MAX_ITER,
         val_check_interval=cfg.TEST.EVAL_PERIOD
         if cfg.TEST.EVAL_PERIOD > 0

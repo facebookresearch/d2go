@@ -204,7 +204,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
 
         test_out = model.eval()(test_in)
         self.assertGreater(
-            (test_out ** 2).sum(), 0.03, "With the given seend, L2^2 should be > 0.03."
+            (test_out**2).sum(), 0.03, "With the given seend, L2^2 should be > 0.03."
         )
 
         base_out = qat.quantized.eval()(test_in)
@@ -330,7 +330,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
 
         test_out = model.eval()(test_in)
         self.assertGreater(
-            (test_out ** 2).sum(), 0.03, "With the given seend, L2^2 should be > 0.03."
+            (test_out**2).sum(), 0.03, "With the given seend, L2^2 should be > 0.03."
         )
 
         base_out = qat.quantized.eval()(test_in)
@@ -369,7 +369,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
 
         test_out = model.eval()(test_in)
         self.assertGreater(
-            (test_out ** 2).sum(), 0.03, "With the given seend, L2^2 should be > 0.03."
+            (test_out**2).sum(), 0.03, "With the given seend, L2^2 should be > 0.03."
         )
 
         base_out = qat.quantized.eval()(test_in)

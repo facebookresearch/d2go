@@ -63,7 +63,7 @@ class DiskCachedDatasetFromList(data.Dataset):
         total_size = sum(len(x) for x in self._lst)
         # TODO: only enabling DiskCachedDataset for large enough dataset
         logger.info(
-            "Serialized dataset takes {:.2f} MiB".format(total_size / 1024 ** 2)
+            "Serialized dataset takes {:.2f} MiB".format(total_size / 1024**2)
         )
         self._initialize_diskcache()
 
@@ -128,7 +128,7 @@ class DiskCachedDatasetFromList(data.Dataset):
         comm.synchronize()
         logger.info(
             "Finished writing to local disk, db size: {:.2f} MiB".format(
-                self._cache.cache.volume() / 1024 ** 2
+                self._cache.cache.volume() / 1024**2
             )
         )
         # Optional sync for some strategies
@@ -158,7 +158,7 @@ class DiskCachedDatasetFromList(data.Dataset):
             "({:.2f}%) Wrote {} elements to local disk cache, db size: {:.2f} MiB".format(
                 percentage,
                 len(self._cache.cache),
-                self._cache.cache.volume() / 1024 ** 2,
+                self._cache.cache.volume() / 1024**2,
             ),
             n=10,
         )
