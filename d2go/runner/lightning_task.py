@@ -338,11 +338,6 @@ class DefaultTask(pl.LightningModule):
     # ---------------------------------------------------------------------------
     # Runner methods
     # ---------------------------------------------------------------------------
-    def setup(self, stage: str):
-        from d2go.setup import setup_after_lightning_launch
-
-        setup_after_lightning_launch(self.cfg, self.cfg.OUTPUT_DIR)
-
     def register(self, cfg: CfgNode):
         inject_coco_datasets(cfg)
         register_dynamic_datasets(cfg)
