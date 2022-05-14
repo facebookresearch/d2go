@@ -93,10 +93,13 @@ def export_optimize_and_save_torchscript(
             PathManager.copy_from_local(local_file, remote_file, overwrite=True)
 
         with _synced_local_file(torchscript_filename) as model_file:
+            logger.info(f"Saving torchscript model to: {torchscript_filename}")
             torch.jit.save(script_model, model_file, _extra_files=_extra_files)
         dump_torchscript_IR(script_model, os.path.join(output_path, "torchscript_IR"))
 
-        with _synced_local_file("data.pth") as data_file:
+        data_filename = "data.pth"
+        with _synced_local_file(data_filename) as data_file:
+            logger.info(f"Saving example data to: {data_filename}")
             torch.save(inputs, data_file)
 
         if mobile_optimization is not None:
@@ -109,6 +112,7 @@ def export_optimize_and_save_torchscript(
             )
             torchscript_filename = mobile_optimization.torchscript_filename
             with _synced_local_file(torchscript_filename) as lite_path:
+                logger.info(f"Saving mobile optimized model to: {torchscript_filename}")
                 liteopt_model._save_for_lite_interpreter(
                     lite_path, _extra_files=_extra_files
                 )
@@ -135,9 +139,12 @@ def export_optimize_and_save_torchscript(
             target_backend = mobile_optimization.backend.lower()
             if target_backend == "cpu":
                 # Sanity check by running
+                logger.info("Running sanity check for the mobile optimized model ...")
                 liteopt_model(*liteopt_model.get_all_bundled_inputs()[0])
             name, ext = os.path.splitext(torchscript_filename)
-            with _synced_local_file(name + "_bundled" + ext) as lite_path:
+            input_bundled_path = name + "_bundled" + ext
+            with _synced_local_file(input_bundled_path) as lite_path:
+                logger.info(f"Saving input bundled model to: {input_bundled_path}")
                 liteopt_model._save_for_lite_interpreter(lite_path)
 
         return torchscript_filename
