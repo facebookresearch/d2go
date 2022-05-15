@@ -3,5 +3,12 @@
 
 
 # import all modules to make sure Registry works
-from . import affine, blur, box_utils, color_yuv, crop, d2_native  # noqa
-# @fb-only: from . import fb  # noqa 
+# @fb-only: from . import (  # noqa  # noqa 
+    affine,
+    blur,
+    box_utils,
+    color_yuv,
+    crop,
+    d2_native,
+    fb,
+)

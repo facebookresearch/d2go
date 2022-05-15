@@ -17,13 +17,8 @@ def _register_d2_datasets():
 
 def _register():
     from d2go.data import dataset_mappers  # NOQA
-    from d2go.data.datasets import (
-        register_json_datasets,
-        register_builtin_datasets,
-    )
-    from d2go.modeling.backbone import (  # NOQA
-        fbnet_v2,
-    )
+    from d2go.data.datasets import register_builtin_datasets, register_json_datasets
+    from d2go.modeling.backbone import fbnet_v2  # NOQA
 
     # register_json_datasets()
     # register_builtin_datasets()

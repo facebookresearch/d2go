@@ -5,7 +5,7 @@
 import itertools
 import logging
 import operator
-from collections import OrderedDict, defaultdict
+from collections import defaultdict, OrderedDict
 from typing import Dict
 
 import torch
@@ -19,7 +19,7 @@ from detectron2.data import (
     get_detection_dataset_dicts,
 )
 from detectron2.data.build import worker_init_reset_seed
-from detectron2.data.common import MapDataset, DatasetFromList
+from detectron2.data.common import DatasetFromList, MapDataset
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.data.samplers import RepeatFactorTrainingSampler
 from detectron2.utils.comm import get_world_size

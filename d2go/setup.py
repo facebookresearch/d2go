@@ -11,14 +11,14 @@ from typing import Optional
 import detectron2.utils.comm as comm
 import torch
 from d2go.config import (
-    CfgNode,
     auto_scale_world_size,
+    CfgNode,
     reroute_config_path,
     temp_defrost,
 )
 from d2go.config.utils import get_diff_cfg
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
-from d2go.runner import create_runner, BaseRunner
+from d2go.runner import BaseRunner, create_runner
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import NamedTuple, List, Tuple
+from typing import List, NamedTuple, Tuple
 
 from detectron2.utils.registry import Registry
 

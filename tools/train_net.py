@@ -16,7 +16,7 @@ from d2go.setup import (
     prepare_for_launch,
     setup_after_launch,
 )
-from d2go.utils.misc import print_metrics_table, dump_trained_model_configs
+from d2go.utils.misc import dump_trained_model_configs, print_metrics_table
 from detectron2.engine.defaults import create_ddp_model
 
 

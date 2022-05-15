@@ -7,13 +7,12 @@ import logging
 import os
 import unittest
 
-from d2go.config import CfgNode
-from d2go.config import auto_scale_world_size, reroute_config_path
+from d2go.config import auto_scale_world_size, CfgNode, reroute_config_path
 from d2go.config.utils import (
-    get_diff_cfg,
     config_dict_to_list_str,
     flatten_config_dict,
     get_cfg_diff_table,
+    get_diff_cfg,
     get_from_flattened_config_dict,
 )
 from d2go.runner import GeneralizedRCNNRunner

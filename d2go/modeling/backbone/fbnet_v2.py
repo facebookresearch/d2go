@@ -12,10 +12,10 @@ import torch.nn as nn
 from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from detectron2.layers import ShapeSpec
 from detectron2.modeling import (
-    BACKBONE_REGISTRY,
-    RPN_HEAD_REGISTRY,
     Backbone,
+    BACKBONE_REGISTRY,
     build_anchor_generator,
+    RPN_HEAD_REGISTRY,
 )
 from detectron2.modeling.backbone.fpn import FPN, LastLevelMaxPool, LastLevelP6P7
 from detectron2.modeling.roi_heads import box_head, keypoint_head, mask_head
@@ -24,10 +24,10 @@ from mobile_cv.arch.fbnet_v2 import fbnet_builder as mbuilder
 from mobile_cv.arch.utils.helper import format_dict_expanding_list_values
 
 from .modules import (
+    KeypointRCNNConvUpsamplePredictorNoUpscale,
+    KeypointRCNNIRFPredictorNoUpscale,
     KeypointRCNNPredictor,
     KeypointRCNNPredictorNoUpscale,
-    KeypointRCNNIRFPredictorNoUpscale,
-    KeypointRCNNConvUpsamplePredictorNoUpscale,
     MaskRCNNConv1x1Predictor,
     RPNHeadConvRegressor,
 )

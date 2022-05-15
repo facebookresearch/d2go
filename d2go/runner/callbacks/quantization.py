@@ -4,7 +4,7 @@ from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
 from types import MethodType
-from typing import Any, Callable, Dict, List, Set, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import torch
 from d2go.config import CfgNode
@@ -14,11 +14,11 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities import rank_zero_info
 from torch.ao.quantization import (  # @manual
+    get_default_qat_qconfig,
+    get_default_qconfig,
     QConfig,
     QConfigDynamic,
     QuantType,
-    get_default_qat_qconfig,
-    get_default_qconfig,
 )
 from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 from torch.ao.quantization.utils import get_quant_type

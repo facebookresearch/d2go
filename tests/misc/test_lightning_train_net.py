@@ -9,7 +9,7 @@ import torch.distributed as dist
 from d2go.config import CfgNode
 from d2go.config.utils import flatten_config_dict
 from d2go.runner.lightning_task import GeneralizedRCNNTask
-from d2go.tools.lightning_train_net import main, FINAL_MODEL_CKPT
+from d2go.tools.lightning_train_net import FINAL_MODEL_CKPT, main
 from d2go.utils.testing import meta_arch_helper as mah
 from d2go.utils.testing.helper import tempdir
 

@@ -13,7 +13,7 @@ from d2go.utils.helper import run_once
 from detectron2.utils.analysis import FlopCountAnalysis
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.registry import Registry
-from fvcore.nn import flop_count_table, flop_count_str
+from fvcore.nn import flop_count_str, flop_count_table
 
 
 PROFILER_REGISTRY = Registry("PROFILER")

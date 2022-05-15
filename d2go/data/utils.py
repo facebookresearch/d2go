@@ -17,10 +17,10 @@ import numpy as np
 import torch.utils.data as data
 from d2go.config import temp_defrost
 from d2go.data.datasets import (
-    register_dataset_split,
     ANN_FN,
     IM_DIR,
     INJECTED_COCO_DATASETS_LUT,
+    register_dataset_split,
 )
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.data.build import (

@@ -4,10 +4,10 @@
 
 # forward the namespace to avoid `d2go.config.config`
 from .config import (
+    auto_scale_world_size,
+    CfgNode,
     CONFIG_CUSTOM_PARSE_REGISTRY,
     CONFIG_SCALING_METHOD_REGISTRY,
-    CfgNode,
-    auto_scale_world_size,
     reroute_config_path,
     temp_defrost,
 )

@@ -5,7 +5,7 @@
 import copy
 
 from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
-from mobile_cv.arch.fbnet_v2.modeldef_utils import _ex, e1, e2, e1p, e3, e4, e6
+from mobile_cv.arch.fbnet_v2.modeldef_utils import _ex, e1, e1p, e2, e3, e4, e6
 
 
 def _mutated_tuple(tp, pos, value):

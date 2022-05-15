@@ -9,7 +9,7 @@ import time
 
 import detectron2.utils.comm as comm
 import numpy as np
-from d2go.distributed import launch, get_num_processes_per_machine
+from d2go.distributed import get_num_processes_per_machine, launch
 from d2go.setup import (
     basic_argument_parser,
     post_mortem_if_fail_for_main,

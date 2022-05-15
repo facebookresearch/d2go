@@ -7,7 +7,7 @@ import logging
 import shlex
 import subprocess
 from collections import defaultdict
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 import detectron2.utils.comm as comm
 from detectron2.data import MetadataCatalog

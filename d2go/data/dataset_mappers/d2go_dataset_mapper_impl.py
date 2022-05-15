@@ -13,10 +13,7 @@ from d2go.data.dataset_mappers.data_reading import (
 )
 from d2go.utils.helper import retryable
 from detectron2.data import detection_utils as utils, transforms as T
-from detectron2.data.transforms.augmentation import (
-    AugInput,
-    AugmentationList,
-)
+from detectron2.data.transforms.augmentation import AugInput, AugmentationList
 
 logger = logging.getLogger(__name__)
 

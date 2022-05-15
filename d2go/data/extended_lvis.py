@@ -172,7 +172,7 @@ if __name__ == "__main__":
     """
     import sys
 
-    import detectron2.data.datasets  # noqa # add pre-defined metadata
+    import detectron2.data.datasets  # noqa  # add pre-defined metadata
     import numpy as np
     from detectron2.utils.logger import setup_logger
     from detectron2.utils.visualizer import Visualizer

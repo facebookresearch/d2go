@@ -6,16 +6,12 @@ import logging
 import os
 from collections import OrderedDict
 from functools import lru_cache
-from typing import Type, Optional, List, Union
+from typing import List, Optional, Type, Union
 
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
 import torch
-from d2go.config import (
-    CfgNode,
-    CONFIG_SCALING_METHOD_REGISTRY,
-    temp_defrost,
-)
+from d2go.config import CfgNode, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost
 from d2go.config.utils import get_cfg_diff_table
 from d2go.data.build import build_d2go_train_loader
 from d2go.data.dataset_mappers import build_dataset_mapper
@@ -28,19 +24,12 @@ from d2go.data.utils import (
 )
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import kmeans_anchors, model_ema
-from d2go.modeling.model_freezing_utils import (
-    freeze_matched_bn,
-    set_requires_grad,
-)
+from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
-from d2go.quantization.modeling import (
-    QATCheckpointer,
-    setup_qat_model,
-    QATHook,
-)
+from d2go.quantization.modeling import QATCheckpointer, QATHook, setup_qat_model
 from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.get_default_cfg import get_default_cfg
-from d2go.utils.helper import TensorboardXWriter, D2Trainer
+from d2go.utils.helper import D2Trainer, TensorboardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
@@ -49,21 +38,18 @@ from detectron2.data import (
     build_detection_train_loader as d2_build_detection_train_loader,
     MetadataCatalog,
 )
-from detectron2.engine import HookBase
-from detectron2.engine import SimpleTrainer, AMPTrainer, hooks
+from detectron2.engine import AMPTrainer, HookBase, hooks, SimpleTrainer
 from detectron2.evaluation import (
     COCOEvaluator,
-    RotatedCOCOEvaluator,
     DatasetEvaluators,
-    LVISEvaluator,
     inference_on_dataset,
+    LVISEvaluator,
     print_csv_format,
+    RotatedCOCOEvaluator,
     verify_results,
 )
-from detectron2.modeling import GeneralizedRCNNWithTTA, build_model
-from detectron2.solver import (
-    build_lr_scheduler as d2_build_lr_scheduler,
-)
+from detectron2.modeling import build_model, GeneralizedRCNNWithTTA
+from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from detectron2.utils.registry import Registry
 from mobile_cv.predictor.api import PredictorWrapper
