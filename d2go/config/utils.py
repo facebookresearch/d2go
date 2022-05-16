@@ -2,11 +2,14 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import os
-from typing import Dict, List
+from enum import Enum
+from typing import Any, Dict, List
 
 import pkg_resources
+from d2go.utils.oss_helper import fb_overwritable
 
 
+@fb_overwritable()
 def reroute_config_path(path: str) -> str:
     """
     Supporting rerouting the config files for convenience:
@@ -187,3 +190,15 @@ def get_diff_cfg(old_cfg, new_cfg):
 
     out = new_cfg.__class__()
     return get_diff_cfg_rec(old_cfg, new_cfg, out)
+
+
+def namedtuple_to_dict(obj: Any):
+    """Convert NamedTuple or dataclass to dict so it can be used as config"""
+    res = {}
+    for k, v in obj.__dict__.items():
+        if isinstance(v, Enum):
+            # in case of enum, serialize the enum value
+            res[k] = v.value
+        else:
+            res[k] = v
+    return res
