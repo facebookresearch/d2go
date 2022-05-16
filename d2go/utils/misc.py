@@ -8,11 +8,11 @@ import warnings
 from contextlib import contextmanager
 from typing import Dict, Iterator
 
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 import detectron2.utils.comm as comm
 import torch
 from d2go.config import CfgNode
 from detectron2.utils.file_io import PathManager
-from mobile_cv.common.misc.py import dynamic_import
 from tabulate import tabulate
 
 from .tensorboard_log_util import get_tensorboard_log_dir  # noqa: forwarding
@@ -112,24 +112,3 @@ def _log_api_usage(identifier: str):
     inside facebook's infra.
     """
     torch._C._log_api_usage_once("d2go." + identifier)
-
-
-def fb_overwritable():
-    """Decorator on function that has alternative internal implementation"""
-    try:
-        import d2go.infra.fb  # NOQA
-
-        is_oss = False
-    except ImportError:
-        is_oss = True
-
-    def deco(oss_func):
-        if is_oss:
-            return oss_func
-        else:
-            oss_module = oss_func.__module__
-            fb_module = oss_module + "_fb"  # xxx.py -> xxx_fb.py
-            fb_func = dynamic_import("{}.{}".format(fb_module, oss_func.__name__))
-            return fb_func
-
-    return deco
