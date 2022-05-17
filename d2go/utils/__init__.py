@@ -3,4 +3,6 @@
 
 
 # import to make sure Registry works
-from . import fb, flop_calculator  # noqa  # @fb-only  # noqa
+# usort does not respect the `fb-only` tag so use isort:skip here
+# @fb-only: from . import fb  # isort:skip  # noqa 
+from . import flop_calculator  # noqa
