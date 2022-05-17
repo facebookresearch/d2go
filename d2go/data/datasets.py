@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 D2GO_DATASETS_BASE_MODULE = "d2go.datasets"
 IM_DIR = "image_directory"
 ANN_FN = "annotation_file"
+LOAD_KWARGS = "load_kwargs"
 
 COCO_REGISTER_FUNCTION_REGISTRY = Registry("COCO_REGISTER_FUNCTION_REGISTRY")
 COCO_REGISTER_FUNCTION_REGISTRY.__doc__ = "Registry - coco register function"
@@ -47,6 +48,7 @@ def _import_dataset(module_name):
 def _register_extended_coco(dataset_name, split_dict):
     json_file = split_dict[ANN_FN]
     image_root = split_dict[IM_DIR]
+    load_kwargs = split_dict.get(LOAD_KWARGS, {})
 
     # 1. register a function which returns dicts
     load_coco_json_func = functools.partial(
@@ -54,6 +56,7 @@ def _register_extended_coco(dataset_name, split_dict):
         json_file=json_file,
         image_root=image_root,
         dataset_name=dataset_name,
+        **load_kwargs,
     )
     DatasetCatalog.register(dataset_name, load_coco_json_func)
 
