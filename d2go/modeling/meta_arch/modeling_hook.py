@@ -2,8 +2,18 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from abc import abstractmethod
+from typing import List
 
 import torch
+from detectron2.utils.registry import Registry
+
+MODELING_HOOK_REGISTRY = Registry("MODELING_HOOK")  # noqa F401 isort:skip
+MODELING_HOOK_REGISTRY.__doc__ = """
+Registry for modeling hook.
+
+The registered object will be called with `obj(cfg)`
+and expected to return a `ModelingHook` object.
+"""
 
 
 class ModelingHook(object):
@@ -38,3 +48,18 @@ class ModelingHook(object):
               model_hook_N-1.unapply(model) -> ... -> model_hook_1.unapply(model)
         """
         pass
+
+
+def build_modeling_hooks(cfg, hook_names: List[str]) -> List[ModelingHook]:
+    """Build the hooks from cfg"""
+    ret = [MODELING_HOOK_REGISTRY.get(name)(cfg) for name in hook_names]
+    return ret
+
+
+def apply_modeling_hooks(
+    model: torch.nn.Module, hooks: List[ModelingHook]
+) -> torch.nn.Module:
+    """Apply hooks on the model"""
+    for hook in hooks:
+        model = hook.apply(model)
+    return model
