@@ -23,7 +23,7 @@ from d2go.data.utils import (
     update_cfg_if_using_adhoc_dataset,
 )
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
-from d2go.modeling import kmeans_anchors, model_ema
+from d2go.modeling import build_model, kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import QATCheckpointer, QATHook, setup_qat_model
@@ -48,7 +48,7 @@ from detectron2.evaluation import (
     RotatedCOCOEvaluator,
     verify_results,
 )
-from detectron2.modeling import build_model, GeneralizedRCNNWithTTA
+from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from detectron2.utils.registry import Registry
