@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+from d2go.modeling.meta_arch import modeling_hook as mh
 from d2go.utils.misc import _log_api_usage
 from detectron2.modeling import build_model as d2_build_model
 
@@ -13,5 +14,14 @@ def build_model(cfg):
     """
     meta_arch = cfg.MODEL.META_ARCHITECTURE
     model = d2_build_model(cfg)
+
+    # apply modeling hooks
+    # some custom projects bypass d2go's default config so may not have the
+    # MODELING_HOOKS key
+    if hasattr(cfg.MODEL, "MODELING_HOOKS"):
+        hook_names = cfg.MODEL.MODELING_HOOKS
+        mhooks = mh.build_modeling_hooks(cfg, hook_names)
+        model = mh.apply_modeling_hooks(model, mhooks)
+
     _log_api_usage("modeling.meta_arch." + meta_arch)
     return model

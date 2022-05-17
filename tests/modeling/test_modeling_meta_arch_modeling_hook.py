@@ -4,12 +4,17 @@
 
 import unittest
 
+import d2go.runner.default_runner as default_runner
 import torch
+from d2go.config import CfgNode
+from d2go.modeling import build_model
 from d2go.modeling.meta_arch import modeling_hook as mh
+from detectron2.modeling import META_ARCH_REGISTRY
 
 
+@META_ARCH_REGISTRY.register()
 class TestArch(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
 
     def forward(self, x):
@@ -17,8 +22,8 @@ class TestArch(torch.nn.Module):
 
 
 # create a wrapper of the model that add 1 to the output
-class Wrapper(torch.nn.Module):
-    def __init__(self, model: TestArch):
+class PlusOneWrapper(torch.nn.Module):
+    def __init__(self, model: torch.nn.Module):
         super().__init__()
         self.model = model
 
@@ -26,23 +31,68 @@ class Wrapper(torch.nn.Module):
         return self.model(x) + 1
 
 
+@mh.MODELING_HOOK_REGISTRY.register()
 class PlusOneHook(mh.ModelingHook):
     def __init__(self, cfg):
         super().__init__(cfg)
 
     def apply(self, model: torch.nn.Module) -> torch.nn.Module:
-        return Wrapper(model)
+        return PlusOneWrapper(model)
 
     def unapply(self, model: torch.nn.Module) -> torch.nn.Module:
-        assert isinstance(model, Wrapper)
+        assert isinstance(model, PlusOneWrapper)
+        return model.model
+
+
+# create a wrapper of the model that add 1 to the output
+class TimesTwoWrapper(torch.nn.Module):
+    def __init__(self, model: torch.nn.Module):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x):
+        return self.model(x) * 2
+
+
+@mh.MODELING_HOOK_REGISTRY.register()
+class TimesTwoHook(mh.ModelingHook):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+    def apply(self, model: torch.nn.Module) -> torch.nn.Module:
+        return TimesTwoWrapper(model)
+
+    def unapply(self, model: torch.nn.Module) -> torch.nn.Module:
+        assert isinstance(model, TimesTwoWrapper)
         return model.model
 
 
 class TestModelingHook(unittest.TestCase):
     def test_modeling_hook_simple(self):
-        model = TestArch()
+        model = TestArch(None)
         hook = PlusOneHook(None)
         model_with_hook = hook.apply(model)
         self.assertEqual(model_with_hook(2), 5)
         original_model = hook.unapply(model_with_hook)
         self.assertEqual(model, original_model)
+
+    def test_modeling_hook_cfg(self):
+        """Create model with modeling hook using build_model"""
+        cfg = CfgNode()
+        cfg.MODEL = CfgNode()
+        cfg.MODEL.DEVICE = "cpu"
+        cfg.MODEL.META_ARCHITECTURE = "TestArch"
+        cfg.MODEL.MODELING_HOOKS = ["PlusOneHook", "TimesTwoHook"]
+        model = build_model(cfg)
+        self.assertEqual(model(2), 10)
+
+    def test_modeling_hook_runner(self):
+        """Create model with modeling hook from runner"""
+        runner = default_runner.Detectron2GoRunner()
+        cfg = runner.get_default_cfg()
+        cfg.MODEL.DEVICE = "cpu"
+        cfg.MODEL.META_ARCHITECTURE = "TestArch"
+        cfg.MODEL.MODELING_HOOKS = ["PlusOneHook", "TimesTwoHook"]
+        model = runner.build_model(cfg)
+        self.assertEqual(model(2), 10)
+        default_runner._close_all_tbx_writers()
