@@ -2,4 +2,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 # NOTE: making necessary imports to register with Registry
-from . import fb, fcos  # noqa  # @fb-only  # noqa
+# @fb-only: from . import fb  # isort:skip  # noqa 
+from . import fcos  # noqa
