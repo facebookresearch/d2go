@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import copy
 import unittest
 
 import d2go.runner.default_runner as default_runner
@@ -86,6 +87,12 @@ class TestModelingHook(unittest.TestCase):
         model = build_model(cfg)
         self.assertEqual(model(2), 10)
 
+        self.assertTrue(hasattr(model, "_modeling_hooks"))
+        self.assertTrue(hasattr(model, "unapply_modeling_hooks"))
+        orig_model = model.unapply_modeling_hooks()
+        self.assertIsInstance(orig_model, TestArch)
+        self.assertEqual(orig_model(2), 4)
+
     def test_modeling_hook_runner(self):
         """Create model with modeling hook from runner"""
         runner = default_runner.Detectron2GoRunner()
@@ -95,4 +102,30 @@ class TestModelingHook(unittest.TestCase):
         cfg.MODEL.MODELING_HOOKS = ["PlusOneHook", "TimesTwoHook"]
         model = runner.build_model(cfg)
         self.assertEqual(model(2), 10)
+
+        self.assertTrue(hasattr(model, "_modeling_hooks"))
+        self.assertTrue(hasattr(model, "unapply_modeling_hooks"))
+        orig_model = model.unapply_modeling_hooks()
+        self.assertIsInstance(orig_model, TestArch)
+        self.assertEqual(orig_model(2), 4)
+
         default_runner._close_all_tbx_writers()
+
+    def test_modeling_hook_copy(self):
+        """Create model with modeling hook, the model could be copied"""
+        cfg = CfgNode()
+        cfg.MODEL = CfgNode()
+        cfg.MODEL.DEVICE = "cpu"
+        cfg.MODEL.META_ARCHITECTURE = "TestArch"
+        cfg.MODEL.MODELING_HOOKS = ["PlusOneHook", "TimesTwoHook"]
+        model = build_model(cfg)
+        self.assertEqual(model(2), 10)
+
+        model_copy = copy.deepcopy(model)
+
+        orig_model = model.unapply_modeling_hooks()
+        self.assertIsInstance(orig_model, TestArch)
+        self.assertEqual(orig_model(2), 4)
+
+        orig_model_copy = model_copy.unapply_modeling_hooks()
+        self.assertEqual(orig_model_copy(2), 4)

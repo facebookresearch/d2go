@@ -20,8 +20,7 @@ def build_model(cfg):
     # MODELING_HOOKS key
     if hasattr(cfg.MODEL, "MODELING_HOOKS"):
         hook_names = cfg.MODEL.MODELING_HOOKS
-        mhooks = mh.build_modeling_hooks(cfg, hook_names)
-        model = mh.apply_modeling_hooks(model, mhooks)
+        model = mh.build_and_apply_modeling_hooks(model, cfg, hook_names)
 
     _log_api_usage("modeling.meta_arch." + meta_arch)
     return model
