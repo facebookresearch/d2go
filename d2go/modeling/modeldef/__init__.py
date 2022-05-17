@@ -6,4 +6,5 @@
 This is the centralized place to define modeldef for all projects under D2Go.
 """
 
-from . import fb, modeldef  # noqa  # @fb-only  # noqa
+# @fb-only: from . import fb  # isort:skip  # noqa 
+from . import modeldef  # noqa
