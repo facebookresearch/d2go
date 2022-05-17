@@ -89,4 +89,9 @@ def get_default_cfg(_C):
         "default_scale_d2_configs",
         "default_scale_quantization_configs",
     ]
+
+    # Modeling hooks
+    # List of modeling hook names
+    _C.MODEL.MODELING_HOOKS = []
+
     return _C
