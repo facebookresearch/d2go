@@ -41,6 +41,7 @@ from detectron2.data import (
 from detectron2.engine import AMPTrainer, HookBase, hooks, SimpleTrainer
 from detectron2.evaluation import (
     COCOEvaluator,
+    DatasetEvaluator,
     DatasetEvaluators,
     inference_on_dataset,
     LVISEvaluator,
@@ -150,7 +151,7 @@ class BaseRunner(object):
         pass
 
     @staticmethod
-    def get_default_cfg():
+    def get_default_cfg() -> CfgNode:
         """
         Override `get_default_cfg` for adding non common config.
         """
@@ -215,7 +216,7 @@ class Detectron2GoRunner(BaseRunner):
         patch_d2_meta_arch()
 
     @staticmethod
-    def get_default_cfg():
+    def get_default_cfg() -> CfgNode:
         _C = super(Detectron2GoRunner, Detectron2GoRunner).get_default_cfg()
         return get_default_cfg(_C)
 
@@ -520,7 +521,9 @@ class Detectron2GoRunner(BaseRunner):
         return DataLoaderVisWrapper
 
     @staticmethod
-    def get_evaluator(cfg, dataset_name, output_folder):
+    def get_evaluator(
+        cfg: CfgNode, dataset_name: str, output_folder: str
+    ) -> DatasetEvaluator:
         evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
         if evaluator_type in ["coco", "coco_panoptic_seg"]:
             # D2 is in the process of reducing the use of cfg.
@@ -624,7 +627,7 @@ def _add_rcnn_default_config(_C):
 
 class GeneralizedRCNNRunner(Detectron2GoRunner):
     @staticmethod
-    def get_default_cfg():
+    def get_default_cfg() -> CfgNode:
         _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
         _add_rcnn_default_config(_C)
         return _C

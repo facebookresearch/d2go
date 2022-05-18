@@ -31,6 +31,7 @@ from d2go.runner.default_runner import (
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import VisualizationEvaluator
+from detectron2.evaluation import DatasetEvaluator
 from detectron2.solver import (
     build_lr_scheduler as d2_build_lr_scheduler,
     build_optimizer as d2_build_optimizer,
@@ -364,7 +365,9 @@ class DefaultTask(pl.LightningModule):
         pass
 
     @staticmethod
-    def get_evaluator(cfg: CfgNode, dataset_name: str, output_folder: str):
+    def get_evaluator(
+        cfg: CfgNode, dataset_name: str, output_folder: str
+    ) -> DatasetEvaluator:
         return Detectron2GoRunner.get_evaluator(
             cfg=cfg, dataset_name=dataset_name, output_folder=output_folder
         )
@@ -494,5 +497,5 @@ class DefaultTask(pl.LightningModule):
 
 class GeneralizedRCNNTask(DefaultTask):
     @classmethod
-    def get_default_cfg(cls):
+    def get_default_cfg(cls) -> CfgNode:
         return GeneralizedRCNNRunner.get_default_cfg()
