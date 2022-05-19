@@ -1,29 +1,34 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from d2go.utils.oss_helper import fb_overwritable
 
 
+@fb_overwritable()
 def _setup_env():
     # Set up custom environment before nearly anything else is imported
     # NOTE: this should be the first import (no not reorder)
     from detectron2.utils.env import (  # noqa F401 isort:skip
-        setup_environment as d2_setup_environment,
+        setup_environment as d2_setup_environment,  # noqa
     )
 
 
+@fb_overwritable()
 def _register_d2_datasets():
     # this will register D2 builtin datasets
     import detectron2.data  # noqa F401
 
 
+@fb_overwritable()
 def _register():
-    from d2go.data import dataset_mappers  # NOQA
-    from d2go.data.datasets import register_builtin_datasets, register_json_datasets
-    from d2go.modeling.backbone import fbnet_v2  # NOQA
+    from d2go.data import dataset_mappers  # noqa
+    from d2go.data.datasets import (  # noqa
+        register_builtin_datasets,  # noqa
+        register_json_datasets,  # noqa
+    )
+    from d2go.modeling.backbone import fbnet_v2  # noqa
 
-    # register_json_datasets()
-    # register_builtin_datasets()
 
-
+@fb_overwritable()
 def initialize_all():
     # exclude torch from timing
     from torchvision.ops import nms  # noqa
