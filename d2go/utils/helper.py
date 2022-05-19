@@ -39,6 +39,7 @@ import detectron2.utils.comm as comm
 import pkg_resources
 import six
 import torch
+from d2go.utils.oss_helper import fb_overwritable
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
@@ -75,6 +76,7 @@ class MultipleFunctionCallError(Exception):
     pass
 
 
+@fb_overwritable()
 def run_once(
     raise_on_multiple: bool = False,
     # pyre-fixme[34]: `Variable[T]` isn't present in the function's parameters.
@@ -107,6 +109,7 @@ def run_once(
     return decorator
 
 
+@fb_overwritable()
 class retryable(object):
     """Fake retryable function"""
 
@@ -117,8 +120,7 @@ class retryable(object):
         return func
 
 
-# pyre-fixme[3]: Return type must be annotated.
-# pyre-fixme[2]: Parameter must be annotated.
+@fb_overwritable()
 def get_dir_path(relative_path):
     """Return a path for a directory in this package, extracting if necessary
 
@@ -134,6 +136,7 @@ def get_dir_path(relative_path):
 
 
 # copy util function for oss
+@fb_overwritable()
 def alias(x, name, is_backward=False):
     if not torch.onnx.is_in_onnx_export():
         return x
@@ -141,6 +144,7 @@ def alias(x, name, is_backward=False):
     return torch.ops._caffe2.AliasWithName(x, name, is_backward=is_backward)
 
 
+@fb_overwritable()
 class D2Trainer(DefaultTrainer):
     @classmethod
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
