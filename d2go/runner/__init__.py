@@ -5,13 +5,9 @@
 import importlib
 from typing import Optional, Type, Union
 
-from .default_runner import (
-    BaseRunner,
-    Detectron2GoRunner,
-    GeneralizedRCNNRunner,
-    TRAINER_HOOKS_REGISTRY,
-)
+from .default_runner import BaseRunner, Detectron2GoRunner, GeneralizedRCNNRunner
 from .lightning_task import DefaultTask
+from .training_hooks import TRAINER_HOOKS_REGISTRY
 
 
 __all__ = [
