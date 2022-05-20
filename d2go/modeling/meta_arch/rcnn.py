@@ -5,6 +5,7 @@
 import inspect
 import logging
 
+import torch
 import torch.nn as nn
 from d2go.export.api import PredictorExportConfig
 from d2go.quantization.modeling import set_backend_and_create_qconfig
@@ -203,9 +204,13 @@ def _fx_quant_prepare(self, cfg):
     prep_fn = prepare_qat_fx if self.training else prepare_fx
     qconfig = {"": self.qconfig}
     assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
+    # TODO[quant-example-inputs]: Expose example_inputs as argument
+    # Note: this is used in quantization for all submodules
+    example_inputs = (torch.rand(1, 3, 3, 3),)
     self.backbone = prep_fn(
         self.backbone,
         qconfig,
+        example_inputs,
         prepare_custom_config_dict={
             "preserved_attributes": ["size_divisibility", "padding_constraints"],
             # keep the output of backbone quantized, to avoid
@@ -219,6 +224,7 @@ def _fx_quant_prepare(self, cfg):
     self.proposal_generator.rpn_head.rpn_feature = prep_fn(
         self.proposal_generator.rpn_head.rpn_feature,
         qconfig,
+        example_inputs,
         prepare_custom_config_dict={
             # rpn_feature expecting quantized input, this is used to avoid redundant
             # quant
@@ -226,14 +232,19 @@ def _fx_quant_prepare(self, cfg):
         },
     )
     self.proposal_generator.rpn_head.rpn_regressor.cls_logits = prep_fn(
-        self.proposal_generator.rpn_head.rpn_regressor.cls_logits, qconfig
+        self.proposal_generator.rpn_head.rpn_regressor.cls_logits,
+        qconfig,
+        example_inputs,
     )
     self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = prep_fn(
-        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred, qconfig
+        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred,
+        qconfig,
+        example_inputs,
     )
     self.roi_heads.box_head.roi_box_conv = prep_fn(
         self.roi_heads.box_head.roi_box_conv,
         qconfig,
+        example_inputs,
         prepare_custom_config_dict={
             "output_quantized_idxs": [0],
         },
@@ -241,16 +252,19 @@ def _fx_quant_prepare(self, cfg):
     self.roi_heads.box_head.avgpool = prep_fn(
         self.roi_heads.box_head.avgpool,
         qconfig,
+        example_inputs,
         prepare_custom_config_dict={"input_quantized_idxs": [0]},
     )
     self.roi_heads.box_predictor.cls_score = prep_fn(
         self.roi_heads.box_predictor.cls_score,
         qconfig,
+        example_inputs,
         prepare_custom_config_dict={"input_quantized_idxs": [0]},
     )
     self.roi_heads.box_predictor.bbox_pred = prep_fn(
         self.roi_heads.box_predictor.bbox_pred,
         qconfig,
+        example_inputs,
         prepare_custom_config_dict={"input_quantized_idxs": [0]},
     )
 

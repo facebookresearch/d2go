@@ -236,15 +236,23 @@ class Detectron2GoRunner(BaseRunner):
             # Disable fake_quant and observer so that the model will be trained normally
             # before QAT being turned on (controlled by QUANTIZATION.QAT.START_ITER).
             if hasattr(model, "get_rand_input"):
-                model = setup_qat_model(
-                    cfg, model, enable_fake_quant=eval_only, enable_observer=True
-                )
                 imsize = cfg.INPUT.MAX_SIZE_TRAIN
                 rand_input = model.get_rand_input(imsize)
-                model(rand_input, {})
-            else:
+                example_inputs = (rand_input, {})
                 model = setup_qat_model(
-                    cfg, model, enable_fake_quant=eval_only, enable_observer=False
+                    cfg,
+                    model,
+                    enable_fake_quant=eval_only,
+                    enable_observer=True,
+                )
+                model(*example_inputs)
+            else:
+                imsize = cfg.INPUT.MAX_SIZE_TRAIN
+                model = setup_qat_model(
+                    cfg,
+                    model,
+                    enable_fake_quant=eval_only,
+                    enable_observer=False,
                 )
 
         if eval_only:
