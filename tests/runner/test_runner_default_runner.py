@@ -10,6 +10,7 @@ import unittest
 import d2go.runner.default_runner as default_runner
 import torch
 from d2go.runner import create_runner
+from d2go.runner.training_hooks import TRAINER_HOOKS_REGISTRY
 from d2go.utils.testing import helper
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 from detectron2.evaluation import COCOEvaluator, RotatedCOCOEvaluator
@@ -353,7 +354,7 @@ class TestDefaultRunner(unittest.TestCase):
     def test_d2go_runner_trainer_hooks(self):
         counts = 0
 
-        @default_runner.TRAINER_HOOKS_REGISTRY.register()
+        @TRAINER_HOOKS_REGISTRY.register()
         def _check_hook_func(hooks):
             nonlocal counts
             counts = len(hooks)
