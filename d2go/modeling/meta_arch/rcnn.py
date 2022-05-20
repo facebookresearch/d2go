@@ -40,6 +40,7 @@ class GeneralizedRCNNPatch:
         "prepare_for_export",
         "prepare_for_quant",
         "prepare_for_quant_convert",
+        "_cast_model_to_device",
     ]
 
     def prepare_for_export(self, cfg, *args, **kwargs):
@@ -55,6 +56,9 @@ class GeneralizedRCNNPatch:
             cfg.RCNN_PREPARE_FOR_QUANT_CONVERT
         )
         return func(self, cfg, *args, **kwargs)
+
+    def _cast_model_to_device(self, device):
+        return _cast_detection_model(self, device)
 
 
 @RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()

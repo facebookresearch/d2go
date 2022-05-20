@@ -139,11 +139,17 @@ def add_quantization_default_configs(_C):
 # TODO: model.to(device) might not work for detection meta-arch, this function is the
 # workaround, in general, we might need a meta-arch API for this if needed.
 def _cast_model_to_device(model, device):
-    from d2go.modeling.meta_arch.rcnn import _cast_detection_model
-    from detectron2.modeling import GeneralizedRCNN
-
-    assert isinstance(model, GeneralizedRCNN), "Currently only availabe for RCNN"
-    return _cast_detection_model(model, device)
+    if hasattr(
+        model, "_cast_model_to_device"
+    ):  # we can make this formal by removing "_"
+        return model._cast_model_to_device(device)
+    else:
+        logger.warning(
+            "model.to(device) doesn't guarentee moving the entire model, "
+            "if customization is needed, please implement _cast_model_to_device "
+            "for the MetaArch"
+        )
+        return model.to(device)
 
 
 def add_d2_quant_mapping(mappings):
