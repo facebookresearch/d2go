@@ -27,10 +27,12 @@ from d2go.modeling import build_model, kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import QATCheckpointer, QATHook, setup_qat_model
+from d2go.runner.training_hooks import update_hooks_from_registry
 from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.get_default_cfg import get_default_cfg
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
+from d2go.utils.oss_helper import fb_overwritable
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
 from detectron2.data import (
@@ -38,7 +40,7 @@ from detectron2.data import (
     build_detection_train_loader as d2_build_detection_train_loader,
     MetadataCatalog,
 )
-from detectron2.engine import AMPTrainer, HookBase, hooks, SimpleTrainer
+from detectron2.engine import AMPTrainer, hooks, SimpleTrainer
 from detectron2.evaluation import (
     COCOEvaluator,
     DatasetEvaluators,
@@ -51,7 +53,6 @@ from detectron2.evaluation import (
 from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
-from detectron2.utils.registry import Registry
 from mobile_cv.predictor.api import PredictorWrapper
 
 
@@ -128,6 +129,16 @@ def default_scale_quantization_configs(cfg, new_world_size):
     )
 
 
+@fb_overwritable()
+def add_fb_base_runner_default_configs(cfg: CfgNode) -> CfgNode:
+    return cfg
+
+
+@fb_overwritable()
+def prepare_fb_model(cfg: CfgNode, model: torch.nn.Module) -> torch.nn.Module:
+    return model
+
+
 class BaseRunner(object):
     def __init__(self):
         identifier = f"D2Go.Runner.{self.__class__.__name__}"
@@ -163,8 +174,6 @@ class BaseRunner(object):
 
         cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
 
-        cfg.PROFILERS = ["default_flop_counter"]
-
         return cfg
 
     def build_model(self, cfg, eval_only=False):
@@ -193,18 +202,6 @@ class BaseRunner(object):
         return d2_build_detection_train_loader(*args, **kwargs)
 
 
-# List of functions to add hooks for trainer, all functions in the registry will
-# be called to add hooks
-#   func(hooks: List[HookBase]) -> None
-TRAINER_HOOKS_REGISTRY = Registry("TRAINER_HOOKS_REGISTRY")
-
-
-def update_hooks_from_registry(hooks: List[HookBase]):
-    for name, hook_func in TRAINER_HOOKS_REGISTRY:
-        logger.info(f"Update trainer hooks from {name}...")
-        hook_func(hooks)
-
-
 class Detectron2GoRunner(BaseRunner):
     def register(self, cfg):
         super().register(cfg)
@@ -216,8 +213,12 @@ class Detectron2GoRunner(BaseRunner):
 
     @staticmethod
     def get_default_cfg():
-        _C = super(Detectron2GoRunner, Detectron2GoRunner).get_default_cfg()
-        return get_default_cfg(_C)
+        cfg = super(Detectron2GoRunner, Detectron2GoRunner).get_default_cfg()
+
+        cfg.PROFILERS = ["default_flop_counter"]
+        cfg = add_fb_base_runner_default_configs(cfg)
+
+        return get_default_cfg(cfg)
 
     # temporary API
     def _build_model(self, cfg, eval_only=False):
@@ -258,6 +259,7 @@ class Detectron2GoRunner(BaseRunner):
 
     def build_model(self, cfg, eval_only=False):
         model = self._build_model(cfg, eval_only)
+        model = prepare_fb_model(cfg, model)
 
         # Note: the _visualize_model API is experimental
         if comm.is_main_process():
