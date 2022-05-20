@@ -203,7 +203,7 @@ def _fx_quant_prepare(self, cfg):
         self.backbone,
         qconfig,
         prepare_custom_config_dict={
-            "preserved_attributes": ["size_divisibility"],
+            "preserved_attributes": ["size_divisibility", "padding_constraints"],
             # keep the output of backbone quantized, to avoid
             # redundant dequant
             # TODO: output of backbone is a dict and currently this will keep all output
@@ -285,7 +285,9 @@ def default_rcnn_prepare_for_quant_convert(self, cfg):
         assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
         self.backbone = convert_fx(
             self.backbone,
-            convert_custom_config_dict={"preserved_attributes": ["size_divisibility"]},
+            convert_custom_config_dict={
+                "preserved_attributes": ["size_divisibility", "padding_constraints"]
+            },
         )
         self.proposal_generator.rpn_head.rpn_feature = convert_fx(
             self.proposal_generator.rpn_head.rpn_feature
