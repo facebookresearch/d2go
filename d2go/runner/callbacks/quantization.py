@@ -172,12 +172,16 @@ class QuantizationMixin(ABC):
             attr: rgetattr(root, attr) for attr in attrs if rhasattr(root, attr)
         }
         prepared = root
+        # TODO[quant-example-inputs]: expose example_inputs as argument
+        # may need a dictionary that stores a map from submodule fqn to example_inputs
+        # for submodule
+        example_inputs = (torch.rand(1, 3, 3, 3),)
         if "" in configs:
-            prepared = prep_fn(root, configs[""])
+            prepared = prep_fn(root, configs[""], example_inputs)
         else:
             for name, config in configs.items():
                 submodule = rgetattr(root, name)
-                rsetattr(root, name, prep_fn(submodule, config))
+                rsetattr(root, name, prep_fn(submodule, config, example_inputs))
         for attr, value in old_attrs.items():
             rsetattr(prepared, attr, value)
         return prepared

@@ -53,9 +53,11 @@ class DetMetaArchForTest(torch.nn.Module):
         return ret
 
     def prepare_for_quant(self, cfg):
+        example_inputs = (torch.rand(1, 3, 3, 3),)
         self.avgpool = prepare_qat_fx(
             self.avgpool,
             {"": set_backend_and_create_qconfig(cfg, is_train=self.training)},
+            example_inputs,
         )
         return self
 

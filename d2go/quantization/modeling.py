@@ -350,10 +350,12 @@ def default_prepare_for_quant(cfg, model):
         # here, to be consistent with the FX branch
     else:  # FX graph mode quantization
         qconfig_dict = {"": qconfig}
+        # TODO[quant-example-inputs]: needs follow up to change the api
+        example_inputs = (torch.rand(1, 3, 3, 3),)
         if model.training:
-            model = prepare_qat_fx(model, qconfig_dict)
+            model = prepare_qat_fx(model, qconfig_dict, example_inputs)
         else:
-            model = prepare_fx(model, qconfig_dict)
+            model = prepare_fx(model, qconfig_dict, example_inputs)
 
     logger.info("Setup the model with qconfig:\n{}".format(qconfig))
 
