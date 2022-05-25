@@ -39,7 +39,6 @@ import detectron2.utils.comm as comm
 import pkg_resources
 import six
 import torch
-from d2go.utils.oss_helper import fb_overwritable
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
@@ -61,6 +60,7 @@ from detectron2.evaluation import (
     SemSegEvaluator,
     verify_results,
 )
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 T = TypeVar("T")
 CallbackMapping = Mapping[Callable, Optional[Iterable[Any]]]

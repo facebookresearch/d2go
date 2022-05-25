@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any, Dict, List
 
 import pkg_resources
-from d2go.utils.oss_helper import fb_overwritable
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
 @fb_overwritable()

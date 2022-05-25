@@ -12,7 +12,6 @@ import torch
 from d2go.config import CfgNode
 from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.utils import ClipLengthGroupedDataset
-from d2go.utils.oss_helper import fb_overwritable
 from detectron2.data import (
     build_batch_data_loader,
     build_detection_train_loader,
@@ -23,6 +22,7 @@ from detectron2.data.common import DatasetFromList, MapDataset
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.data.samplers import RepeatFactorTrainingSampler
 from detectron2.utils.comm import get_world_size
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 logger = logging.getLogger(__name__)
 

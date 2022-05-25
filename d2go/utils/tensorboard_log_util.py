@@ -6,7 +6,7 @@ import logging
 import os
 from functools import lru_cache
 
-from d2go.utils.oss_helper import fb_overwritable
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
 @fb_overwritable()
