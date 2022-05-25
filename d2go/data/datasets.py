@@ -9,9 +9,9 @@ import os
 from collections import namedtuple
 
 from d2go.utils.helper import get_dir_path
-from d2go.utils.oss_helper import fb_overwritable
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.registry import Registry
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 from .extended_coco import coco_text_load, extended_coco_load
 from .extended_lvis import extended_lvis_load

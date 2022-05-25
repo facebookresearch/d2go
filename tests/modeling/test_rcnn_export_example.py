@@ -10,6 +10,7 @@ from d2go.tools.exporter import main
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 from d2go.utils.testing.rcnn_helper import get_quick_test_config_opts
 from mobile_cv.common.misc.file_utils import make_temp_directory
+from mobile_cv.common.misc.oss_utils import is_oss
 
 
 def maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
@@ -100,6 +101,6 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
 
 
 class TestOptimizer(unittest.TestCase):
-    @unittest.skipIf(os.getenv("OSSRUN") == "1", "Caffe2 is not available for OSS")
+    @unittest.skipIf(is_oss(), "Caffe2 is not available for OSS")
     def test_maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
         maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self)

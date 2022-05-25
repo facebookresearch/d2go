@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from d2go.utils.oss_helper import fb_overwritable
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
 @fb_overwritable()

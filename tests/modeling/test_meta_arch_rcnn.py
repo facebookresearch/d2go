@@ -15,6 +15,7 @@ from d2go.utils.testing.data_loader_helper import (
 )
 from d2go.utils.testing.rcnn_helper import get_quick_test_config_opts, RCNNBaseTestCases
 from mobile_cv.common.misc.file_utils import make_temp_directory
+from mobile_cv.common.misc.oss_utils import is_oss
 
 # Add APIs to D2's meta arch, this is usually called in runner's setup, however in
 # unittest it needs to be called sperarately. (maybe we should apply this by default)
@@ -22,7 +23,7 @@ patch_d2_meta_arch()
 
 
 def _maybe_skip_test(self, predictor_type):
-    if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+    if is_oss() and "@c2_ops" in predictor_type:
         self.skipTest("Caffe2 is not available for OSS")
 
     if not torch.cuda.is_available() and "_gpu" in predictor_type:
@@ -129,7 +130,7 @@ class TestFBNetV3KeypointRCNNFP32(RCNNBaseTestCases.TemplateTestCase):
         ]
     )
     def test_export(self, predictor_type, compare_match):
-        if os.getenv("OSSRUN") == "1" and "@c2_ops" in predictor_type:
+        if is_oss() and "@c2_ops" in predictor_type:
             self.skipTest("Caffe2 is not available for OSS")
         self._test_export(predictor_type, compare_match=compare_match)
 

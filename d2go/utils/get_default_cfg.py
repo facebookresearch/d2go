@@ -12,7 +12,7 @@ from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
-from d2go.utils.oss_helper import fb_overwritable
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
 @fb_overwritable()

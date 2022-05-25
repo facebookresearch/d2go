@@ -32,7 +32,6 @@ from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.get_default_cfg import get_default_cfg
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
-from d2go.utils.oss_helper import fb_overwritable
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
 from detectron2.data import (
@@ -53,6 +52,7 @@ from detectron2.evaluation import (
 from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 from mobile_cv.predictor.api import PredictorWrapper
 
 
