@@ -336,7 +336,7 @@ def coco_text_load(
     archive_file: Optional[str] = None,
 ) -> List[Dict]:
     if archive_file is not None:
-        if comm.get_rank() == 0:
+        if comm.get_local_rank() == 0:
             extract_archive_file(archive_file, image_root)
         comm.synchronize()
 
