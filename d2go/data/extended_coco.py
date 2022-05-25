@@ -124,8 +124,9 @@ def convert_coco_text_to_coco_detection_json(
                 x["image_id"] = image_id_remap[x["image_id"]]
 
     os.makedirs(os.path.dirname(target_json), exist_ok=True)
-    with open(target_json, "w") as f:
-        json.dump(coco_text_json, f)
+    if comm.get_local_rank() == 0:
+        with open(target_json, "w") as f:
+            json.dump(coco_text_json, f)
 
     return coco_text_json
 
