@@ -325,8 +325,6 @@ class Detectron2GoRunner(BaseRunner):
 
             # NOTE: creating evaluator after dataset is loaded as there might be dependency.  # noqa
             data_loader = self.build_detection_test_loader(cfg, dataset_name)
-            # Synchronize to ensure data processing during data loader build is complete
-            comm.synchronize()
 
             evaluator = self.get_evaluator(
                 cfg, dataset_name, output_folder=output_folder
