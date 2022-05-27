@@ -8,6 +8,7 @@ from .config import (
     CfgNode,
     CONFIG_CUSTOM_PARSE_REGISTRY,
     CONFIG_SCALING_METHOD_REGISTRY,
+    load_full_config_from_file,
     reroute_config_path,
     temp_defrost,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "CONFIG_SCALING_METHOD_REGISTRY",
     "CfgNode",
     "auto_scale_world_size",
+    "load_full_config_from_file",
     "reroute_config_path",
     "temp_defrost",
 ]

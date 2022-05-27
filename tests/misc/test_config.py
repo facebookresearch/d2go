@@ -7,7 +7,12 @@ import logging
 import os
 import unittest
 
-from d2go.config import auto_scale_world_size, CfgNode, reroute_config_path
+from d2go.config import (
+    auto_scale_world_size,
+    CfgNode,
+    load_full_config_from_file,
+    reroute_config_path,
+)
 from d2go.config.utils import (
     config_dict_to_list_str,
     flatten_config_dict,
@@ -15,6 +20,7 @@ from d2go.config.utils import (
     get_diff_cfg,
     get_from_flattened_config_dict,
 )
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.helper import get_resource_path
 from mobile_cv.common.misc.file_utils import make_temp_directory
@@ -224,6 +230,32 @@ class TestAutoScaleWorldSize(unittest.TestCase):
         auto_scale_world_size(cfg, new_world_size=1)
         self.assertEqual(cfg.SOLVER.REFERENCE_WORLD_SIZE, 0)
         self.assertEqual(cfg.SOLVER.IMS_PER_BATCH, batch_size_x8)
+
+
+class TestConfigDefaultsGen(unittest.TestCase):
+    def test_case1(self):
+
+        # register in local scope
+        @CONFIG_UPDATER_REGISTRY.register()
+        def _test1(cfg):
+            cfg.TEST1 = CfgNode()
+            cfg.TEST1.X = 1
+            return cfg
+
+        @CONFIG_UPDATER_REGISTRY.register()
+        def _test2(cfg):
+            cfg.TEST2 = CfgNode()
+            cfg.TEST2.Y = 2
+            return cfg
+
+        filename = get_resource_path("defaults_gen_case1.yaml")
+        cfg = load_full_config_from_file(filename)
+        default_cfg = cfg.get_default_cfg()
+        # default value is 1
+        self.assertEqual(default_cfg.TEST1.X, 1)
+        self.assertEqual(default_cfg.TEST2.Y, 2)
+        # yaml file overwrites it to 3
+        self.assertEqual(cfg.TEST1.X, 3)
 
 
 if __name__ == "__main__":
