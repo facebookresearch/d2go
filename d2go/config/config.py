@@ -8,6 +8,7 @@ from typing import List
 
 import mock
 import yaml
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from detectron2.config import CfgNode as _CfgNode
 from fvcore.common.registry import Registry
 
@@ -16,6 +17,7 @@ from .utils import reroute_config_path
 logger = logging.getLogger(__name__)
 
 CONFIG_CUSTOM_PARSE_REGISTRY = Registry("CONFIG_CUSTOM_PARSE")
+DEFAULTS_GENERATOR_KEY = "_DEFAULTS_"
 
 
 def _opts_to_dict(opts: List[str]):
@@ -79,6 +81,10 @@ class CfgNode(_CfgNode):
             process_func(self, is_dump)
         if frozen:
             self.freeze()
+
+    def get_default_cfg(self):
+        """Return the defaults for this instance of CfgNode"""
+        return _resolve_default_config(self)
 
 
 @contextlib.contextmanager
@@ -167,3 +173,34 @@ def auto_scale_world_size(cfg, new_world_size):
 
     table = get_cfg_diff_table(cfg, original_cfg)
     logger.info("Auto-scaled the config according to the actual world size: \n" + table)
+
+
+def _resolve_default_config(cfg: CfgNode) -> CfgNode:
+    if DEFAULTS_GENERATOR_KEY not in cfg:
+        raise ValueError(
+            f"Can't resolved default config because `{DEFAULTS_GENERATOR_KEY}` is"
+            f" missing from cfg: \n{cfg}"
+        )
+
+    updater_names: List[str] = cfg[DEFAULTS_GENERATOR_KEY]
+    assert isinstance(updater_names, list), updater_names
+    assert [isinstance(x, str) for x in updater_names], updater_names
+
+    # starting from a empty CfgNode, sequentially apply the generator
+    cfg = CfgNode()
+    for name in updater_names:
+        updater = CONFIG_UPDATER_REGISTRY.get(name)
+        cfg = updater(cfg)
+
+    # the resolved default config should keep the same default generator
+    cfg[DEFAULTS_GENERATOR_KEY] = updater_names
+
+    return cfg
+
+
+def load_full_config_from_file(filename: str) -> CfgNode:
+    loaded_cfg = CfgNode.load_yaml_with_base(filename)
+    loaded_cfg = CfgNode(loaded_cfg)  # cast Dict to CfgNode
+    cfg = loaded_cfg.get_default_cfg()
+    cfg.merge_from_other_cfg(loaded_cfg)
+    return cfg
