@@ -117,6 +117,7 @@ class D2GoDatasetMapper(object):
             if self.crop_gen:
                 transforms = crop_tfm + transforms
 
+        dataset_dict["transforms"] = transforms
         image_shape = image.shape[:2]  # h, w
         if image.ndim == 2:
             image = np.expand_dims(image, 2)
