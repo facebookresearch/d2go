@@ -14,6 +14,16 @@ from detectron2.utils.logger import log_every_n_seconds
 
 logger = logging.getLogger(__name__)
 
+# NOTE: Use unique ROOT_CACHE_DIR for each run, during the run, each instance of data
+# loader will create a `cache_dir` under ROOT_CACHE_DIR. When the DL instance is GC-ed,
+# the `cache_dir` will be removed by __del__; when the run is finished or interrupted,
+# atexit.register will be triggered to remove the ROOT_CACHE_DIR to make sure there's no
+# leftovers. Regarding DDP, although each GPU process has their own random value for
+# ROOT_CACHE_DIR, but each GPU process uses the same `cache_dir` broadcasted from local
+# master rank, which is then inherited by each data loader worker, this makes sure that
+# `cache_dir` is in-sync between all GPUs and DL works on the same node.
+ROOT_CACHE_DIR = "/tmp/DatasetFromList_cache_" + uuid.uuid4().hex[:8]
+
 
 def _local_master_gather(func, check_equal=False):
     if comm.get_local_rank() == 0:
@@ -36,9 +46,6 @@ class DiskCachedDatasetFromList(data.Dataset):
     Wrap a list to a torch Dataset, the underlying storage is off-loaded to disk to
     save RAM usage.
     """
-
-    CACHE_DIR = "/tmp/DatasetFromList_cache"
-    _OCCUPIED_CACHE_DIRS = set()
 
     def __init__(self, lst, strategy="batched_static"):
         """
@@ -70,16 +77,13 @@ class DiskCachedDatasetFromList(data.Dataset):
     def _initialize_diskcache(self):
         from mobile_cv.common.misc.local_cache import LocalCache
 
-        cache_dir = "{}/{}".format(
-            DiskCachedDatasetFromList.CACHE_DIR, uuid.uuid4().hex[:8]
-        )
+        cache_dir = "{}/{}".format(ROOT_CACHE_DIR, uuid.uuid4().hex[:8])
         cache_dir = comm.all_gather(cache_dir)[0]  # use same cache_dir
         logger.info("Creating diskcache database in: {}".format(cache_dir))
         self._cache = LocalCache(cache_dir=cache_dir, num_shards=8)
         # self._cache.cache.clear(retry=True)  # seems faster if index exists
 
         if comm.get_local_rank() == 0:
-            DiskCachedDatasetFromList.get_all_cache_dirs().add(self._cache.cache_dir)
 
             if self._diskcache_strategy == "naive":
                 for i, item in enumerate(self._lst):
@@ -183,40 +187,34 @@ class DiskCachedDatasetFromList(data.Dataset):
         else:
             raise NotImplementedError()
 
-    @classmethod
-    def get_all_cache_dirs(cls):
-        """return all the ocupied cache dirs of DiskCachedDatasetFromList"""
-        return DiskCachedDatasetFromList._OCCUPIED_CACHE_DIRS
-
-    def get_cache_dir(self):
+    @property
+    def cache_dir(self):
         """return the current cache dirs of DiskCachedDatasetFromList instance"""
         return self._cache.cache_dir
 
     @staticmethod
-    def _clean_up_cache_dir(cache_dir, **kwargs):
-        print("Cleaning up cache dir: {}".format(cache_dir))
-        shutil.rmtree(
-            cache_dir,
-            onerror=lambda func, path, ex: print(
-                "Catch error when removing {}; func: {}; exc_info: {}".format(
-                    path, func, ex
-                )
-            ),
-        )
-
-    @staticmethod
     @atexit.register
-    def _clean_up_all():
+    def _clean_up_root_cache_dir():
         # in case the program exists unexpectly, clean all the cache dirs created by
         # this session.
         if comm.get_local_rank() == 0:
-            for cache_dir in DiskCachedDatasetFromList.get_all_cache_dirs():
-                DiskCachedDatasetFromList._clean_up_cache_dir(cache_dir)
+            _clean_up_cache_dir(ROOT_CACHE_DIR)
 
     def __del__(self):
         # when data loader goes are GC-ed, remove the cache dir. This is needed to not
         # waste disk space in case that multiple data loaders are used, eg. running
         # evaluations on multiple datasets during training.
         if comm.get_local_rank() == 0:
-            DiskCachedDatasetFromList._clean_up_cache_dir(self._cache.cache_dir)
-            DiskCachedDatasetFromList.get_all_cache_dirs().remove(self._cache.cache_dir)
+            _clean_up_cache_dir(self.cache_dir)
+
+
+def _clean_up_cache_dir(cache_dir):
+    print("Cleaning up cache dir: {}".format(cache_dir))
+    shutil.rmtree(
+        cache_dir,
+        onerror=lambda func, path, ex: print(
+            "Catch error when removing {}; func: {}; exc_info: {}".format(
+                path, func, ex
+            )
+        ),
+    )

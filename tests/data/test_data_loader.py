@@ -4,10 +4,11 @@
 
 import os
 import shutil
+import tempfile
 import unittest
 
 import torch
-from d2go.data.disk_cache import DiskCachedDatasetFromList
+from d2go.data.disk_cache import DiskCachedDatasetFromList, ROOT_CACHE_DIR
 from d2go.data.utils import enable_disk_cached_dataset
 from d2go.runner import create_runner
 from d2go.utils.testing.data_loader_helper import (
@@ -22,11 +23,16 @@ class TestD2GoDatasetMapper(unittest.TestCase):
     data loader in GeneralizedRCNNRunner (the default runner) in Detectron2Go.
     """
 
+    def setUp(self):
+        self.output_dir = tempfile.mkdtemp(prefix="TestD2GoDatasetMapper_")
+        self.addCleanup(shutil.rmtree, self.output_dir)
+
     def test_default_dataset(self):
         runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
         cfg = runner.get_default_cfg()
         cfg.DATASETS.TRAIN = ["default_dataset_train"]
         cfg.DATASETS.TEST = ["default_dataset_test"]
+        cfg.OUTPUT_DIR = self.output_dir
 
         with register_toy_coco_dataset("default_dataset_train", num_images=3):
             train_loader = runner.build_detection_train_loader(cfg)
@@ -56,15 +62,18 @@ class _MyClass(object):
 
 class TestDiskCachedDataLoader(unittest.TestCase):
     def setUp(self):
-        # make sure the CACHE_DIR is empty when entering the test
-        if os.path.exists(DiskCachedDatasetFromList.CACHE_DIR):
-            shutil.rmtree(DiskCachedDatasetFromList.CACHE_DIR)
+        # make sure the ROOT_CACHE_DIR is empty when entering the test
+        if os.path.exists(ROOT_CACHE_DIR):
+            shutil.rmtree(ROOT_CACHE_DIR)
+
+        self.output_dir = tempfile.mkdtemp(prefix="TestDiskCachedDataLoader_")
+        self.addCleanup(shutil.rmtree, self.output_dir)
 
     def _count_cache_dirs(self):
-        if not os.path.exists(DiskCachedDatasetFromList.CACHE_DIR):
+        if not os.path.exists(ROOT_CACHE_DIR):
             return 0
 
-        return len(os.listdir(DiskCachedDatasetFromList.CACHE_DIR))
+        return len(os.listdir(ROOT_CACHE_DIR))
 
     def test_disk_cached_dataset_from_list(self):
         """Test the class of DiskCachedDatasetFromList"""
@@ -77,7 +86,7 @@ class TestDiskCachedDataLoader(unittest.TestCase):
         self.assertEqual(disk_cached_lst[2].x, 3)
 
         # check the cache is created
-        cache_dir = disk_cached_lst.get_cache_dir()
+        cache_dir = disk_cached_lst.cache_dir
         self.assertTrue(os.path.isdir(cache_dir))
 
         # check the cache is properly released
@@ -90,6 +99,8 @@ class TestDiskCachedDataLoader(unittest.TestCase):
         width = 8
         runner = create_runner("d2go.runner.GeneralizedRCNNRunner")
         cfg = runner.get_default_cfg()
+        cfg.OUTPUT_DIR = self.output_dir
+        cfg.DATALOADER.NUM_WORKERS = 2
 
         def _test_data_loader(data_loader):
             first_batch = next(iter(data_loader))
