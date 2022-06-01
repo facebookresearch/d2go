@@ -117,6 +117,10 @@ class D2GoDatasetMapper(object):
             if self.crop_gen:
                 transforms = crop_tfm + transforms
 
+        # Cache identical transforms in dataset_dict for subclass mappers
+        # TODO T122215878 Find more explicit way to expose transforms used
+        dataset_dict["transforms"] = transforms
+
         image_shape = image.shape[:2]  # h, w
         if image.ndim == 2:
             image = np.expand_dims(image, 2)
