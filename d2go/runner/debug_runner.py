@@ -8,21 +8,30 @@ import random
 import torch
 import torch.nn as nn
 from d2go.quantization.modeling import QATCheckpointer
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from d2go.runner.default_runner import BaseRunner
-from d2go.utils.get_default_cfg import add_tensorboard_default_configs
+from d2go.runner.defaults import (
+    add_base_runner_default_cfg,
+    add_tensorboard_default_configs,
+)
 from detectron2.utils.file_io import PathManager
 
 
+@CONFIG_UPDATER_REGISTRY.register("DebugRunner")
+def add_debug_runner_default_cfg(cfg):
+    assert len(cfg) == 0, "start from scratch, but previous cfg is non-empty!"
+    _C = add_base_runner_default_cfg(cfg)
+
+    # _C.TENSORBOARD...
+    add_tensorboard_default_configs(_C)
+
+    # target metric
+    _C.TEST.TARGET_METRIC = "dataset0:dummy0:metric1"
+    return _C
+
+
 class DebugRunner(BaseRunner):
-    def get_default_cfg(self):
-        _C = super().get_default_cfg()
-
-        # _C.TENSORBOARD...
-        add_tensorboard_default_configs(_C)
-
-        # target metric
-        _C.TEST.TARGET_METRIC = "dataset0:dummy0:metric1"
-        return _C
+    get_default_cfg = None
 
     def build_model(self, cfg, eval_only=False):
         return nn.Sequential()

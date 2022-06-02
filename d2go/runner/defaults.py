@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from d2go.config import CfgNode as CN
+
+
+from d2go.config import CfgNode, CfgNode as CN
 from d2go.data.build import (
     add_random_subset_training_sampler_default_configs,
     add_weighted_training_sampler_default_configs,
@@ -12,10 +14,30 @@ from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
+from detectron2.config import get_cfg as get_d2_cfg
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
-@fb_overwritable()
+@CONFIG_UPDATER_REGISTRY.register("BaseRunner")
+def add_base_runner_default_cfg(cfg):
+    assert len(cfg) == 0, "start from scratch, but previous cfg is non-empty!"
+
+    cfg = get_d2_cfg()
+    # upgrade from D2's CfgNode to D2Go's CfgNode
+    cfg = CfgNode.cast_from_other_class(cfg)
+
+    cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
+
+    # Set find_unused_parameters for DistributedDataParallel.
+    cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
+    # Set FP16 gradient compression for DistributedDataParallel.
+    cfg.MODEL.DDP_FP16_GRAD_COMPRESS = False
+
+    return cfg
+
+
+@CONFIG_UPDATER_REGISTRY.register("core:tensorboard")
 def add_tensorboard_default_configs(_C):
     _C.TENSORBOARD = CN()
     # Output from dataloader will be written to tensorboard at this frequency
@@ -29,17 +51,22 @@ def add_tensorboard_default_configs(_C):
     # TENSORBOARD.LOG_DIR will be determined solely by OUTPUT_DIR
     _C.register_deprecated_key("TENSORBOARD.LOG_DIR")
 
+    return _C
 
-@fb_overwritable()
+
 def add_abnormal_checker_configs(_C):
     _C.ABNORMAL_CHECKER = CN()
     # check and log the iteration with bad losses if enabled
     _C.ABNORMAL_CHECKER.ENABLED = False
 
 
-@fb_overwritable()
-def get_default_cfg(_C):
-    # _C.MODEL.FBNET...
+@CONFIG_UPDATER_REGISTRY.register("Detectron2GoRunner")
+def add_detectron2go_runner_default_cfg(cfg):
+    assert len(cfg) == 0, "start from scratch, but previous cfg is non-empty!"
+
+    _C = add_base_runner_default_cfg(cfg)
+
+    # _C.MODEL.FBNET_V2...
     add_fbnet_v2_default_configs(_C)
     # _C.MODEL.FROZEN_LAYER_REG_EXP
     add_model_freezing_configs(_C)
@@ -63,11 +90,6 @@ def get_default_cfg(_C):
     add_subclass_configs(_C)
     # _C.MODEL.FCOS
     add_fcos_configs(_C)
-
-    # Set find_unused_parameters for DistributedDataParallel.
-    _C.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
-    # Set FP16 gradient compression for DistributedDataParallel.
-    _C.MODEL.DDP_FP16_GRAD_COMPRESS = False
 
     # Set default optimizer
     _C.SOLVER.OPTIMIZER = "sgd"
@@ -93,5 +115,41 @@ def get_default_cfg(_C):
     # Modeling hooks
     # List of modeling hook names
     _C.MODEL.MODELING_HOOKS = []
+
+    # Profiler
+    _C.PROFILERS = ["default_flop_counter"]
+
+    # Add FB specific configs
+    _add_detectron2go_runner_default_fb_cfg(_C)
+
+    return _C
+
+
+@fb_overwritable()
+def _add_detectron2go_runner_default_fb_cfg(_C):
+    return _C
+
+
+def _add_rcnn_default_config(_C):
+    _C.EXPORT_CAFFE2 = CfgNode()
+    _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
+
+    # Options about how to export the model
+    _C.RCNN_EXPORT = CfgNode()
+    # whether or not to include the postprocess (GeneralizedRCNN._postprocess) step
+    # inside the exported model
+    _C.RCNN_EXPORT.INCLUDE_POSTPROCESS = False
+
+    _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
+    _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
+    _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
+
+
+@CONFIG_UPDATER_REGISTRY.register("GeneralizedRCNNRunner")
+def add_generalized_rcnn_runner_default_cfg(cfg):
+    assert len(cfg) == 0, "start from scratch, but previous cfg is non-empty!"
+
+    _C = add_detectron2go_runner_default_cfg(cfg)
+    _add_rcnn_default_config(_C)
 
     return _C

@@ -10,6 +10,7 @@ from typing import Tuple
 import detectron2.utils.comm as comm
 import torch
 from d2go.quantization import learnable_qat
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.engine import HookBase, SimpleTrainer
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
@@ -79,6 +80,7 @@ class QATCheckpointer(DetectionCheckpointer):
             return super()._load_model(checkpoint)
 
 
+@CONFIG_UPDATER_REGISTRY.register("core:quantization")
 def add_quantization_default_configs(_C):
     CfgNode = type(_C)
     _C.QUANTIZATION = CfgNode()
@@ -135,6 +137,8 @@ def add_quantization_default_configs(_C):
     _C.register_deprecated_key("QUANTIZATION.ENABLE_CUSTOM_QSCHEME")
     _C.register_deprecated_key("QUANTIZATION.SILICON_QAT")
     _C.register_deprecated_key("QUANTIZATION.SILICON_QAT.ENABLED")
+
+    return _C
 
 
 # TODO: model.to(device) might not work for detection meta-arch, this function is the
