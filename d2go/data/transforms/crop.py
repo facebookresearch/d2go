@@ -182,7 +182,9 @@ def RandomCropFixedAspectRatioOp(
 
 
 class RandomInstanceCrop(aug.Augmentation):
-    def __init__(self, crop_scale: Tuple[float, float] = (0.8, 1.6)):
+    def __init__(
+        self, crop_scale: Tuple[float, float] = (0.8, 1.6), fix_instance=False
+    ):
         """
         Generates a CropTransform centered around the instance.
         crop_scale: [low, high] relative crop scale around the instance, this
@@ -190,6 +192,7 @@ class RandomInstanceCrop(aug.Augmentation):
         """
         super().__init__()
         self.crop_scale = crop_scale
+        self.fix_instance = fix_instance
         assert (
             isinstance(crop_scale, (list, tuple)) and len(crop_scale) == 2
         ), crop_scale
@@ -211,7 +214,10 @@ class RandomInstanceCrop(aug.Augmentation):
         if len(annotations) == 0:
             return NoOpTransform()
 
-        sel_index = np.random.randint(len(annotations))
+        if not self.fix_instance:
+            sel_index = np.random.randint(len(annotations))
+        else:
+            sel_index = 0
         # set iscrowd flag of other annotations to 1 so that they will be
         #   filtered out by the datset mapper (https://fburl.com/diffusion/fg64cb4h)
         for idx, instance in enumerate(annotations):
