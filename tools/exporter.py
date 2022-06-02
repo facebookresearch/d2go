@@ -13,7 +13,7 @@ import typing
 
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
 from d2go.config import temp_defrost
-from d2go.export.api import convert_and_export_predictor
+from d2go.export.exporter import convert_and_export_predictor
 from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
 from mobile_cv.common.misc.py import post_mortem_if_fail
 

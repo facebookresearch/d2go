@@ -8,11 +8,8 @@ from typing import List
 
 import torch
 import torch.nn as nn
-from d2go.export.api import (
-    convert_and_export_predictor,
-    FuncInfo,
-    PredictorExportConfig,
-)
+from d2go.export.api import FuncInfo, PredictorExportConfig
+from d2go.export.exporter import convert_and_export_predictor
 from d2go.export.torchscript import (
     DefaultTorchscriptExport,
     TracingAdaptedTorchscriptExport,

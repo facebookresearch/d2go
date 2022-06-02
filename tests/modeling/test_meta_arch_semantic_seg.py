@@ -8,8 +8,8 @@ import tempfile
 import unittest
 
 import torch
-from d2go.export.api import convert_and_export_predictor
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
+from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import Detectron2GoRunner
 from mobile_cv.predictor.api import create_predictor
 
