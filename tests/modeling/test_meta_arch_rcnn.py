@@ -7,8 +7,8 @@ import os
 import unittest
 
 import torch
-from d2go.export.api import convert_and_export_predictor
 from d2go.export.d2_meta_arch import patch_d2_meta_arch
+from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.data_loader_helper import (
     create_detection_data_loader_on_toy_dataset,

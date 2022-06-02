@@ -3,10 +3,14 @@
 
 
 import inspect
+import json
 import logging
+from typing import Any, Optional, Tuple
 
 import torch
 import torch.nn as nn
+from d2go.config import CfgNode
+from d2go.config.utils import flatten_config_dict
 from d2go.export.api import PredictorExportConfig
 from d2go.quantization.qconfig import set_backend_and_create_qconfig
 from detectron2.modeling import GeneralizedRCNN
@@ -515,3 +519,25 @@ def _cast_detection_model(model, device):
         pixel_std = pixel_std.to(device)
         model.normalizer = lambda x: (x - pixel_mean) / pixel_std
     return model
+
+
+def _update_export_config_with_extra_files(export_config, extra_files):
+    export_config_dict = export_config._asdict()
+    if export_config_dict["model_export_kwargs"] is None:
+        export_config_dict["model_export_kwargs"] = {}
+    export_config_dict["model_export_kwargs"]["_extra_files"] = extra_files
+    return PredictorExportConfig(**export_config_dict)
+
+
+@RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()
+def prepare_for_export_with_inference_config(
+    self, cfg: CfgNode, inputs: Optional[Tuple[Any]], predictor_type: str
+) -> PredictorExportConfig:
+    """
+    For certain tasks, the exported model needs to encode config as part of the extra
+    files.
+    """
+    export_config = default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type)
+    # Add "inference_config.json" for the _extra_files as part of model_export_kwargs
+    extra_files = {"inference_config.json": json.dumps(flatten_config_dict(cfg))}
+    return _update_export_config_with_extra_files(export_config, extra_files)
