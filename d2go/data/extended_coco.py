@@ -4,6 +4,7 @@
 import copy
 import json
 import logging
+import os
 import shlex
 import subprocess
 from collections import defaultdict
@@ -12,17 +13,11 @@ from typing import Dict, List, Optional
 import detectron2.utils.comm as comm
 from detectron2.data import MetadataCatalog
 from detectron2.structures import BoxMode
+from detectron2.utils.file_io import PathManager
 from pycocotools.coco import COCO
 
 from .cache_util import _cache_json_file
 
-try:
-    # virtual_fs is used to support both local and manifold paths
-    # with syntax that is identical to the default python APIs
-    from virtual_fs import virtual_os as os
-    from virtual_fs.virtual_io import open
-except ImportError:
-    import os
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +40,7 @@ class InMemoryCOCO(COCO):
 
 
 def extract_archive_file(archive_fn: str, im_dir: str):
-    if not os.path.exists(im_dir) or not os.listdir(im_dir):
+    if not PathManager.exists(im_dir) or not PathManager.ls(im_dir):
         # Dataset is not deployed. Deploy it.
         archive_fns = archive_fn
         # A dataset may be composed of several tgz files, or only one.
@@ -55,8 +50,8 @@ def extract_archive_file(archive_fn: str, im_dir: str):
         logger.info(
             "Extracting datasets {} to local machine at {}".format(archive_fns, im_dir)
         )
-        if not os.path.exists(im_dir):
-            os.makedirs(im_dir, exist_ok=True)
+        if not PathManager.exists(im_dir):
+            PathManager.mkdirs(im_dir)
 
         for archive_fn in archive_fns:
             # Extract the tgz file directly into the target directory,
@@ -84,7 +79,7 @@ def convert_coco_text_to_coco_detection_json(
     For COCOText see: https://vision.cornell.edu/se3/coco-text-2/
     For COCODetection see: http://cocodataset.org/#overview
     """
-    with open(source_json, "r") as f:
+    with PathManager.open(source_json, "r") as f:
         coco_text_json = json.load(f)
 
     coco_text_json["annotations"] = list(coco_text_json["anns"].values())
@@ -123,9 +118,9 @@ def convert_coco_text_to_coco_detection_json(
             if x["image_id"] in image_id_remap:
                 x["image_id"] = image_id_remap[x["image_id"]]
 
-    os.makedirs(os.path.dirname(target_json), exist_ok=True)
+    PathManager.mkdirs(os.path.dirname(target_json))
     if comm.get_local_rank() == 0:
-        with open(target_json, "w") as f:
+        with PathManager.open(target_json, "w") as f:
             json.dump(coco_text_json, f)
 
     return coco_text_json
