@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import logging
 import os
 from enum import Enum
 from typing import Any, Dict, List
@@ -121,9 +122,29 @@ def get_cfg_diff_table(cfg, original_cfg):
 
     all_old_keys = list(flatten_config_dict(original_cfg, reorder=True).keys())
     all_new_keys = list(flatten_config_dict(cfg, reorder=True).keys())
-    assert all_old_keys == all_new_keys
 
     diff_table = []
+    if all_old_keys != all_new_keys:
+        logger = logging.getLogger(__name__)
+        mismatched_old_keys = set(all_old_keys) - set(all_new_keys)
+        mismatched_new_keys = set(all_new_keys) - set(all_old_keys)
+        logger.warning(
+            "Config key mismatched.\n"
+            f"Mismatched old keys: {mismatched_old_keys}\n"
+            f"Mismatched new keys: {mismatched_new_keys}"
+        )
+        for old_key in mismatched_old_keys:
+            old_value = get_from_flattened_config_dict(original_cfg, old_key)
+            diff_table.append([old_key, old_value, "Key not exists"])
+
+        for new_key in mismatched_new_keys:
+            new_value = get_from_flattened_config_dict(cfg, new_key)
+            diff_table.append([new_key, "Key not exists", new_value])
+
+        # filter out mis-matched keys
+        all_old_keys = [x for x in all_old_keys if x not in mismatched_old_keys]
+        all_new_keys = [x for x in all_new_keys if x not in mismatched_new_keys]
+
     for full_key in all_new_keys:
         old_value = get_from_flattened_config_dict(original_cfg, full_key)
         new_value = get_from_flattened_config_dict(cfg, full_key)
