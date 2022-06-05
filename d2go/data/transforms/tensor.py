@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from detectron2.data.transforms.augmentation import Augmentation, AugmentationList
 from detectron2.structures import Boxes
-from fvcore.transforms.transform import Transform, TransformList
+from fvcore.transforms.transform import Transform
 
 
 class AugInput:
@@ -84,14 +84,26 @@ class Tensor2Array(Transform):
 class Array2Tensor(Transform):
     """Convert image np array (HWC) to torch tensor (CHW)"""
 
-    def __init__(self):
+    def __init__(self, preserve_dtype: bool = False):
+        """
+        preserve_dtype: always convert to float32 if False
+        """
         super().__init__()
+        self.preserve_dtype = preserve_dtype
 
     def apply_image(self, img: np.ndarray) -> torch.Tensor:
-        # HWC -> CHW
+        # HW(C) -> CHW
         assert isinstance(img, np.ndarray)
-        assert len(img.shape) == 3, img.shape
-        return torch.from_numpy(img.transpose(2, 0, 1).astype("float32"))
+        assert len(img.shape) in [2, 3], img.shape
+
+        if len(img.shape) == 2:
+            # HW -> HWC
+            img = np.expand_dims(img, axis=2)
+
+        if not self.preserve_dtype:
+            img = img.astype("float32")
+
+        return torch.from_numpy(img.transpose(2, 0, 1))
 
     def apply_coords(self, coords: Any) -> Any:
         return coords
