@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import copy
 import glob
 import logging
 import os
@@ -215,9 +216,14 @@ class TestAutoScaleWorldSize(unittest.TestCase):
         self.assertEqual(cfg.SOLVER.REFERENCE_WORLD_SIZE, 8)
         batch_size_x8 = cfg.SOLVER.IMS_PER_BATCH
         assert batch_size_x8 % 8 == 0, "default batch size is not multiple of 8"
+        orig_cfg = copy.deepcopy(cfg)
         auto_scale_world_size(cfg, new_world_size=1)
         self.assertEqual(cfg.SOLVER.REFERENCE_WORLD_SIZE, 1)
         self.assertEqual(cfg.SOLVER.IMS_PER_BATCH * 8, batch_size_x8)
+        self.assertEqual(cfg.SOLVER.MAX_ITER // 8, orig_cfg.SOLVER.MAX_ITER)
+        self.assertEqual(
+            cfg.SOLVER.CHECKPOINT_PERIOD // 8, orig_cfg.SOLVER.CHECKPOINT_PERIOD
+        )
 
     def test_not_scale_for_zero_world_size(self):
         """
