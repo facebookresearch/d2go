@@ -206,6 +206,17 @@ class TestConfigUtils(unittest.TestCase):
         self.assertTrue("b0.b1" in table)  # b0.b1 are different
         self.assertTrue("c0.c1.c2" in table)  # c0.c1.c2 are different
 
+    def test_get_cfg_diff_table_mismatched_keys(self):
+        """Check compare two dicts, the keys are mismatched"""
+        d_orig = {"a0": "a1", "b0": {"b1": "b2"}, "c0": {"c1": {"c2": 3}}}
+        d_new = {"a0": "a1", "b0": {"b1": "b3"}, "c0": {"c4": {"c2": 4}}}
+        table = get_cfg_diff_table(d_new, d_orig)
+        self.assertTrue("a0" not in table)  # a0 are the same
+        self.assertTrue("b0.b1" in table)  # b0.b1 are different
+        self.assertTrue("c0.c1.c2" in table)  # c0.c1.c2 key mismatched
+        self.assertTrue("c0.c4.c2" in table)  # c0.c4.c2 key mismatched
+        self.assertTrue("Key not exists" in table)  # has mismatched key
+
 
 class TestAutoScaleWorldSize(unittest.TestCase):
     def test_8gpu_to_1gpu(self):
