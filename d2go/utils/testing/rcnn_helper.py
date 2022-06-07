@@ -16,7 +16,6 @@ from d2go.utils.testing.data_loader_helper import (
     create_detection_data_loader_on_toy_dataset,
 )
 from detectron2.structures import Boxes, Instances
-from detectron2.utils.testing import assert_instances_allclose
 from mobile_cv.predictor.api import create_predictor
 from parameterized import parameterized
 
@@ -353,6 +352,8 @@ class RCNNBaseTestCases:
                 if compare_match:
                     with torch.no_grad():
                         pytorch_outputs = self.test_model(inputs)
+
+                    from detectron2.utils.testing import assert_instances_allclose
 
                     assert_instances_allclose(
                         predictor_outputs[0]["instances"],
