@@ -7,8 +7,9 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
+import mobile_cv.torch.utils_pytorch.comm as comm
 import pytorch_lightning as pl  # type: ignore
-from d2go.config import auto_scale_world_size, CfgNode, temp_defrost
+from d2go.config import CfgNode, temp_defrost
 from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import GeneralizedRCNNTask
@@ -67,9 +68,7 @@ def _get_accelerator(use_cpu: bool) -> str:
     return "cpu" if use_cpu else "gpu"
 
 
-def get_trainer_params(
-    cfg: CfgNode, num_machines: int, num_processes: int
-) -> Dict[str, Any]:
+def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
     use_cpu = cfg.MODEL.DEVICE.lower() == "cpu"
     strategy = _get_strategy(cfg)
     accelerator = _get_accelerator(use_cpu)
@@ -80,8 +79,8 @@ def get_trainer_params(
         "val_check_interval": cfg.TEST.EVAL_PERIOD
         if cfg.TEST.EVAL_PERIOD > 0
         else cfg.SOLVER.MAX_ITER,
-        "num_nodes": num_machines,
-        "devices": num_processes,
+        "num_nodes": comm.get_num_nodes(),
+        "devices": comm.get_local_size(),
         "strategy": strategy,
         "accelerator": accelerator,
         "callbacks": _get_trainer_callbacks(cfg),
@@ -138,8 +137,6 @@ def main(
     output_dir: str,
     task_cls: Type[GeneralizedRCNNTask] = GeneralizedRCNNTask,
     eval_only: bool = False,
-    num_machines: int = 1,
-    num_processes: int = 1,
 ) -> TrainOutput:
     """Main function for launching a training with lightning trainer
     Args:
@@ -148,12 +145,10 @@ def main(
         num_processes: Number of processes on each node.
         eval_only: True if run evaluation only.
     """
-    # FIXME: make comm.get_world_size() work properly.
-    setup_after_launch(cfg, output_dir, _scale_world_size=False)
-    auto_scale_world_size(cfg, new_world_size=num_machines * num_processes)
+    setup_after_launch(cfg, output_dir)
 
     task = task_cls.from_config(cfg, eval_only)
-    trainer_params = get_trainer_params(cfg, num_machines, num_processes)
+    trainer_params = get_trainer_params(cfg)
 
     last_checkpoint = os.path.join(cfg.OUTPUT_DIR, "last.ckpt")
     if PathManager.exists(last_checkpoint):
@@ -212,8 +207,6 @@ if __name__ == "__main__":
         args.output_dir,
         task_cls,
         eval_only=False,  # eval_only
-        num_machines=args.num_machines,
-        num_processes=args.num_processes,
     )
     if get_rank() == 0:
         print(ret)
