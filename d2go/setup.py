@@ -196,7 +196,6 @@ def setup_after_launch(
     cfg: CfgNode,
     output_dir: str,
     runner: Optional[BaseRunner] = None,
-    _scale_world_size: bool = True,  # HACK: temporarily allow lightning_train_net to by pass this.
 ):
     """
     Binary-level setup after entering DDP, including
@@ -233,8 +232,7 @@ def setup_after_launch(
         pass
 
     # scale the config after dumping so that dumped config files keep original world size
-    if _scale_world_size:
-        auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
+    auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
 
 
 def setup_logger(

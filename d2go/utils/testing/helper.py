@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 from typing import Optional
 
 import torch
-import torch.distributed as dist
+from d2go.distributed import distributed_worker, DistributedParams
 
 
 def get_resource_path(file: Optional[str] = None):
@@ -51,17 +51,24 @@ def enable_ddp_env(func):
 
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = find_free_port()
-        dist.init_process_group(
-            "gloo",
-            rank=0,
-            world_size=1,
-            init_method="file:///tmp/detectron2go_test_ddp_init_{}".format(
+
+        return distributed_worker(
+            main_func=func,
+            args=args,
+            kwargs=kwargs,
+            backend="gloo",
+            dist_url="file:///tmp/detectron2go_test_ddp_init_{}".format(
                 uuid.uuid4().hex
             ),
+            dist_params=DistributedParams(
+                local_rank=0,
+                machine_rank=0,
+                global_rank=0,
+                num_processes_per_machine=1,
+                world_size=1,
+            ),
+            return_save_file=None,  # don't save file
         )
-        ret = func(*args, **kwargs)
-        dist.destroy_process_group()
-        return ret
 
     return wrapper
 

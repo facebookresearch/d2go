@@ -3,64 +3,73 @@
 
 
 """
-Similar to detectron2.engine.launch, may support a few more things:
-    - support for get_local_rank.
-    - support other backends like GLOO.
+Extend the mobile_cv.torch.utils_pytorch.distributed_helper to add D2/D2Go specific
+features, functions in this module share the same signatures as the ones from mobile_cv.
 """
 
 import logging
-import os
-import tempfile
+from typing import Any, Callable, Dict, Optional, Tuple
 
-import detectron2.utils.comm as comm
+import detectron2.utils.comm as d2_comm
+import mobile_cv.torch.utils_pytorch.comm as mcv_comm
 import torch
-import torch.distributed as dist
-import torch.multiprocessing as mp
 from d2go.config import CfgNode, temp_defrost
 from d2go.utils.launch_environment import get_launch_environment
-
+from mobile_cv.torch.utils_pytorch.distributed_helper import (
+    DistributedParams,
+    enable_dist_process_groups,
+    launch as _launch,
+    save_return_deco,
+)
 
 logger = logging.getLogger(__name__)
 
 
-_LOCAL_RANK = 0
-_NUM_PROCESSES_PER_MACHINE = 1
-
-
-def _set_local_rank(local_rank):
-    global _LOCAL_RANK
-    _LOCAL_RANK = local_rank
-
-
-def _set_num_processes_per_machine(num_processes):
-    global _NUM_PROCESSES_PER_MACHINE
-    _NUM_PROCESSES_PER_MACHINE = num_processes
-
-
+# BC-compatible
 def get_local_rank():
-    return _LOCAL_RANK
+    return mcv_comm.get_local_rank()
 
 
+# BC-compatible
 def get_num_processes_per_machine():
-    return _NUM_PROCESSES_PER_MACHINE
+    return mcv_comm.get_local_size()
 
 
-# TODO: merge with d2.engine.launch
-def launch(
-    main_func,
-    num_processes_per_machine,
-    num_machines=1,
-    machine_rank=0,
-    dist_url=None,
-    backend="NCCL",
-    always_spawn=False,
-    args=(),
+# Modify mobile_cv's `default_distributed_worker` to also setup D2's comm module
+def distributed_worker(
+    main_func: Callable,
+    args: Tuple[Any, ...],
+    kwargs: Dict[str, Any],
+    backend: str,
+    dist_url: Optional[str] = None,
+    dist_params: Optional[DistributedParams] = None,
+    return_save_file: Optional[str] = None,
 ):
-    logger.info(
-        f"Launch with num_processes_per_machine: {num_processes_per_machine},"
-        f" num_machines: {num_machines}, machine_rank: {machine_rank},"
-        f" dist_url: {dist_url}, backend: {backend}."
-    )
+    dist_params = dist_params or DistributedParams.from_environ()
+    with enable_dist_process_groups(backend, dist_url, dist_params):
+        d2_comm._LOCAL_PROCESS_GROUP = mcv_comm._LOCAL_PROCESS_GROUP
+        # Now the D2's comm module should be fully functional
+        deco = save_return_deco(return_save_file, dist_params.global_rank)
+        return deco(main_func)(*args, **kwargs)
+
+
+def launch(
+    main_func: Callable,
+    num_processes_per_machine: int,
+    num_machines: int = 1,
+    machine_rank: int = 0,
+    dist_url: Optional[str] = None,
+    backend: str = "NCCL",
+    always_spawn: bool = False,
+    launch_method: str = "multiprocessing",
+    args: Tuple[Any, ...] = (),
+    kwargs: Dict[str, Any] = None,
+):
+    """
+    D2Go's specialized launch method, it does a few more things on top of mcv's launch:
+        - Automatically convert GPU to CPU if CUDA is not available.
+        - Add D2Go-specific initialziation in the _distributed_worker.
+    """
 
     if get_launch_environment() == "local" and not torch.cuda.is_available():
         assert len(args) > 0, args
@@ -74,144 +83,16 @@ def launch(
                 cfg.MODEL.DEVICE = "cpu"
         backend = "GLOO"
 
-    if backend == "NCCL":
-        assert (
-            num_processes_per_machine <= torch.cuda.device_count()
-        ), "num_processes_per_machine is greater than device count: {} vs {}".format(
-            num_processes_per_machine, torch.cuda.device_count()
-        )
-
-    world_size = num_machines * num_processes_per_machine
-    if world_size > 1 or always_spawn:
-        # https://github.com/pytorch/pytorch/pull/14391
-        # TODO prctl in spawned processes
-        prefix = f"detectron2go_{main_func.__module__}.{main_func.__name__}_return"
-        with tempfile.NamedTemporaryFile(prefix=prefix, suffix=".pth") as f:
-            return_file = f.name
-            if dist_url.startswith("env://"):
-                _run_with_dist_env(
-                    main_func,
-                    world_size,
-                    num_processes_per_machine,
-                    machine_rank,
-                    dist_url,
-                    backend,
-                    return_file,
-                    args,
-                )
-            else:
-                mp.spawn(
-                    _distributed_worker,
-                    nprocs=num_processes_per_machine,
-                    args=(
-                        main_func,
-                        world_size,
-                        num_processes_per_machine,
-                        machine_rank,
-                        dist_url,
-                        backend,
-                        return_file,
-                        args,
-                    ),
-                    daemon=False,
-                )
-            if machine_rank == 0 and get_local_rank() == 0:
-                return torch.load(return_file)
-    else:
-        return main_func(*args)
-
-
-def _run_with_dist_env(
-    main_func,
-    world_size,
-    num_processes_per_machine,
-    machine_rank,
-    dist_url,
-    backend,
-    return_file,
-    args,
-):
-    assert dist_url.startswith("env://")
-
-    # Read torch.distributed params from env according to the contract in
-    # https://pytorch.org/docs/stable/distributed.html#environment-variable-initialization
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
-    num_processes_per_machine = int(os.environ.get("LOCAL_WORLD_SIZE", 1))
-    machine_rank = int(os.environ.get("GROUP_RANK", 0))
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
-
-    num_machines = int(world_size / num_processes_per_machine)
-
-    logger.info(
-        "Loaded distributed params from env."
-        f" Run with num_processes_per_machine: {num_processes_per_machine},"
-        f" num_machines: {num_machines}, machine_rank: {machine_rank},"
+    return _launch(
+        main_func=main_func,
+        num_processes_per_machine=num_processes_per_machine,
+        num_machines=num_machines,
+        machine_rank=machine_rank,
+        dist_url=dist_url,
+        backend=backend,
+        always_spawn=always_spawn,
+        launch_method=launch_method,
+        args=args,
+        kwargs=kwargs,
+        _distributed_worker=distributed_worker,
     )
-
-    _distributed_worker(
-        local_rank,
-        main_func,
-        world_size,
-        num_processes_per_machine,
-        machine_rank,
-        dist_url,
-        backend,
-        return_file,
-        args,
-    )
-
-
-def _distributed_worker(
-    local_rank,
-    main_func,
-    world_size,
-    num_processes_per_machine,
-    machine_rank,
-    dist_url,
-    backend,
-    return_file,
-    args,
-):
-    assert backend in ["NCCL", "GLOO"]
-    _set_local_rank(local_rank)
-    _set_num_processes_per_machine(num_processes_per_machine)
-
-    # NOTE: this is wrong if using different number of processes across machine
-    global_rank = machine_rank * num_processes_per_machine + local_rank
-    try:
-        dist.init_process_group(
-            backend=backend,
-            init_method=dist_url,
-            world_size=world_size,
-            rank=global_rank,
-        )
-    except Exception as e:
-        logger.error("Process group URL: {}".format(dist_url))
-        raise e
-
-    # Setup the local process group (which contains ranks within the same machine)
-    assert comm._LOCAL_PROCESS_GROUP is None
-    num_machines = world_size // num_processes_per_machine
-    for i in range(num_machines):
-        ranks_on_i = list(
-            range(i * num_processes_per_machine, (i + 1) * num_processes_per_machine)
-        )
-        pg = dist.new_group(ranks_on_i)
-        if i == machine_rank:
-            comm._LOCAL_PROCESS_GROUP = pg
-
-    if backend in ["NCCL"]:
-        torch.cuda.set_device(local_rank)
-    # synchronize is needed here to prevent a possible timeout after calling
-    # init_process_group
-    # See: https://github.com/facebookresearch/maskrcnn-benchmark/issues/172
-    comm.synchronize()
-
-    ret = main_func(*args)
-    if global_rank == 0:
-        logger.info(
-            "Save {}.{} return to: {}".format(
-                main_func.__module__, main_func.__name__, return_file
-            )
-        )
-        torch.save(ret, return_file)
