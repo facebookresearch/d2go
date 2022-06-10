@@ -8,6 +8,7 @@ features, functions in this module share the same signatures as the ones from mo
 """
 
 import logging
+from datetime import timedelta
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import detectron2.utils.comm as d2_comm
@@ -16,6 +17,7 @@ import torch
 from d2go.config import CfgNode, temp_defrost
 from d2go.utils.launch_environment import get_launch_environment
 from mobile_cv.torch.utils_pytorch.distributed_helper import (
+    DEFAULT_TIMEOUT,
     DistributedParams,
     enable_dist_process_groups,
     launch as _launch,
@@ -44,9 +46,10 @@ def distributed_worker(
     dist_url: Optional[str] = None,
     dist_params: Optional[DistributedParams] = None,
     return_save_file: Optional[str] = None,
+    timeout: timedelta = DEFAULT_TIMEOUT,
 ):
     dist_params = dist_params or DistributedParams.from_environ()
-    with enable_dist_process_groups(backend, dist_url, dist_params):
+    with enable_dist_process_groups(backend, dist_url, dist_params, timeout):
         d2_comm._LOCAL_PROCESS_GROUP = mcv_comm._LOCAL_PROCESS_GROUP
         # Now the D2's comm module should be fully functional
         deco = save_return_deco(return_save_file, dist_params.global_rank)
@@ -62,6 +65,7 @@ def launch(
     backend: str = "NCCL",
     always_spawn: bool = False,
     launch_method: str = "multiprocessing",
+    timeout: timedelta = DEFAULT_TIMEOUT,
     args: Tuple[Any, ...] = (),
     kwargs: Dict[str, Any] = None,
 ):
@@ -92,6 +96,7 @@ def launch(
         backend=backend,
         always_spawn=always_spawn,
         launch_method=launch_method,
+        timeout=timeout,
         args=args,
         kwargs=kwargs,
         _distributed_worker=distributed_worker,
