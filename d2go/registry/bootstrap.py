@@ -5,13 +5,20 @@ import ast
 import builtins
 import contextlib
 import glob
+import hashlib
 import logging
 import os
+import tempfile
 import time
 import traceback
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 import pkg_resources
-from mobile_cv.common.misc.py import MoreMagicMock
+import yaml
+from mobile_cv.common.misc.py import dynamic_import, MoreMagicMock
 from mobile_cv.common.misc.registry import (
     CLASS_OR_FUNCTION_TYPES,
     LazyRegisterable,
@@ -28,13 +35,27 @@ _INSIDE_BOOTSTRAP = False
 _IS_BOOTSTRAPPED = False
 
 _BOOTSTRAP_PACKAGE = "d2go.registry._bootstrap"
+_BOOTSTRAP_CACHE_FILENAME = "registry_bootstrap.v1.yaml"
 
 
-def _log(lvl, msg):
+def _log(lvl: int, msg: str):
     _VERBOSE_LEVEL = 0
 
     if _VERBOSE_LEVEL >= lvl:
         print(msg)
+
+
+# Simple version copied from fvcore/iopath
+def _get_cache_dir() -> str:
+    cache_dir = os.path.expanduser("~/.torch/d2go_cache")
+    try:
+        os.makedirs(cache_dir, exist_ok=True)
+        assert os.access(cache_dir, os.R_OK | os.W_OK | os.X_OK)
+    except (OSError, AssertionError):
+        tmp_dir = os.path.join(tempfile.gettempdir(), "d2go_cache")
+        logger.warning(f"{cache_dir} is not accessible! Using {tmp_dir} instead!")
+        cache_dir = tmp_dir
+    return cache_dir
 
 
 class _catchtime:
@@ -113,7 +134,7 @@ def _open_mock(*args, **kwargs):
     return MoreMagicMock()
 
 
-def _register_mock(self, name, obj):
+def _register_mock(self, name: Optional[str], obj: Any):
     """Convert `obj` to LazyRegisterable"""
 
     # Instead of register the (possibly mocked) object which is created under the
@@ -163,13 +184,52 @@ def _bootstrap_patch():
         _INSIDE_BOOTSTRAP = False
 
 
-def _bootstrap_file(filename):
-    # convert absolute path to full module name
+def _get_registered_names() -> Dict[str, List[str]]:
+    """Return the currently registered names for each registry"""
+    # NOTE: currently only support D2Go's builtin registry module, which can be extended
+    # in future.
+    import d2go.registry.builtin
+
+    modules = [
+        d2go.registry.builtin,
+    ]
+
+    registered = {}
+    for module in modules:
+        registered_in_module = {
+            f"{module.__name__}.{name}": obj.get_names()
+            for name, obj in module.__dict__.items()
+            if isinstance(obj, Registry)
+        }
+        registered.update(registered_in_module)
+
+    return registered
+
+
+class BootstrapStatus(Enum):
+    CACHED = 0
+    FULLY_IMPORTED = 1
+    PARTIALLY_IMPORTED = 2
+    FAILED = 3
+
+
+@dataclass
+class CachedResult:
+    sha1: str
+    registered: Dict[str, str]
+    status: str  # string representation of BootstrapStatus
+
+
+def _bootstrap_file(
+    rel_path: str,
+    catch_exception: bool,
+    cached_result: Optional[CachedResult] = None,
+) -> Tuple[CachedResult, BootstrapStatus]:
+    # convert relative path to full module name
     # eg. ".../d2go/a/b/c.py" -> "d2go.a.b.c"
     # eg. ".../d2go/a/b/__init__.py" -> "d2go.a.b"
     package_root = os.path.dirname(pkg_resources.resource_filename("d2go", ""))
-    assert filename.startswith(package_root), (filename, package_root)
-    rel_path = os.path.relpath(filename, package_root)
+    filename = os.path.join(package_root, rel_path)
     assert rel_path.endswith(".py")
     module = rel_path[: -len(".py")]
     if module.endswith("/__init__"):
@@ -185,6 +245,22 @@ def _bootstrap_file(filename):
     with _catchtime() as t:
         with open(filename) as f:
             content = f.read()
+
+        file_hash = hashlib.sha1(content.encode("utf-8")).hexdigest()
+        if cached_result is not None and file_hash == cached_result.sha1:
+            _log(
+                2,
+                f"Hash {file_hash} matches, lazy registering cached registerables ...",
+            )
+            registerables = cached_result.registered
+            for registry_module_dot_name, names_to_register in registerables.items():
+                registry = dynamic_import(registry_module_dot_name)
+                for name in names_to_register:
+                    # we only store the registered name in the cache, here we know the
+                    # module of bootstrapped file, which should be sufficient.
+                    registry.register(name, LazyRegisterable(module=module))
+            return cached_result, BootstrapStatus.CACHED
+
         tree = ast.parse(content)
 
         # HACK: convert multiple inheritance to single inheritance, this is needed
@@ -198,10 +274,40 @@ def _bootstrap_file(filename):
 
     _log(2, f"Parsing AST takes {t.time} sec")
 
+    prev_registered = _get_registered_names()
     with _catchtime() as t:
-        with _bootstrap_patch():
-            exec(compile(tree, filename, "exec"), exec_globals)  # noqa
+        try:
+            with _bootstrap_patch():
+                exec(compile(tree, filename, "exec"), exec_globals)  # noqa
+            status = BootstrapStatus.FULLY_IMPORTED
+        except _BootstrapBreakException:
+            status = BootstrapStatus.PARTIALLY_IMPORTED
+        except Exception as e:
+            if catch_exception:
+                _log(
+                    1,
+                    "Encountered the following error during bootstrap:"
+                    + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
+                )
+            else:
+                raise e
+            status = BootstrapStatus.FAILED
     _log(2, f"Execute file takes {t.time} sec")
+
+    # compare and get the newly registered
+    cur_registered = _get_registered_names()
+    assert set(cur_registered.keys()) == set(prev_registered.keys())
+    newly_registered = {
+        k: sorted(set(cur_registered[k]) - set(prev_registered[k]))
+        for k in sorted(cur_registered.keys())
+    }
+    newly_registered = {k: v for k, v in newly_registered.items() if len(v) > 0}
+    result = CachedResult(
+        sha1=file_hash,
+        registered=newly_registered,
+        status=status.name,
+    )
+    return result, status
 
 
 class _BootstrapBreakException(Exception):
@@ -223,7 +329,26 @@ def break_bootstrap():
     return
 
 
-def bootstrap_registries(catch_exception=True):
+def _load_cached_results(filename: str) -> Dict[str, CachedResult]:
+    with open(filename) as f:
+        loaded = yaml.safe_load(f)
+    assert isinstance(loaded, dict), f"Wrong format: {filename}"
+    results = {
+        filename: CachedResult(**result_dic) for filename, result_dic in loaded.items()
+    }
+    return results
+
+
+def _dump_cached_results(cached_results: Dict[str, CachedResult], filename: str):
+    results_dict = {
+        filename: asdict(result_dic) for filename, result_dic in cached_results.items()
+    }
+    dumped = yaml.safe_dump(results_dict)
+    with open(filename, "w") as f:
+        f.write(dumped)
+
+
+def bootstrap_registries(enable_cache: bool = True, catch_exception: bool = True):
     """
     Bootstrap all registries so that all objects are effectively registered.
 
@@ -243,52 +368,57 @@ def bootstrap_registries(catch_exception=True):
 
     start = time.perf_counter()
 
+    # load cached bootstrap results if exist
+    cached_bootstrap_results: Dict[str, CachedResult] = {}
+    if enable_cache:
+        filename = os.path.join(_get_cache_dir(), _BOOTSTRAP_CACHE_FILENAME)
+        if os.path.isfile(filename):
+            logger.info(f"Loading bootstrap cache at {filename} ...")
+            cached_bootstrap_results = _load_cached_results(filename)
+        else:
+            logger.info(
+                f"Can't find the bootstrap cache at {filename}, start from scratch"
+            )
+
     # locate all the files under d2go package
     # NOTE: we may extend to support user-defined locations if necessary
     d2go_root = pkg_resources.resource_filename("d2go", "")
     logger.info(f"Start bootstrapping for d2go_root: {d2go_root} ...")
     all_files = glob.glob(f"{d2go_root}/**/*.py", recursive=True)
+    all_files = [os.path.relpath(x, os.path.dirname(d2go_root)) for x in all_files]
 
-    skip_files = []
-    exception_files = []
+    new_bootstrap_results: Dict[str, CachedResult] = {}
+    files_per_status = defaultdict(list)
     time_per_file = {}
     for filename in all_files:
-        _log(
-            1,
-            f"bootstrap for file under d2go_root: {os.path.relpath(filename, d2go_root)}",
-        )
+        _log(1, f"bootstrap for file: {filename}")
 
+        cached_result = cached_bootstrap_results.get(filename, None)
         with _catchtime() as t:
-            try:
-                _bootstrap_file(filename)
-            except _BootstrapBreakException:
-                # the bootstrap process is manually skipped
-                skip_files.append(filename)
-                continue
-            except Exception as e:
-                if catch_exception:
-                    _log(
-                        1,
-                        "Encountered the following error during bootstrap:"
-                        + "".join(
-                            traceback.format_exception(type(e), e, e.__traceback__)
-                        ),
-                    )
-                    exception_files.append(filename)
-                else:
-                    raise e
+            result, status = _bootstrap_file(filename, catch_exception, cached_result)
+        new_bootstrap_results[filename] = result
+        files_per_status[status].append(filename)
         time_per_file[filename] = t.time
 
     end = time.perf_counter()
     duration = end - start
+    status_breakdown = ", ".join(
+        [f"{len(files_per_status[status])} {status.name}" for status in BootstrapStatus]
+    )
     logger.info(
-        f"Finished bootstrapping for {len(all_files)} files ({len(skip_files)} break-ed)"
+        f"Finished bootstrapping for {len(all_files)} files ({status_breakdown})"
         f" in {duration:.2f} seconds."
     )
+    exception_files = [
+        filename
+        for filename, result in new_bootstrap_results.items()
+        if result.status == BootstrapStatus.FAILED.name
+    ]
     if len(exception_files) > 0:
         logger.warning(
-            "Encountered error bootstrapping following {} files,"
-            " registration inside those files might not work!\n{}".format(
+            "Found exception for the following {} files (either during this bootstrap"
+            " run or from previous cached result), registration inside those files"
+            " might not work!\n{}".format(
                 len(exception_files),
                 "\n".join(exception_files),
             )
@@ -300,5 +430,10 @@ def bootstrap_registries(catch_exception=True):
     all_time = [(os.path.relpath(k, d2go_root), v) for k, v in time_per_file.items()]
     for x in sorted(all_time, key=lambda x: x[1])[-TOP_N:]:
         _log(2, x)
+
+    if enable_cache:
+        filename = os.path.join(_get_cache_dir(), _BOOTSTRAP_CACHE_FILENAME)
+        logger.info(f"Writing updated bootstrap results to {filename} ...")
+        _dump_cached_results(new_bootstrap_results, filename)
 
     _IS_BOOTSTRAPPED = True
