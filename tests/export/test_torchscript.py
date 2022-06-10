@@ -24,7 +24,7 @@ class TestTorchscriptExportMethods(unittest.TestCase):
                 input_args=None,
                 save_path=None,
                 export_method=export_method,
-                **export_kwargs
+                **export_kwargs,
             )
 
         export_method_string = "torchscript"
