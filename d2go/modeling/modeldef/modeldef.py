@@ -5,6 +5,7 @@
 import copy
 
 from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
+from d2go.registry.bootstrap import lazy_on_bootstrap
 from mobile_cv.arch.fbnet_v2.modeldef_utils import _ex, e1, e1p, e2, e3, e4, e6
 
 
@@ -14,6 +15,7 @@ def _mutated_tuple(tp, pos, value):
     return tuple(tp_list)
 
 
+@lazy_on_bootstrap
 def _repeat_last(stage, n=None):
     """
     Repeat the last "layer" of given stage, i.e. a (op_type, c, s, n_repeat, ...)

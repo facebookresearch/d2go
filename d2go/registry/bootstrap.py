@@ -14,7 +14,7 @@ import traceback
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pkg_resources
 import yaml
@@ -327,6 +327,27 @@ def break_bootstrap():
 
     # non-op outside of bootstrap
     return
+
+
+def lazy_on_bootstrap(f: Callable) -> Callable:
+    """
+    A decorator to mark a function as "lazy" during bootstrap, such that the decorated
+    function will skip the execution and immediately return a MagicMock object during
+    the bootstrap (the decorator is a non-op outside of bootstrap). This can be used to
+    hide un-executable code (usually related to import-time computation) during the
+    bootstrap.
+
+    For registration related import-time computation, please consider using the
+    `LazyRegisterable` since it will also save time for the normal import.
+    """
+
+    def wrapped(*args, **kwargs):
+        if _INSIDE_BOOTSTRAP:
+            return MoreMagicMock()
+        else:
+            return f(*args, **kwargs)
+
+    return wrapped
 
 
 def _load_cached_results(filename: str) -> Dict[str, CachedResult]:
