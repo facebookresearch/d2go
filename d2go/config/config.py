@@ -152,6 +152,9 @@ def auto_scale_world_size(cfg, new_world_size):
     if old_world_size == 0 or old_world_size == new_world_size:
         return cfg
 
+    if len(cfg.SOLVER.AUTO_SCALING_METHODS) == 0:
+        return cfg
+
     original_cfg = cfg.clone()
     frozen = original_cfg.is_frozen()
     cfg.defrost()
