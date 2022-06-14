@@ -66,6 +66,23 @@ def extract_archive_file(archive_fn: str, im_dir: str):
             logger.info("Extracted {}".format(archive_fn))
 
 
+COCOTEXT_DATASET_CONVERSION_STATUS = {}
+
+
+def save_converted_json(target_json, convert_coco_dict):
+
+    if target_json in COCOTEXT_DATASET_CONVERSION_STATUS:
+        return
+
+    PathManager.mkdirs(os.path.dirname(target_json))
+    if comm.get_local_rank() == 0:
+        with PathManager.open(target_json, "w") as f:
+            json.dump(convert_coco_dict, f)
+    comm.synchronize()
+
+    COCOTEXT_DATASET_CONVERSION_STATUS[target_json] = True
+
+
 def convert_coco_text_to_coco_detection_json(
     source_json: str,
     target_json: str,
@@ -118,10 +135,7 @@ def convert_coco_text_to_coco_detection_json(
             if x["image_id"] in image_id_remap:
                 x["image_id"] = image_id_remap[x["image_id"]]
 
-    PathManager.mkdirs(os.path.dirname(target_json))
-    if comm.get_local_rank() == 0:
-        with PathManager.open(target_json, "w") as f:
-            json.dump(coco_text_json, f)
+    save_converted_json(target_json, coco_text_json)
 
     return coco_text_json
 
