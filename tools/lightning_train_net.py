@@ -145,7 +145,7 @@ def main(
         num_processes: Number of processes on each node.
         eval_only: True if run evaluation only.
     """
-    setup_after_launch(cfg, output_dir)
+    setup_after_launch(cfg, output_dir, task_cls)
 
     task = task_cls.from_config(cfg, eval_only)
     trainer_params = get_trainer_params(cfg)
