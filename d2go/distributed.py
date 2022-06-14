@@ -43,13 +43,13 @@ def distributed_worker(
     args: Tuple[Any, ...],
     kwargs: Dict[str, Any],
     backend: str,
-    dist_url: Optional[str] = None,
+    init_method: Optional[str] = None,
     dist_params: Optional[DistributedParams] = None,
     return_save_file: Optional[str] = None,
     timeout: timedelta = DEFAULT_TIMEOUT,
 ):
     dist_params = dist_params or DistributedParams.from_environ()
-    with enable_dist_process_groups(backend, dist_url, dist_params, timeout):
+    with enable_dist_process_groups(backend, init_method, dist_params, timeout):
         d2_comm._LOCAL_PROCESS_GROUP = mcv_comm._LOCAL_PROCESS_GROUP
         # Now the D2's comm module should be fully functional
         deco = save_return_deco(return_save_file, dist_params.global_rank)

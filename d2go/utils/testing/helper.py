@@ -57,7 +57,7 @@ def enable_ddp_env(func):
             args=args,
             kwargs=kwargs,
             backend="gloo",
-            dist_url="file:///tmp/detectron2go_test_ddp_init_{}".format(
+            init_method="file:///tmp/detectron2go_test_ddp_init_{}".format(
                 uuid.uuid4().hex
             ),
             dist_params=DistributedParams(
