@@ -14,7 +14,8 @@ from detectron2.utils.file_io import PathManager
 
 
 class DebugRunner(BaseRunner):
-    def get_default_cfg(self):
+    @classmethod
+    def get_default_cfg(cls):
         _C = super().get_default_cfg()
 
         # _C.TENSORBOARD...

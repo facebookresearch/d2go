@@ -160,8 +160,8 @@ class BaseRunner(object):
         """
         pass
 
-    @staticmethod
-    def get_default_cfg():
+    @classmethod
+    def get_default_cfg(cls):
         """
         Override `get_default_cfg` for adding non common config.
         """
@@ -211,8 +211,8 @@ class Detectron2GoRunner(BaseRunner):
         update_cfg_if_using_adhoc_dataset(cfg)
         patch_d2_meta_arch()
 
-    @staticmethod
-    def get_default_cfg():
+    @classmethod
+    def get_default_cfg(cls):
         cfg = super(Detectron2GoRunner, Detectron2GoRunner).get_default_cfg()
 
         cfg.PROFILERS = ["default_flop_counter"]
@@ -634,8 +634,8 @@ def _add_rcnn_default_config(_C):
 
 
 class GeneralizedRCNNRunner(Detectron2GoRunner):
-    @staticmethod
-    def get_default_cfg():
+    @classmethod
+    def get_default_cfg(cls):
         _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
         _add_rcnn_default_config(_C)
         return _C
