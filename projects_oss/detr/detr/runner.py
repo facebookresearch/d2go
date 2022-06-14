@@ -29,7 +29,8 @@ class DETRDatasetMapper(DetrDatasetMapper, D2GoDatasetMapper):
 
 
 class DETRRunner(GeneralizedRCNNRunner):
-    def get_default_cfg(self):
+    @classmethod
+    def get_default_cfg(cls):
         _C = super().get_default_cfg()
         add_detr_config(_C)
         add_deit_backbone_config(_C)
