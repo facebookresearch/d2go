@@ -7,7 +7,12 @@ from enum import Enum
 from typing import Any, Dict, List
 
 import pkg_resources
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from mobile_cv.common.misc.oss_utils import fb_overwritable
+
+logger = logging.getLogger(__name__)
+
+DEFAULTS_KEY = "_DEFAULTS_"
 
 
 @fb_overwritable()
@@ -210,7 +215,18 @@ def get_diff_cfg(old_cfg, new_cfg):
         return out
 
     out = new_cfg.__class__()
-    return get_diff_cfg_rec(old_cfg, new_cfg, out)
+    diff_cfg = get_diff_cfg_rec(old_cfg, new_cfg, out)
+
+    # Keep the `_DEFAULTS_` even though they should be the same
+    old_defaults = old_cfg.get(DEFAULTS_KEY, None)
+    new_defaults = new_cfg.get(DEFAULTS_KEY, None)
+    assert (
+        old_defaults == new_defaults
+    ), f"{DEFAULTS_KEY} doesn't match! old ({old_defaults}) vs new ({new_defaults})"
+    if new_defaults is not None:
+        diff_cfg[DEFAULTS_KEY] = new_defaults
+
+    return diff_cfg
 
 
 def namedtuple_to_dict(obj: Any):
@@ -223,3 +239,27 @@ def namedtuple_to_dict(obj: Any):
         else:
             res[k] = v
     return res
+
+
+def resolve_default_config(cfg):
+    if DEFAULTS_KEY not in cfg:
+        raise ValueError(
+            f"Can't resolved default config because `{DEFAULTS_KEY}` is"
+            f" missing from cfg: \n{cfg}"
+        )
+
+    updater_names: List[str] = cfg[DEFAULTS_KEY]
+    assert isinstance(updater_names, list), updater_names
+    assert [isinstance(x, str) for x in updater_names], updater_names
+
+    logger.info(f"Resolving default config by applying updaters: {updater_names} ...")
+    # starting from a empty CfgNode, sequentially apply the generator
+    cfg = type(cfg)()
+    for name in updater_names:
+        updater = CONFIG_UPDATER_REGISTRY.get(name)
+        cfg = updater(cfg)
+
+    # the resolved default config should keep the same default generator
+    cfg[DEFAULTS_KEY] = updater_names
+
+    return cfg

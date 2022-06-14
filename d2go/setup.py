@@ -13,6 +13,7 @@ import torch
 from d2go.config import (
     auto_scale_world_size,
     CfgNode,
+    load_full_config_from_file,
     reroute_config_path,
     temp_defrost,
 )
@@ -165,15 +166,22 @@ def prepare_for_launch(args):
     logger.info(args)
     runner = create_runner(args.runner)
 
-    cfg = runner.get_default_cfg()
+    # `Runner::get_default_cfg` will be deprecated, during the transition, the `Runner`
+    # class should declare the deprecation by setting `get_default_cfg = None`.
+    if runner.get_default_cfg is not None:
+        cfg = runner.get_default_cfg()
 
-    if args.config_file:
-        with PathManager.open(reroute_config_path(args.config_file), "r") as f:
-            print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
-        cfg.merge_from_file(args.config_file)
-        cfg.merge_from_list(args.opts)
+        if args.config_file:
+            with PathManager.open(reroute_config_path(args.config_file), "r") as f:
+                print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
+            cfg.merge_from_file(args.config_file)
+            cfg.merge_from_list(args.opts)
+        else:
+            cfg = create_cfg_from_cli_args(args, default_cfg=cfg)
     else:
-        cfg = create_cfg_from_cli_args(args, default_cfg=cfg)
+        cfg = load_full_config_from_file(reroute_config_path(args.config_file))
+        cfg.merge_from_list(args.opts)
+
     cfg.freeze()
 
     assert args.output_dir or args.config_file
@@ -221,7 +229,7 @@ def setup_after_launch(
         logger.info("Running with runner: {}".format(runner))
 
     # save the diff config
-    if runner:
+    if runner and runner.get_default_cfg is not None:
         default_cfg = runner.get_default_cfg()
         dump_cfg(
             get_diff_cfg(default_cfg, cfg),
@@ -229,6 +237,7 @@ def setup_after_launch(
         )
     else:
         # TODO: support getting default_cfg without runner.
+        # TODO: support lightning task
         pass
 
     # scale the config after dumping so that dumped config files keep original world size
