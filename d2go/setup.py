@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 def basic_argument_parser(
     distributed=True,
-    requires_config_file=True,
     requires_output_dir=True,
 ):
     """Basic cli tool parser for Detectron2Go binaries"""
@@ -47,7 +46,6 @@ def basic_argument_parser(
         "--config-file",
         help="path to config file",
         default="",
-        required=requires_config_file,
         metavar="FILE",
     )
     parser.add_argument(
@@ -80,79 +78,7 @@ def basic_argument_parser(
         )
         parser.add_argument("--dist-backend", type=str, default="NCCL")
 
-    if not requires_config_file:
-        # NOTE if not passing yaml file, user should explicitly set the
-        # following args, and use `opts` for non-common usecase.
-        parser.add_argument(
-            "--datasets",
-            type=str,
-            nargs="+",
-            required=True,
-            help="cfg.DATASETS.TEST",
-        )
-        parser.add_argument(
-            "--min_size",
-            type=int,
-            required=True,
-            help="cfg.INPUT.MIN_SIZE_TEST",
-        )
-        parser.add_argument(
-            "--max_size",
-            type=int,
-            required=True,
-            help="cfg.INPUT.MAX_SIZE_TEST",
-        )
-        return parser
-
     return parser
-
-
-def create_cfg_from_cli_args(args, default_cfg):
-    """
-    Instead of loading from defaults.py, this binary only includes necessary
-    configs building from scratch, and overrides them from args. There're two
-    levels of config:
-        _C: the config system used by this binary, which is a sub-set of training
-            config, override by configurable_cfg. It can also be override by
-            args.opts for convinience.
-        configurable_cfg: common configs that user should explicitly specify
-            in the args.
-    """
-
-    _C = CfgNode()
-    _C.INPUT = default_cfg.INPUT
-    _C.DATASETS = default_cfg.DATASETS
-    _C.DATALOADER = default_cfg.DATALOADER
-    _C.TEST = default_cfg.TEST
-    if hasattr(default_cfg, "D2GO_DATA"):
-        _C.D2GO_DATA = default_cfg.D2GO_DATA
-    if hasattr(default_cfg, "TENSORBOARD"):
-        _C.TENSORBOARD = default_cfg.TENSORBOARD
-
-    # NOTE configs below might not be necessary, but must add to make code work
-    _C.MODEL = CfgNode()
-    _C.MODEL.META_ARCHITECTURE = default_cfg.MODEL.META_ARCHITECTURE
-    _C.MODEL.MASK_ON = default_cfg.MODEL.MASK_ON
-    _C.MODEL.KEYPOINT_ON = default_cfg.MODEL.KEYPOINT_ON
-    _C.MODEL.LOAD_PROPOSALS = default_cfg.MODEL.LOAD_PROPOSALS
-    assert _C.MODEL.LOAD_PROPOSALS is False, "caffe2 model doesn't support"
-
-    _C.OUTPUT_DIR = args.output_dir
-
-    configurable_cfg = [
-        "DATASETS.TEST",
-        args.datasets,
-        "INPUT.MIN_SIZE_TEST",
-        args.min_size,
-        "INPUT.MAX_SIZE_TEST",
-        args.max_size,
-    ]
-
-    cfg = _C.clone()
-    cfg.merge_from_list(configurable_cfg)
-    cfg.merge_from_list(args.opts)
-
-    return cfg
 
 
 def prepare_for_launch(args):
@@ -167,13 +93,10 @@ def prepare_for_launch(args):
 
     cfg = runner.get_default_cfg()
 
-    if args.config_file:
-        with PathManager.open(reroute_config_path(args.config_file), "r") as f:
-            print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
-        cfg.merge_from_file(args.config_file)
-        cfg.merge_from_list(args.opts)
-    else:
-        cfg = create_cfg_from_cli_args(args, default_cfg=cfg)
+    with PathManager.open(reroute_config_path(args.config_file), "r") as f:
+        print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
     cfg.freeze()
 
     assert args.output_dir or args.config_file
