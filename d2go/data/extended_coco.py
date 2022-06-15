@@ -8,7 +8,7 @@ import os
 import shlex
 import subprocess
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import detectron2.utils.comm as comm
 from detectron2.data import MetadataCatalog
@@ -152,7 +152,11 @@ def valid_bbox(bbox_xywh: List[int], img_w: int, img_h: int) -> bool:
 
 
 def convert_coco_annotations(
-    anno_dict_list: List[Dict], record: Dict, remapped_id: Dict, error_report: Dict
+    anno_dict_list: List[Dict],
+    record: Dict,
+    remapped_id: Dict,
+    error_report: Dict,
+    filter_invalid_bbox: Optional[bool] = True,
 ):
     """
     Converts annotations format of coco to internal format while applying
@@ -175,6 +179,8 @@ def convert_coco_annotations(
             "extras",
             "point_coords",
             "point_labels",
+            "associations",
+            "file_name",
         ]
         # NOTE: maybe use MetadataCatalog for this
         obj = {field: anno[field] for field in fields_to_copy if field in anno}
@@ -198,7 +204,8 @@ def convert_coco_annotations(
                 )
 
         if (
-            record.get("width")
+            filter_invalid_bbox
+            and record.get("width")
             and record.get("height")
             and not valid_bbox(bbox_object, record["width"], record["height"])
         ):
@@ -252,14 +259,60 @@ def print_conversion_report(ann_error_report, image_error_report, ex_warning_fn)
         logger.warning(f"Conversion issues:\n{report_str}")
 
 
+def _assign_annotations_to_record(
+    record: Dict, converted_anns: List[Dict], all_cat_names: Optional[List[str]]
+) -> None:
+    if converted_anns and all(["file_name" in ann for ann in converted_anns]):
+        if len(converted_anns) == 1:
+            record["sem_seg_file_name"] = converted_anns[0]["file_name"]
+            return
+        assert (
+            all_cat_names
+        ), f"all_cat_names needs to be specified for MCS dataset: {converted_anns}"
+        record["multi_sem_seg_file_names"] = {
+            all_cat_names[ann["category_id"]]: ann["file_name"]
+            for ann in converted_anns
+        }
+    else:
+        record["annotations"] = converted_anns
+
+
+def _process_associations(
+    record: Dict, converted_anns: List[Dict], _post_process_: Optional[Callable]
+) -> None:
+    post_process_dict = {"_post_process_": _post_process_} if _post_process_ else {}
+    record.update(post_process_dict)
+
+    if "associations" not in record or "associations" not in converted_anns[0]:
+        return
+
+    assert (
+        len(converted_anns) == 1
+    ), "Only one annotation expected when associated frames exist!"
+
+    for key, associated_ann in converted_anns[0]["associations"].items():
+        if key not in record["associations"]:
+            continue
+        record["associations"][key] = {
+            "file_name": record["associations"][key],
+            "sem_seg_file_name": associated_ann,
+        }
+        record["associations"][key].update(post_process_dict)
+    # Following D23593142 to save memory
+    record["associations"] = list(record["associations"])
+
+
 def convert_to_dict_list(
     image_root: str,
     remapped_id: Dict,
     imgs: List[Dict],
     anns: List[Dict],
     dataset_name: Optional[str] = None,
+    all_cat_names: Optional[List[str]] = None,
     image_direct_copy_keys: Optional[List[str]] = None,
+    filter_invalid_bbox: Optional[bool] = True,
     filter_empty_annotations: Optional[bool] = True,
+    _post_process_: Optional[Callable] = None,
 ) -> List[Dict]:
 
     ann_error_report = {
@@ -309,13 +362,21 @@ def convert_to_dict_list(
 
         # Convert annotation for dataset_dict
         converted_anns = convert_coco_annotations(
-            anno_dict_list, record, remapped_id, ann_error_report
+            anno_dict_list,
+            record,
+            remapped_id,
+            ann_error_report,
+            filter_invalid_bbox=filter_invalid_bbox,
         )
         if len(converted_anns) == 0:
             image_error_report["no_annotations"].cnt += 1
             if filter_empty_annotations:
                 continue
-        record["annotations"] = converted_anns
+        _assign_annotations_to_record(record, converted_anns, all_cat_names)
+
+        if "associations" in img_dict:
+            record["associations"] = img_dict["associations"]
+        _process_associations(record, converted_anns, _post_process_)
 
         # Copy keys if additionally asked
         if image_direct_copy_keys:
@@ -367,7 +428,9 @@ def extended_coco_load(
     dataset_name: Optional[str] = None,
     loaded_json: Optional[str] = None,
     image_direct_copy_keys: List[str] = None,
+    filter_invalid_bbox: Optional[bool] = True,
     filter_empty_annotations: Optional[bool] = True,
+    _post_process_: Optional[Callable] = None,
 ) -> List[Dict]:
     """
     Load a json file with COCO's annotation format.
@@ -398,6 +461,7 @@ def extended_coco_load(
         coco_api = COCO(json_file)
     else:
         coco_api = InMemoryCOCO(loaded_json)
+    associations = coco_api.dataset.get("associations", {})
 
     # Collect classes and remap them starting from 0
     all_cat_ids = coco_api.getCatIds()
@@ -427,15 +491,23 @@ def extended_coco_load(
     anns = [coco_api.imgToAnns[img_id] for img_id in img_ids]
     logger.info("Loaded {} images from {}".format(len(imgs), json_file))
 
+    for img in imgs:
+        association = associations.get(img["file_name"], {})
+        if association:
+            img["associations"] = association
+
     # Return the coco converted to record list
     return convert_to_dict_list(
         image_root,
         remapped_id,
         imgs,
         anns,
-        dataset_name,
+        dataset_name=dataset_name,
+        all_cat_names=all_cat_names,
         image_direct_copy_keys=image_direct_copy_keys,
+        filter_invalid_bbox=filter_invalid_bbox,
         filter_empty_annotations=filter_empty_annotations,
+        _post_process_=_post_process_,
     )
 
 
