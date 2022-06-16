@@ -68,7 +68,7 @@ def launch(
     timeout: timedelta = DEFAULT_TIMEOUT,
     args: Tuple[Any, ...] = (),
     kwargs: Dict[str, Any] = None,
-):
+) -> Dict[int, Any]:
     """
     D2Go's specialized launch method, it does a few more things on top of mcv's launch:
         - Automatically convert GPU to CPU if CUDA is not available.
