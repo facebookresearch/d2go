@@ -18,3 +18,9 @@ DEMO_REGISTRY = Registry("DEMO")
 
 # Registry for config updater
 CONFIG_UPDATER_REGISTRY = Registry("CONFIG_UPDATER")
+
+# Distillation algorithms
+DISTILLATION_ALGORITHM_REGISTRY = Registry("DISTILLATION_ALGORITHM")
+
+# Distillation helper to allow user customization
+DISTILLATION_HELPER_REGISTRY = Registry("DISTILLATION_HELPER")
