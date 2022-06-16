@@ -13,12 +13,13 @@ import torch
 from d2go.config import (
     auto_scale_world_size,
     CfgNode,
+    load_full_config_from_file,
     reroute_config_path,
     temp_defrost,
 )
 from d2go.config.utils import get_diff_cfg
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
-from d2go.runner import BaseRunner, create_runner, DefaultTask
+from d2go.runner import BaseRunner, create_runner, DefaultTask, RunnerV2Mixin
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info
@@ -127,11 +128,15 @@ def prepare_for_launch(args):
     logger.info(args)
     runner = create_runner(args.runner)
 
-    cfg = runner.get_default_cfg()
-
     with PathManager.open(reroute_config_path(args.config_file), "r") as f:
         print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
-    cfg.merge_from_file(args.config_file)
+
+    if isinstance(runner, RunnerV2Mixin):
+        cfg = load_full_config_from_file(args.config_file)
+    else:
+        cfg = runner.get_default_cfg()
+        cfg.merge_from_file(args.config_file)
+
     cfg.merge_from_list(args.opts)
     cfg.freeze()
 
@@ -180,15 +185,15 @@ def setup_after_launch(
         logger.info("Running with runner: {}".format(runner))
 
     # save the diff config
-    if runner is not None:
-        default_cfg = runner.get_default_cfg()
-        dump_cfg(
-            get_diff_cfg(default_cfg, cfg),
-            os.path.join(output_dir, "diff_config.yaml"),
-        )
-    else:
-        # TODO: support getting default_cfg without runner.
-        pass
+    default_cfg = (
+        runner.get_default_cfg()
+        if runner and not isinstance(runner, RunnerV2Mixin)
+        else cfg.get_default_cfg()
+    )
+    dump_cfg(
+        get_diff_cfg(default_cfg, cfg),
+        os.path.join(output_dir, "diff_config.yaml"),
+    )
 
     # scale the config after dumping so that dumped config files keep original world size
     auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
