@@ -101,6 +101,20 @@ class CallFuncWithJsonFile(object):
         return self.func(self.json_file)
 
 
+class CallFuncWithNameAndJsonFile(object):
+    """
+    Same purpose as CallFuncWithJsonFile but also pass name to `func` as arguments
+    """
+
+    def __init__(self, func, json_file, name):
+        self.func = func
+        self.name = name
+        self.json_file = json_file
+
+    def __call__(self):
+        return self.func(self.json_file, self.name)
+
+
 class AdhocCOCODataset(AdhocDataset):
     def __init__(self, src_ds_name, new_ds_name):
         super().__init__(new_ds_name)
@@ -144,6 +158,11 @@ class AdhocCOCODataset(AdhocDataset):
         # re-register DatasetCatalog
         if isinstance(load_func, CallFuncWithJsonFile):
             new_func = CallFuncWithJsonFile(func=load_func.func, json_file=tmp_file)
+            DatasetCatalog.register(self.new_ds_name, new_func)
+        elif isinstance(load_func, CallFuncWithNameAndJsonFile):
+            new_func = CallFuncWithNameAndJsonFile(
+                func=load_func.func, name=self.new_ds_name, json_file=tmp_file
+            )
             DatasetCatalog.register(self.new_ds_name, new_func)
         elif self.src_ds_name in INJECTED_COCO_DATASETS_LUT:
             _src_func, _src_dict = INJECTED_COCO_DATASETS_LUT[self.src_ds_name]
