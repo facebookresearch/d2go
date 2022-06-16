@@ -6,7 +6,7 @@ import argparse
 import logging
 import os
 import time
-from typing import Optional, Type, Union
+from typing import List, Optional, Type, Union
 
 import detectron2.utils.comm as comm
 import torch
@@ -79,6 +79,42 @@ def basic_argument_parser(
         parser.add_argument("--dist-backend", type=str, default="NCCL")
 
     return parser
+
+
+def build_basic_cli_args(
+    config_path: Optional[str] = None,
+    output_dir: Optional[str] = None,
+    runner_name: Optional[str] = None,
+    num_processes: Optional[Union[int, str]] = None,
+    num_machines: Optional[Union[int, str]] = None,
+    machine_rank: Optional[Union[int, str]] = None,
+    dist_url: Optional[str] = None,
+    dist_backend: Optional[str] = None,
+) -> List[str]:
+    """
+    Returns parameters in the form of CLI arguments for the binary using
+    basic_argument_parser to set up its argument parser.
+
+    For the parameters definition and meaning, see basic_argument_parser.
+    """
+    args: List[str] = []
+    if config_path is not None:
+        args += ["--config-file", config_path]
+    if output_dir is not None:
+        args += ["--output-dir", output_dir]
+    if runner_name is not None:
+        args += ["--runner", runner_name]
+    if num_processes is not None:
+        args += ["--num-processes", str(num_processes)]
+    if num_machines is not None:
+        args += ["--num-machines", str(num_machines)]
+    if machine_rank is not None:
+        args += ["--machine-rank", str(machine_rank)]
+    if dist_url is not None:
+        args += ["--dist-url", str(dist_url)]
+    if dist_backend is not None:
+        args += ["--dist-backend", str(dist_backend)]
+    return args
 
 
 def prepare_for_launch(args):

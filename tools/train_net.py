@@ -7,12 +7,13 @@ Detection Training Script.
 
 import logging
 import sys
-from typing import List, Optional, Union
+from typing import List
 
 import detectron2.utils.comm as comm
 from d2go.distributed import launch
 from d2go.setup import (
     basic_argument_parser,
+    build_basic_cli_args,
     post_mortem_if_fail_for_main,
     prepare_for_launch,
     setup_after_launch,
@@ -105,36 +106,14 @@ def cli(args):
 
 
 def build_cli_args(
-    config_path: str,
-    output_dir: str,
-    runner_name: Optional[str] = None,
-    num_processes: Optional[Union[int, str]] = None,
-    num_machines: Optional[Union[int, str]] = None,
-    machine_rank: Optional[Union[int, str]] = None,
-    dist_url: Optional[str] = None,
-    dist_backend: Optional[str] = None,
     eval_only: bool = False,
     resume: bool = False,
+    **kwargs,
 ) -> List[str]:
-    """Returns parameters in the form of CLI arguments for train_net binary."""
-    args = [
-        "--config-file",
-        config_path,
-        "--output-dir",
-        output_dir,
-    ]
-    if runner_name is not None:
-        args += ["--runner", runner_name]
-    if num_processes is not None:
-        args += ["--num-processes", str(num_processes)]
-    if num_machines is not None:
-        args += ["--num-machines", str(num_machines)]
-    if machine_rank is not None:
-        args += ["--machine-rank", str(machine_rank)]
-    if dist_url is not None:
-        args += ["--dist-url", str(dist_url)]
-    if dist_backend is not None:
-        args += ["--dist-backend", str(dist_backend)]
+    """Returns parameters in the form of CLI arguments for train_net binary.
+
+    For the list of non-train_net-specific parameters, see build_basic_cli_args."""
+    args = build_basic_cli_args(**kwargs)
     if eval_only:
         args += ["--eval-only"]
     if resume:
