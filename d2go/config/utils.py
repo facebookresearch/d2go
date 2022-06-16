@@ -7,19 +7,16 @@ from enum import Enum
 from typing import Any, Dict, List
 
 import pkg_resources
+
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
-@fb_overwritable()
 def reroute_config_path(path: str) -> str:
     """
     Supporting rerouting the config files for convenience:
         d2go:// -> mobile-vision/d2go/...
         detectron2go:// -> mobile-vision/d2go/configs/...
         detectron2:// -> vision/fair/detectron2/configs/...
-        flow:// -> fblearner/flow/projects/mobile_vision/detectron2go/...
-        mv_experimental:// -> mobile-vision/experimental/...
-            (see //mobile-vision/experimental:mv_experimental_d2go_yaml_files)
     Those config are considered as code, so they'll reflect your current checkout,
         try using canary if you have local changes.
     """
@@ -27,34 +24,25 @@ def reroute_config_path(path: str) -> str:
 
     if path.startswith("d2go://"):
         rel_path = path[len("d2go://") :]
-        config_in_resource = pkg_resources.resource_filename("d2go", rel_path)
-        return config_in_resource
+        return pkg_resources.resource_filename("d2go", rel_path)
+
     elif path.startswith("detectron2go://"):
         rel_path = path[len("detectron2go://") :]
-        config_in_resource = pkg_resources.resource_filename(
+        return pkg_resources.resource_filename(
             "d2go", os.path.join("configs", rel_path)
         )
-        return config_in_resource
     elif path.startswith("detectron2://"):
         rel_path = path[len("detectron2://") :]
-        config_in_resource = pkg_resources.resource_filename(
+        return pkg_resources.resource_filename(
             "detectron2.model_zoo", os.path.join("configs", rel_path)
         )
-        return config_in_resource
+    else:
+        return reroute_fb_config_path(path)
 
+
+@fb_overwritable()
+def reroute_fb_config_path(path: str) -> str:
     return path
-
-
-def _flatten_config_dict(x, reorder, prefix):
-    if not isinstance(x, dict):
-        return {prefix: x}
-
-    d = {}
-    for k in sorted(x.keys()) if reorder else x.keys():
-        v = x[k]
-        new_key = f"{prefix}.{k}" if prefix else k
-        d.update(_flatten_config_dict(v, reorder, new_key))
-    return d
 
 
 def flatten_config_dict(dic, reorder=True):
@@ -79,6 +67,18 @@ def flatten_config_dict(dic, reorder=True):
         dic: a single-layer dict
     """
     return _flatten_config_dict(dic, reorder=reorder, prefix="")
+
+
+def _flatten_config_dict(x, reorder, prefix):
+    if not isinstance(x, dict):
+        return {prefix: x}
+
+    d = {}
+    for k in sorted(x.keys()) if reorder else x.keys():
+        v = x[k]
+        new_key = f"{prefix}.{k}" if prefix else k
+        d.update(_flatten_config_dict(v, reorder, new_key))
+    return d
 
 
 def config_dict_to_list_str(config_dict: Dict) -> List[str]:
