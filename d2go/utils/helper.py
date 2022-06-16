@@ -42,13 +42,9 @@ import torch
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
-from detectron2.engine import (
-    default_argument_parser,
-    default_setup,
-    DefaultTrainer,
-    hooks,
-    launch,
-)
+
+# @manual=//vision/fair/detectron2/detectron2:detectron2
+from detectron2.engine import DefaultTrainer, hooks, launch
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
     CityscapesSemSegEvaluator,
@@ -60,6 +56,7 @@ from detectron2.evaluation import (
     SemSegEvaluator,
     verify_results,
 )
+from detectron2.utils.events import TensorboardXWriter
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 T = TypeVar("T")
@@ -68,8 +65,6 @@ FuncType = Callable[..., Any]
 F = TypeVar("F", bound=FuncType)
 RT = TypeVar("RT")
 NT = TypeVar("T", bound=NamedTuple)
-
-from detectron2.utils.events import TensorboardXWriter
 
 
 class MultipleFunctionCallError(Exception):

@@ -3,7 +3,7 @@
 import json
 import sys
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, NamedTuple, Optional, Union
+from typing import Callable, Dict, NamedTuple, Optional, Tuple, Union
 
 import torch.nn as nn
 from mobile_cv.common.misc.file_utils import make_temp_directory

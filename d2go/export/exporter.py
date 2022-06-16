@@ -37,10 +37,16 @@ from mobile_cv.predictor.api import ModelInfo, PredictorInfo
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):
+    # @manual=//caffe2:torch
     from torch.ao.quantization import convert
+
+    # @manual=//caffe2:torch
     from torch.ao.quantization.quantize_fx import convert_fx
 else:
+    # @manual=//caffe2:torch
     from torch.quantization import convert
+
+    # @manual=//caffe2:torch
     from torch.quantization.quantize_fx import convert_fx
 
 logger = logging.getLogger(__name__)

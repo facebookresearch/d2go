@@ -11,6 +11,8 @@ import detectron2.utils.comm as comm
 import torch
 from d2go.quantization import learnable_qat
 from detectron2.checkpoint import DetectionCheckpointer
+
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 from detectron2.engine import HookBase, SimpleTrainer
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.arch.utils import fuse_utils

@@ -8,6 +8,8 @@ from typing import Any, List, Optional, Tuple, Union
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
 from detectron2.config import CfgNode
+
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 from detectron2.data.transforms import ExtentTransform
 from detectron2.structures import BoxMode
 from fvcore.transforms.transform import CropTransform, NoOpTransform, Transform

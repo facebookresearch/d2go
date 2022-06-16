@@ -17,6 +17,8 @@ from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory
 from mobile_cv.common.misc.iter_utils import recursive_iterate
 from torch import nn
+
+# @manual="//caffe2:torch",
 from torch._C import MobileOptimizerType
 from torch.utils.bundled_inputs import augment_model_with_bundled_inputs
 from torch.utils.mobile_optimizer import optimize_for_mobile

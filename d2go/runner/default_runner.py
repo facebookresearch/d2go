@@ -39,6 +39,8 @@ from detectron2.data import (
     build_detection_train_loader as d2_build_detection_train_loader,
     MetadataCatalog,
 )
+
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 from detectron2.engine import AMPTrainer, hooks, SimpleTrainer
 from detectron2.evaluation import (
     COCOEvaluator,

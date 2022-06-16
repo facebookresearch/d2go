@@ -3,6 +3,7 @@
 import logging
 from typing import List
 
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 from detectron2.engine import HookBase
 from detectron2.utils.registry import Registry
 

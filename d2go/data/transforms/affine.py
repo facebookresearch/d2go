@@ -10,6 +10,8 @@ import cv2
 import numpy as np
 import torchvision.transforms as T
 from detectron2.config import CfgNode
+
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 from detectron2.data.transforms import NoOpTransform, Transform, TransformGen
 
 from .build import TRANSFORM_OP_REGISTRY

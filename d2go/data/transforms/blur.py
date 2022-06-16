@@ -3,9 +3,12 @@
 
 from typing import Dict, List, Tuple
 
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
 from detectron2.config import CfgNode
+
+# @manual=//vision/fair/detectron2/detectron2:detectron2
 from detectron2.data.transforms import NoOpTransform, Transform
 
 from .build import _json_load, TRANSFORM_OP_REGISTRY

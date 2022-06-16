@@ -25,6 +25,8 @@ from mobile_cv.arch.utils.quantize_utils import (
     wrap_quant_subclass,
 )
 from mobile_cv.predictor.api import FuncInfo
+
+# @manual=//caffe2:torch
 from torch.ao.quantization import convert
 from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
