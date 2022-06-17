@@ -10,7 +10,7 @@ import torch
 from d2go.config import CfgNode
 from d2go.modeling import build_model
 from d2go.modeling.meta_arch import modeling_hook as mh
-from detectron2.modeling import META_ARCH_REGISTRY
+from d2go.registry.builtin import META_ARCH_REGISTRY
 
 
 @META_ARCH_REGISTRY.register()

@@ -499,9 +499,10 @@ class D2RCNNInferenceWrapper(nn.Module):
 # TODO: model.to(device) might not work for detection meta-arch, this function is the
 # workaround, in general, we might need a meta-arch API for this if needed.
 def _cast_detection_model(model, device):
+    from d2go.registry.builtin import META_ARCH_REGISTRY
+
     # check model is an instance of one of the meta arch
     from detectron2.export.caffe2_modeling import Caffe2MetaArch
-    from detectron2.modeling import META_ARCH_REGISTRY
 
     if isinstance(model, Caffe2MetaArch):
         model._wrapped_model = _cast_detection_model(model._wrapped_model, device)

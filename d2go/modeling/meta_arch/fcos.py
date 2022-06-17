@@ -1,7 +1,7 @@
 from d2go.config import CfgNode as CN
+from d2go.registry.builtin import META_ARCH_REGISTRY
 from detectron2.config import configurable
 from detectron2.modeling.backbone import build_backbone
-from detectron2.modeling.meta_arch import META_ARCH_REGISTRY
 from detectron2.modeling.meta_arch.fcos import FCOS as d2_FCOS, FCOSHead
 
 

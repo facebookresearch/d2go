@@ -4,9 +4,10 @@
 
 from typing import Optional, Type
 
+from d2go.registry.builtin import META_ARCH_REGISTRY
+
 from detectron2.data import DatasetCatalog, detection_utils as utils, MetadataCatalog
 from detectron2.evaluation import DatasetEvaluator
-from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.utils.events import get_event_storage
 from detectron2.utils.visualizer import Visualizer
 
