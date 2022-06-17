@@ -19,6 +19,9 @@ DEMO_REGISTRY = Registry("DEMO")
 # Registry for config updater
 CONFIG_UPDATER_REGISTRY = Registry("CONFIG_UPDATER")
 
+# Registry for meta-arch, registered nn.Module should follow D2Go's meta-arch API
+META_ARCH_REGISTRY = Registry("META_ARCH")
+
 # Distillation algorithms
 DISTILLATION_ALGORITHM_REGISTRY = Registry("DISTILLATION_ALGORITHM")
 
