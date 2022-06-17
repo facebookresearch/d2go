@@ -9,12 +9,12 @@ import unittest
 
 import d2go.runner.default_runner as default_runner
 import torch
+from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.runner import create_runner
 from d2go.runner.training_hooks import TRAINER_HOOKS_REGISTRY
 from d2go.utils.testing import helper
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 from detectron2.evaluation import COCOEvaluator, RotatedCOCOEvaluator
-from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, ImageList, Instances
 from mobile_cv.arch.quantization.qconfig import (
     updateable_symmetric_moving_avg_minmax_config,

@@ -11,12 +11,12 @@ import pytorch_lightning as pl  # type: ignore
 import torch
 from d2go.config import CfgNode, temp_defrost
 from d2go.quantization.modeling import set_backend_and_create_qconfig
+from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import GeneralizedRCNNTask
 from d2go.utils.testing import meta_arch_helper as mah
 from d2go.utils.testing.helper import tempdir
-from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.utils.events import EventStorage
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch import Tensor

@@ -3,7 +3,8 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from detectron2.modeling import detector_postprocess, META_ARCH_REGISTRY
+from d2go.registry.builtin import META_ARCH_REGISTRY
+from detectron2.modeling import detector_postprocess
 from detectron2.structures import BitMasks, Boxes, ImageList, Instances
 from detr.datasets.coco import convert_coco_poly_to_mask
 from detr.models.backbone import Joiner

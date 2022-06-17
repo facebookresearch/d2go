@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import d2go.runner.default_runner as default_runner
 import numpy as np
 import torch
+from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.utils.testing.data_loader_helper import (
     create_toy_dataset,
     LocalImageGenerator,
@@ -18,7 +19,6 @@ from d2go.utils.testing.data_loader_helper import (
 from d2go.utils.testing.helper import tempdir
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizerWrapper
 from detectron2.data import DatasetCatalog, MetadataCatalog
-from detectron2.modeling import META_ARCH_REGISTRY
 from detectron2.structures import Boxes, Instances
 from detectron2.utils.events import EventStorage
 
