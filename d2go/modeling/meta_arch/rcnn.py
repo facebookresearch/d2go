@@ -215,7 +215,7 @@ def _fx_quant_prepare(self, cfg):
         self.backbone,
         qconfig,
         example_inputs,
-        prepare_custom_config_dict={
+        prepare_custom_config={
             "preserved_attributes": ["size_divisibility", "padding_constraints"],
             # keep the output of backbone quantized, to avoid
             # redundant dequant
@@ -229,7 +229,7 @@ def _fx_quant_prepare(self, cfg):
         self.proposal_generator.rpn_head.rpn_feature,
         qconfig,
         example_inputs,
-        prepare_custom_config_dict={
+        prepare_custom_config={
             # rpn_feature expecting quantized input, this is used to avoid redundant
             # quant
             "input_quantized_idxs": [0]
@@ -249,7 +249,7 @@ def _fx_quant_prepare(self, cfg):
         self.roi_heads.box_head.roi_box_conv,
         qconfig,
         example_inputs,
-        prepare_custom_config_dict={
+        prepare_custom_config={
             "output_quantized_idxs": [0],
         },
     )
@@ -257,19 +257,19 @@ def _fx_quant_prepare(self, cfg):
         self.roi_heads.box_head.avgpool,
         qconfig,
         example_inputs,
-        prepare_custom_config_dict={"input_quantized_idxs": [0]},
+        prepare_custom_config={"input_quantized_idxs": [0]},
     )
     self.roi_heads.box_predictor.cls_score = prep_fn(
         self.roi_heads.box_predictor.cls_score,
         qconfig,
         example_inputs,
-        prepare_custom_config_dict={"input_quantized_idxs": [0]},
+        prepare_custom_config={"input_quantized_idxs": [0]},
     )
     self.roi_heads.box_predictor.bbox_pred = prep_fn(
         self.roi_heads.box_predictor.bbox_pred,
         qconfig,
         example_inputs,
-        prepare_custom_config_dict={"input_quantized_idxs": [0]},
+        prepare_custom_config={"input_quantized_idxs": [0]},
     )
 
 
