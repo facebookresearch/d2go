@@ -92,7 +92,7 @@ def run_with_cmdline_args(args):
     )
 
 
-def cli(args):
+def cli(args=None):
     parser = basic_argument_parser(requires_output_dir=False)
     parser.add_argument(
         "--eval-only", action="store_true", help="perform evaluation only"
@@ -102,6 +102,7 @@ def cli(args):
         action="store_true",
         help="whether to attempt to resume from the checkpoint directory",
     )
+    args = sys.argv[1:] if args is None else args
     run_with_cmdline_args(parser.parse_args(args))
 
 
@@ -122,4 +123,4 @@ def build_cli_args(
 
 
 if __name__ == "__main__":
-    cli(sys.argv[1:])
+    cli()

@@ -74,7 +74,7 @@ def run_with_cmdline_args(args):
     )
 
 
-def cli(args):
+def cli(args=None):
     parser = basic_argument_parser()
     parser.add_argument(
         "--predictor-path",
@@ -100,8 +100,9 @@ def cli(args):
         default=0,
         help="Control the --caffe2_logging_print_net_summary in GlobalInit",
     )
-    run_with_cmdline_args(parser.parse_args())
+    args = sys.argv[1:] if args is None else args
+    run_with_cmdline_args(parser.parse_args(args))
 
 
 if __name__ == "__main__":
-    cli(sys.argv[1:])
+    cli()

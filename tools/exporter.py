@@ -122,9 +122,10 @@ def get_parser():
     return parser
 
 
-def cli(args):
+def cli(args=None):
+    args = sys.argv[1:] if args is None else args
     run_with_cmdline_args(get_parser().parse_args(args))
 
 
 if __name__ == "__main__":
-    cli(sys.argv[1:])
+    cli()
