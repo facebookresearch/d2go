@@ -62,6 +62,12 @@ def basic_argument_parser(
         default=None,
         nargs=argparse.REMAINDER,
     )
+    parser.add_argument(
+        "--save-return-file",
+        help="When given, the main function outputs will be serialized and saved to this file",
+        default=None,
+        type=str,
+    )
 
     if distributed:
         parser.add_argument(
@@ -86,6 +92,7 @@ def build_basic_cli_args(
     config_path: Optional[str] = None,
     output_dir: Optional[str] = None,
     runner_name: Optional[str] = None,
+    save_return_file: Optional[str] = None,
     num_processes: Optional[Union[int, str]] = None,
     num_machines: Optional[Union[int, str]] = None,
     machine_rank: Optional[Union[int, str]] = None,
@@ -105,6 +112,8 @@ def build_basic_cli_args(
         args += ["--output-dir", output_dir]
     if runner_name is not None:
         args += ["--runner", runner_name]
+    if save_return_file is not None:
+        args += ["--save-return-file", str(save_return_file)]
     if num_processes is not None:
         args += ["--num-processes", str(num_processes)]
     if num_machines is not None:

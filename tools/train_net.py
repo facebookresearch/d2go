@@ -18,7 +18,11 @@ from d2go.setup import (
     prepare_for_launch,
     setup_after_launch,
 )
-from d2go.utils.misc import dump_trained_model_configs, print_metrics_table
+from d2go.utils.misc import (
+    dump_trained_model_configs,
+    print_metrics_table,
+    save_binary_outputs,
+)
 from detectron2.engine.defaults import create_ddp_model
 
 
@@ -81,7 +85,8 @@ def main(
 
 def run_with_cmdline_args(args):
     cfg, output_dir, runner = prepare_for_launch(args)
-    launch(
+
+    outputs = launch(
         post_mortem_if_fail_for_main(main),
         num_processes_per_machine=args.num_processes,
         num_machines=args.num_machines,
@@ -90,6 +95,11 @@ def run_with_cmdline_args(args):
         backend=args.dist_backend,
         args=(cfg, output_dir, runner, args.eval_only, args.resume),
     )
+
+    if args.save_return_file is not None:
+        save_binary_outputs(args.save_return_file, outputs)
+
+    return outputs
 
 
 def cli(args):

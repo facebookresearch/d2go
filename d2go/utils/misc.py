@@ -6,7 +6,7 @@ import logging
 import os
 import warnings
 from contextlib import contextmanager
-from typing import Dict, Iterator
+from typing import Any, Dict, Iterator
 
 # @manual=//vision/fair/detectron2/detectron2:detectron2
 import detectron2.utils.comm as comm
@@ -116,6 +116,18 @@ def read_trained_model_configs(output_dir: str) -> Dict[str, str]:
         os.path.splitext(filename)[0]: os.path.join(trained_model_config_dir, filename)
         for filename in PathManager.ls(trained_model_config_dir)
     }
+
+
+def save_binary_outputs(filename: str, outputs: Any) -> None:
+    """Helper function to serialize and save function outputs in binary format."""
+    with PathManager.open(filename, "wb") as f:
+        torch.save(outputs, f)
+
+
+def load_binary_outputs(filename: str) -> Any:
+    """Helper function to load and deserialize function outputs saved in binary format."""
+    with PathManager.open(filename, "rb") as f:
+        return torch.load(f)
 
 
 @contextmanager
