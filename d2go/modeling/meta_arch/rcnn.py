@@ -312,7 +312,7 @@ def default_rcnn_prepare_for_quant_convert(self, cfg):
         assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
         self.backbone = convert_fx(
             self.backbone,
-            convert_custom_config_dict={
+            convert_custom_config={
                 "preserved_attributes": ["size_divisibility", "padding_constraints"]
             },
         )
