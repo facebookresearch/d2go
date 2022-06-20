@@ -23,6 +23,7 @@ def add_fcos_configs(cfg):
     cfg.MODEL.FCOS.FOCAL_LOSS_GAMMA = 2.0
 
 
+# Re-register D2's meta-arch in D2Go with updated APIs
 @META_ARCH_REGISTRY.register()
 class FCOS(d2_FCOS):
     """

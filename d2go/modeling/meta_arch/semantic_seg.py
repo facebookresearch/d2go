@@ -6,16 +6,16 @@ from typing import Any, Dict, List
 import torch
 import torch.nn as nn
 from d2go.export.api import PredictorExportConfig
+from d2go.registry.builtin import META_ARCH_REGISTRY
+from detectron2.modeling import SemanticSegmentor as _SemanticSegmentor
 from detectron2.modeling.postprocessing import sem_seg_postprocess
 from detectron2.structures import ImageList
 from mobile_cv.predictor.api import FuncInfo
 
 
-class SemanticSegmentorPatch:
-    METHODS_TO_PATCH = [
-        "prepare_for_export",
-    ]
-
+# Re-register D2's meta-arch in D2Go with updated APIs
+@META_ARCH_REGISTRY.register()
+class SemanticSegmentor(_SemanticSegmentor):
     def prepare_for_export(self, cfg, inputs, predictor_type):
         preprocess_info = FuncInfo.gen_func_info(
             PreprocessFunc,

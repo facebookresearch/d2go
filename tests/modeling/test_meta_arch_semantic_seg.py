@@ -8,14 +8,9 @@ import tempfile
 import unittest
 
 import torch
-from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import Detectron2GoRunner
 from mobile_cv.predictor.api import create_predictor
-
-# Add APIs to D2's meta arch, this is usually called in runner's setup, however in
-# unittest it needs to be called sperarately. (maybe we should apply this by default)
-patch_d2_meta_arch()
 
 
 def _get_batch(height, width, is_train):
