@@ -3,4 +3,4 @@
 
 # NOTE: making necessary imports to register with Registry
 # @fb-only: from . import fb  # isort:skip  # noqa 
-from . import fcos  # noqa
+from . import fcos, panoptic_fpn, rcnn, retinanet, semantic_seg  # noqa

@@ -22,7 +22,6 @@ from d2go.data.utils import (
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
-from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import build_model, kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
@@ -209,7 +208,6 @@ class Detectron2GoRunner(BaseRunner):
         inject_coco_datasets(cfg)
         register_dynamic_datasets(cfg)
         update_cfg_if_using_adhoc_dataset(cfg)
-        patch_d2_meta_arch()
 
     @classmethod
     def get_default_cfg(cls):

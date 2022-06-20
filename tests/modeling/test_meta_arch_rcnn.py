@@ -7,7 +7,6 @@ import os
 import unittest
 
 import torch
-from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.data_loader_helper import (
@@ -16,10 +15,6 @@ from d2go.utils.testing.data_loader_helper import (
 from d2go.utils.testing.rcnn_helper import get_quick_test_config_opts, RCNNBaseTestCases
 from mobile_cv.common.misc.file_utils import make_temp_directory
 from mobile_cv.common.misc.oss_utils import is_oss
-
-# Add APIs to D2's meta arch, this is usually called in runner's setup, however in
-# unittest it needs to be called sperarately. (maybe we should apply this by default)
-patch_d2_meta_arch()
 
 
 def _maybe_skip_test(self, predictor_type):

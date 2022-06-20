@@ -14,7 +14,6 @@ from d2go.config import CfgNode
 from d2go.data.build import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import update_cfg_if_using_adhoc_dataset
-from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.modeling import build_model
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
@@ -338,7 +337,6 @@ class DefaultTask(pl.LightningModule):
         inject_coco_datasets(cfg)
         register_dynamic_datasets(cfg)
         update_cfg_if_using_adhoc_dataset(cfg)
-        patch_d2_meta_arch()
 
     @classmethod
     def build_model(cls, cfg: CfgNode, eval_only=False):

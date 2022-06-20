@@ -13,7 +13,11 @@ from d2go.config import CfgNode
 from d2go.config.utils import flatten_config_dict
 from d2go.export.api import PredictorExportConfig
 from d2go.quantization.qconfig import set_backend_and_create_qconfig
-from detectron2.modeling import GeneralizedRCNN
+from d2go.registry.builtin import META_ARCH_REGISTRY
+from detectron2.modeling import (
+    GeneralizedRCNN as _GeneralizedRCNN,
+    ProposalNetwork as _ProposalNetwork,
+)
 from detectron2.modeling.backbone.fpn import FPN
 from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.projects.point_rend import PointRendMaskHead
@@ -40,14 +44,9 @@ RCNN_PREPARE_FOR_QUANT_REGISTRY = Registry("RCNN_PREPARE_FOR_QUANT")
 RCNN_PREPARE_FOR_QUANT_CONVERT_REGISTRY = Registry("RCNN_PREPARE_FOR_QUANT_CONVERT")
 
 
-class GeneralizedRCNNPatch:
-    METHODS_TO_PATCH = [
-        "prepare_for_export",
-        "prepare_for_quant",
-        "prepare_for_quant_convert",
-        "_cast_model_to_device",
-    ]
-
+# Re-register D2's meta-arch in D2Go with updated APIs
+@META_ARCH_REGISTRY.register()
+class GeneralizedRCNN(_GeneralizedRCNN):
     def prepare_for_export(self, cfg, *args, **kwargs):
         func = RCNN_PREPARE_FOR_EXPORT_REGISTRY.get(cfg.RCNN_PREPARE_FOR_EXPORT)
         return func(self, cfg, *args, **kwargs)
@@ -64,6 +63,12 @@ class GeneralizedRCNNPatch:
 
     def _cast_model_to_device(self, device):
         return _cast_detection_model(self, device)
+
+
+# Re-register D2's meta-arch in D2Go with updated APIs
+@META_ARCH_REGISTRY.register()
+class ProposalNetwork(_ProposalNetwork):
+    pass
 
 
 @RCNN_PREPARE_FOR_EXPORT_REGISTRY.register()
@@ -499,8 +504,6 @@ class D2RCNNInferenceWrapper(nn.Module):
 # TODO: model.to(device) might not work for detection meta-arch, this function is the
 # workaround, in general, we might need a meta-arch API for this if needed.
 def _cast_detection_model(model, device):
-    from d2go.registry.builtin import META_ARCH_REGISTRY
-
     # check model is an instance of one of the meta arch
     from detectron2.export.caffe2_modeling import Caffe2MetaArch
 

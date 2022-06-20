@@ -9,7 +9,6 @@ from typing import Optional
 
 import d2go.data.transforms.box_utils as bu
 import torch
-from d2go.export.d2_meta_arch import patch_d2_meta_arch
 from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.data_loader_helper import (
@@ -254,11 +253,6 @@ class RCNNBaseTestCases:
 
     class TemplateTestCase(unittest.TestCase):  # TODO: maybe subclass from TestMetaArch
         def setUp(self):
-            # Add APIs to D2's meta arch, this is usually called in runner's setup,
-            # however in unittest it needs to be called sperarately.
-            # TODO: maybe we should apply this by default
-            patch_d2_meta_arch()
-
             self.setup_test_dir()
             assert hasattr(self, "test_dir")
 
