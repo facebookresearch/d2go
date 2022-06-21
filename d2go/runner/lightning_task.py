@@ -490,6 +490,7 @@ class DefaultTask(pl.LightningModule):
         return self
 
 
+# TODO(T123654122): subclass of DefaultTask will be refactored
 class GeneralizedRCNNTask(DefaultTask):
     @classmethod
     def get_default_cfg(cls):
