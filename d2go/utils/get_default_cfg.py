@@ -8,6 +8,7 @@ from d2go.data.build import (
 from d2go.data.config import add_d2go_data_default_configs
 from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.backbone.fbnet_cfg import add_fbnet_v2_default_configs
+from d2go.modeling.distillation import add_distillation_configs
 from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
@@ -63,6 +64,8 @@ def get_default_cfg(_C):
     add_subclass_configs(_C)
     # _C.MODEL.FCOS
     add_fcos_configs(_C)
+    # _C.DISTILLATION
+    add_distillation_configs(_C)
 
     # Set find_unused_parameters for DistributedDataParallel.
     _C.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
