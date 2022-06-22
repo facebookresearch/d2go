@@ -19,7 +19,13 @@ from d2go.config import (
 )
 from d2go.config.utils import get_diff_cfg
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
-from d2go.runner import BaseRunner, create_runner, DefaultTask, RunnerV2Mixin
+from d2go.runner import (
+    BaseRunner,
+    create_runner,
+    DefaultTask,
+    import_runner,
+    RunnerV2Mixin,
+)
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info
@@ -127,6 +133,37 @@ def build_basic_cli_args(
     return args
 
 
+def create_cfg_from_cli(
+    config_file: str,
+    overwrites: Optional[List[str]],
+    runner_class: Union[None, str, Type[BaseRunner], Type[DefaultTask]],
+) -> CfgNode:
+    """
+    Centralized function to load config object from config file. It currently supports:
+        - YACS based config (return yacs's CfgNode)
+    """
+    config_file = reroute_config_path(config_file)
+    with PathManager.open(config_file, "r") as f:
+        # TODO: switch to logger, note that we need to initilaize logger outside of main
+        # for running locally.
+        print("Loaded config file {}:\n{}".format(config_file, f.read()))
+
+    if isinstance(runner_class, str):
+        runner_class = import_runner(runner_class)
+    if runner_class is None or issubclass(runner_class, RunnerV2Mixin):
+        # Runner-less API
+        cfg = load_full_config_from_file(config_file)
+    else:
+        # backward compatible for old API
+        cfg = runner_class.get_default_cfg()
+        cfg.merge_from_file(config_file)
+
+    cfg.merge_from_list(overwrites or [])
+    cfg.freeze()
+
+    return cfg
+
+
 def prepare_for_launch(args):
     """
     Load config, figure out working directory, create runner.
@@ -135,22 +172,19 @@ def prepare_for_launch(args):
             priority than cfg.OUTPUT_DIR.
     """
     logger.info(args)
-    runner = create_runner(args.runner)
 
-    with PathManager.open(reroute_config_path(args.config_file), "r") as f:
-        print("Loaded config file {}:\n{}".format(args.config_file, f.read()))
+    cfg = create_cfg_from_cli(
+        config_file=args.config_file,
+        overwrites=args.opts,
+        runner_class=args.runner,
+    )
 
-    if isinstance(runner, RunnerV2Mixin):
-        cfg = load_full_config_from_file(args.config_file)
-    else:
-        cfg = runner.get_default_cfg()
-        cfg.merge_from_file(args.config_file)
-
-    cfg.merge_from_list(args.opts)
-    cfg.freeze()
-
+    # overwrite the output_dir based on config if output is not set via cli
     assert args.output_dir or args.config_file
     output_dir = args.output_dir or cfg.OUTPUT_DIR
+
+    # TODO (T123980149): use runner_name across the board
+    runner = create_runner(args.runner)
     return cfg, output_dir, runner
 
 
