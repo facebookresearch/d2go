@@ -5,14 +5,14 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 import mobile_cv.torch.utils_pytorch.comm as comm
 import pytorch_lightning as pl  # type: ignore
 from d2go.config import CfgNode
 from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
-from d2go.runner.lightning_task import GeneralizedRCNNTask
+from d2go.runner.lightning_task import DefaultTask, GeneralizedRCNNTask
 from d2go.setup import basic_argument_parser, setup_after_launch
 from d2go.trainer.lightning.training_loop import _do_test, _do_train
 from detectron2.utils.file_io import PathManager
@@ -92,7 +92,7 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
 def main(
     cfg: CfgNode,
     output_dir: str,
-    task_cls: Type[GeneralizedRCNNTask] = GeneralizedRCNNTask,
+    runner_class: Union[str, Type[DefaultTask]],
     eval_only: bool = False,
 ) -> TrainOutput:
     """Main function for launching a training with lightning trainer
@@ -102,7 +102,7 @@ def main(
         num_processes: Number of processes on each node.
         eval_only: True if run evaluation only.
     """
-    setup_after_launch(cfg, output_dir, task_cls)
+    task_cls: Type[DefaultTask] = setup_after_launch(cfg, output_dir, runner_class)
 
     task = task_cls.from_config(cfg, eval_only)
     trainer_params = get_trainer_params(cfg)
@@ -130,7 +130,7 @@ def main(
 
 def build_config(
     config_file: str,
-    task_cls: Type[GeneralizedRCNNTask],
+    task_cls: Type[DefaultTask],
     opts: Optional[List[str]] = None,
 ) -> CfgNode:
     """Build config node from config file

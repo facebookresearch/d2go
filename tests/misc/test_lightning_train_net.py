@@ -33,7 +33,7 @@ class TestLightningTrainNet(unittest.TestCase):
         cfg = self._get_cfg(root_dir)
         # set distributed backend to none to avoid spawning child process,
         # which doesn't inherit the temporary dataset
-        main(cfg, root_dir)
+        main(cfg, root_dir, GeneralizedRCNNTask)
 
     @tempdir
     @enable_ddp_env
@@ -41,7 +41,7 @@ class TestLightningTrainNet(unittest.TestCase):
         """tests saving and loading from checkpoint."""
         cfg = self._get_cfg(tmp_dir)
 
-        out = main(cfg, tmp_dir)
+        out = main(cfg, tmp_dir, GeneralizedRCNNTask)
         ckpts = [f for f in os.listdir(tmp_dir) if f.endswith(".ckpt")]
         expected_ckpts = ("last.ckpt", FINAL_MODEL_CKPT)
         for ckpt in expected_ckpts:
@@ -53,7 +53,7 @@ class TestLightningTrainNet(unittest.TestCase):
         cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
 
         output_dir = os.path.join(tmp_dir, "output")
-        out2 = main(cfg2, output_dir, eval_only=True)
+        out2 = main(cfg2, output_dir, GeneralizedRCNNTask, eval_only=True)
         accuracy = flatten_config_dict(out.accuracy)
         accuracy2 = flatten_config_dict(out2.accuracy)
         for k in accuracy:

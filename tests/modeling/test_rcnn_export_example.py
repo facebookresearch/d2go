@@ -24,8 +24,7 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
             (dataset_name,),
         ]
         # START_WIKI_EXAMPLE_TAG
-        runner = GeneralizedRCNNRunner()
-        cfg = runner.get_default_cfg()
+        cfg = GeneralizedRCNNRunner.get_default_cfg()
         cfg.merge_from_file("detectron2go://mask_rcnn_fbnetv3a_dsmask_C4.yaml")
         cfg.merge_from_list(get_quick_test_config_opts())
         cfg.merge_from_list(config_list)
@@ -35,7 +34,7 @@ def maskrcnn_export_caffe2_vs_torchvision_opset_format_example(self):
         _ = main(
             cfg,
             tmp_dir,
-            runner,
+            GeneralizedRCNNRunner,
             predictor_types=["torchscript@c2_ops", "torchscript"],
         )
 

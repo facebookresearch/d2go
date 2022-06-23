@@ -9,11 +9,12 @@ deployable format (such as torchscript, caffe2, ...)
 import copy
 import logging
 import sys
-import typing
+from typing import Dict, List, Type, Union
 
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
-from d2go.config import temp_defrost
+from d2go.config import CfgNode, temp_defrost
 from d2go.export.exporter import convert_and_export_predictor
+from d2go.runner import BaseRunner
 from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
 from mobile_cv.common.misc.py import post_mortem_if_fail
 
@@ -22,11 +23,11 @@ logger = logging.getLogger("d2go.tools.export")
 
 
 def main(
-    cfg,
-    output_dir,
-    runner,
+    cfg: CfgNode,
+    output_dir: str,
+    runner_class: Union[str, Type[BaseRunner]],
     # binary specific optional arguments
-    predictor_types: typing.List[str],
+    predictor_types: List[str],
     device: str = "cpu",
     compare_accuracy: bool = False,
     skip_if_fail: bool = False,
@@ -39,7 +40,7 @@ def main(
         # ret["accuracy_comparison"] = accuracy_comparison
 
     cfg = copy.deepcopy(cfg)
-    setup_after_launch(cfg, output_dir, runner)
+    runner = setup_after_launch(cfg, output_dir, runner_class)
 
     with temp_defrost(cfg):
         cfg.merge_from_list(["MODEL.DEVICE", device])
@@ -56,7 +57,7 @@ def main(
     input_args = (first_batch,)
     flops_utils.print_model_flops(model, input_args)
 
-    predictor_paths: typing.Dict[str, str] = {}
+    predictor_paths: Dict[str, str] = {}
     for typ in predictor_types:
         # convert_and_export_predictor might alter the model, copy before calling it
         pytorch_model = copy.deepcopy(model)
@@ -82,11 +83,11 @@ def main(
 
 @post_mortem_if_fail()
 def run_with_cmdline_args(args):
-    cfg, output_dir, runner = prepare_for_launch(args)
+    cfg, output_dir, runner_name = prepare_for_launch(args)
     return main(
         cfg,
         output_dir,
-        runner,
+        runner_name,
         # binary specific optional arguments
         predictor_types=args.predictor_types,
         device=args.device,

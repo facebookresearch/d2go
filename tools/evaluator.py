@@ -8,9 +8,12 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 
 import logging
 import sys
+from typing import Optional, Type, Union
 
 import torch
+from d2go.config import CfgNode
 from d2go.distributed import launch
+from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
     caffe2_global_init,
@@ -26,19 +29,19 @@ logger = logging.getLogger("d2go.tools.caffe2_evaluator")
 
 
 def main(
-    cfg,
-    output_dir,
-    runner,
+    cfg: CfgNode,
+    output_dir: str,
+    runner_class: Union[str, Type[BaseRunner]],
     # binary specific optional arguments
-    predictor_path,
-    num_threads=None,
-    caffe2_engine=None,
-    caffe2_logging_print_net_summary=0,
+    predictor_path: str,
+    num_threads: Optional[int] = None,
+    caffe2_engine: Optional[int] = None,
+    caffe2_logging_print_net_summary: int = 0,
 ):
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
     print("run with quantized engine: ", torch.backends.quantized.engine)
 
-    setup_after_launch(cfg, output_dir, runner)
+    runner = setup_after_launch(cfg, output_dir, runner_class)
     caffe2_global_init(caffe2_logging_print_net_summary, num_threads)
 
     predictor = create_predictor(predictor_path)
@@ -52,7 +55,7 @@ def main(
 
 @post_mortem_if_fail()
 def run_with_cmdline_args(args):
-    cfg, output_dir, runner = prepare_for_launch(args)
+    cfg, output_dir, runner_name = prepare_for_launch(args)
     launch(
         post_mortem_if_fail_for_main(main),
         args.num_processes,
@@ -64,7 +67,7 @@ def run_with_cmdline_args(args):
         args=(
             cfg,
             output_dir,
-            runner,
+            runner_name,
             # binary specific optional arguments
             args.predictor_path,
             args.num_threads,
