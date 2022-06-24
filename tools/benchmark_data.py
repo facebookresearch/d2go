@@ -6,10 +6,13 @@ Tool for benchmarking data loading
 
 import logging
 import time
+from typing import Type, Union
 
 import detectron2.utils.comm as comm
 import numpy as np
+from d2go.config import CfgNode
 from d2go.distributed import get_num_processes_per_machine, launch
+from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
     post_mortem_if_fail_for_main,
@@ -21,17 +24,16 @@ from detectron2.fb.env import get_launch_environment
 from detectron2.utils.logger import log_every_n_seconds
 from fvcore.common.history_buffer import HistoryBuffer
 
-
 logger = logging.getLogger("d2go.tools.benchmark_data")
 
 
 def main(
-    cfg,
-    output_dir,
-    runner=None,
-    is_train=True,
+    cfg: CfgNode,
+    output_dir: str,
+    runner_class: Union[str, Type[BaseRunner]],
+    is_train: bool = True,
 ):
-    setup_after_launch(cfg, output_dir, runner)
+    runner = setup_after_launch(cfg, output_dir, runner_class)
 
     if is_train:
         data_loader = runner.build_detection_train_loader(cfg)
@@ -133,7 +135,7 @@ def main(
 
 
 def run_with_cmdline_args(args):
-    cfg, output_dir, runner = prepare_for_launch(args)
+    cfg, output_dir, runner_name = prepare_for_launch(args)
     launch(
         post_mortem_if_fail_for_main(main),
         num_processes_per_machine=args.num_processes,
@@ -141,7 +143,7 @@ def run_with_cmdline_args(args):
         machine_rank=args.machine_rank,
         dist_url=args.dist_url,
         backend=args.dist_backend,
-        args=(cfg, output_dir, runner, args.is_train),
+        args=(cfg, output_dir, runner_name, args.is_train),
     )
 
 

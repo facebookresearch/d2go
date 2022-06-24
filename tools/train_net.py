@@ -7,10 +7,12 @@ Detection Training Script.
 
 import logging
 import sys
-from typing import List
+from typing import List, Type, Union
 
 import detectron2.utils.comm as comm
+from d2go.config import CfgNode
 from d2go.distributed import launch
+from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
     build_basic_cli_args,
@@ -30,14 +32,13 @@ logger = logging.getLogger("d2go.tools.train_net")
 
 
 def main(
-    cfg,
-    output_dir,
-    runner=None,
-    eval_only=False,
-    # NOTE: always enable resume when running on cluster
-    resume=True,
+    cfg: CfgNode,
+    output_dir: str,
+    runner_class: Union[str, Type[BaseRunner]],
+    eval_only: bool = False,
+    resume: bool = True,  # NOTE: always enable resume when running on cluster
 ):
-    setup_after_launch(cfg, output_dir, runner)
+    runner = setup_after_launch(cfg, output_dir, runner_class)
 
     model = runner.build_model(cfg)
     logger.info("Model:\n{}".format(model))
@@ -84,7 +85,7 @@ def main(
 
 
 def run_with_cmdline_args(args):
-    cfg, output_dir, runner = prepare_for_launch(args)
+    cfg, output_dir, runner_name = prepare_for_launch(args)
 
     outputs = launch(
         post_mortem_if_fail_for_main(main),
@@ -93,7 +94,7 @@ def run_with_cmdline_args(args):
         machine_rank=args.machine_rank,
         dist_url=args.dist_url,
         backend=args.dist_backend,
-        args=(cfg, output_dir, runner, args.eval_only, args.resume),
+        args=(cfg, output_dir, runner_name, args.eval_only, args.resume),
     )
 
     if args.save_return_file is not None:

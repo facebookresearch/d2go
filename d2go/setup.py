@@ -6,7 +6,7 @@ import argparse
 import logging
 import os
 import time
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 
 import detectron2.utils.comm as comm
 import torch
@@ -19,13 +19,7 @@ from d2go.config import (
 )
 from d2go.config.utils import get_diff_cfg
 from d2go.distributed import get_local_rank, get_num_processes_per_machine
-from d2go.runner import (
-    BaseRunner,
-    create_runner,
-    DefaultTask,
-    import_runner,
-    RunnerV2Mixin,
-)
+from d2go.runner import BaseRunner, DefaultTask, import_runner, RunnerV2Mixin
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
 from detectron2.utils.collect_env import collect_env_info
@@ -149,6 +143,7 @@ def create_cfg_from_cli(
         print("Loaded config file {}:\n{}".format(config_file, f.read()))
 
     if isinstance(runner_class, str):
+        print(f"Importing runner: {runner_class} ...")
         runner_class = import_runner(runner_class)
     if runner_class is None or issubclass(runner_class, RunnerV2Mixin):
         # Runner-less API
@@ -164,7 +159,9 @@ def create_cfg_from_cli(
     return cfg
 
 
-def prepare_for_launch(args):
+def prepare_for_launch(
+    args,
+) -> Tuple[CfgNode, str, Optional[str]]:
     """
     Load config, figure out working directory, create runner.
         - when args.config_file is empty, returned cfg will be the default one
@@ -183,9 +180,7 @@ def prepare_for_launch(args):
     assert args.output_dir or args.config_file
     output_dir = args.output_dir or cfg.OUTPUT_DIR
 
-    # TODO (T123980149): use runner_name across the board
-    runner = create_runner(args.runner)
-    return cfg, output_dir, runner
+    return cfg, output_dir, args.runner
 
 
 def maybe_override_output_dir(cfg: CfgNode, output_dir: str):
@@ -202,8 +197,8 @@ def maybe_override_output_dir(cfg: CfgNode, output_dir: str):
 def setup_after_launch(
     cfg: CfgNode,
     output_dir: str,
-    runner: Union[BaseRunner, Type[DefaultTask], None],
-):
+    runner_class: Union[None, str, Type[BaseRunner], Type[DefaultTask]],
+) -> Union[None, BaseRunner, Type[DefaultTask]]:
     """
     Binary-level setup after entering DDP, including
         - creating working directory
@@ -222,10 +217,22 @@ def setup_after_launch(
     logger.info("Running with full config:\n{}".format(cfg))
     dump_cfg(cfg, os.path.join(output_dir, "config.yaml"))
 
-    if isinstance(runner, BaseRunner):
-        logger.info("Initializing runner ...")
+    if isinstance(runner_class, str):
+        logger.info(f"Importing runner: {runner_class} ...")
+        runner_class = import_runner(runner_class)
+
+    if issubclass(runner_class, DefaultTask):
+        # TODO(T123679504): merge this with runner code path to return runner instance
+        logger.info(f"Importing lightning task: {runner_class} ...")
+        runner = runner_class
+    elif issubclass(runner_class, BaseRunner):
+        logger.info(f"Initializing runner: {runner_class} ...")
+        runner = runner_class()
         runner = initialize_runner(runner, cfg)
         logger.info("Running with runner: {}".format(runner))
+    else:
+        assert runner_class is None, f"Unsupported runner class: {runner_class}"
+        runner = None
 
     # save the diff config
     default_cfg = (
@@ -240,6 +247,8 @@ def setup_after_launch(
 
     # scale the config after dumping so that dumped config files keep original world size
     auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
+
+    return runner
 
 
 def setup_logger(

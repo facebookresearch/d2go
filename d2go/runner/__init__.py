@@ -18,6 +18,7 @@ __all__ = [
     "GeneralizedRCNNRunner",
     "TRAINER_HOOKS_REGISTRY",
     "create_runner",
+    "import_runner",
 ]
 
 
