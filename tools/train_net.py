@@ -97,10 +97,9 @@ def run_with_cmdline_args(args):
         args=(cfg, output_dir, runner_name, args.eval_only, args.resume),
     )
 
-    if args.save_return_file is not None:
-        save_binary_outputs(args.save_return_file, outputs)
-
-    return outputs
+    # Only save results from global rank 0 for consistency.
+    if args.save_return_file is not None and args.machine_rank == 0:
+        save_binary_outputs(args.save_return_file, outputs[0])
 
 
 def cli(args=None):
