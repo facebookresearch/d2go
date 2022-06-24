@@ -26,9 +26,13 @@ from d2go.modeling import build_model, kmeans_anchors, model_ema
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import QATCheckpointer, QATHook, setup_qat_model
+from d2go.runner.config_defaults import (
+    get_base_runner_default_cfg,
+    get_detectron2go_runner_default_cfg,
+    get_generalized_rcnn_runner_default_cfg,
+)
 from d2go.runner.training_hooks import update_hooks_from_registry
 from d2go.utils.flop_calculator import attach_profilers
-from d2go.utils.get_default_cfg import get_default_cfg
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
@@ -129,11 +133,6 @@ def default_scale_quantization_configs(cfg, new_world_size):
 
 
 @fb_overwritable()
-def add_fb_base_runner_default_configs(cfg: CfgNode) -> CfgNode:
-    return cfg
-
-
-@fb_overwritable()
 def prepare_fb_model(cfg: CfgNode, model: torch.nn.Module) -> torch.nn.Module:
     return model
 
@@ -161,19 +160,7 @@ class BaseRunner(object):
 
     @classmethod
     def get_default_cfg(cls):
-        """
-        Override `get_default_cfg` for adding non common config.
-        """
-        from detectron2.config import get_cfg as get_d2_cfg
-
-        cfg = get_d2_cfg()
-        cfg = CfgNode.cast_from_other_class(
-            cfg
-        )  # upgrade from D2's CfgNode to D2Go's CfgNode
-
-        cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
-
-        return cfg
+        return get_base_runner_default_cfg(CfgNode())
 
     def build_model(self, cfg, eval_only=False):
         # cfg may need to be reused to build trace model again, thus clone
@@ -211,12 +198,7 @@ class Detectron2GoRunner(BaseRunner):
 
     @classmethod
     def get_default_cfg(cls):
-        cfg = super(Detectron2GoRunner, Detectron2GoRunner).get_default_cfg()
-
-        cfg.PROFILERS = ["default_flop_counter"]
-        cfg = add_fb_base_runner_default_configs(cfg)
-
-        return get_default_cfg(cfg)
+        return get_detectron2go_runner_default_cfg(CfgNode())
 
     # temporary API
     def _build_model(self, cfg, eval_only=False):
@@ -616,24 +598,7 @@ class Detectron2GoRunner(BaseRunner):
         return QATHook(cfg, self.build_detection_train_loader)
 
 
-def _add_rcnn_default_config(_C):
-    _C.EXPORT_CAFFE2 = CfgNode()
-    _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
-
-    # Options about how to export the model
-    _C.RCNN_EXPORT = CfgNode()
-    # whether or not to include the postprocess (GeneralizedRCNN._postprocess) step
-    # inside the exported model
-    _C.RCNN_EXPORT.INCLUDE_POSTPROCESS = False
-
-    _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
-    _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
-    _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
-
-
 class GeneralizedRCNNRunner(Detectron2GoRunner):
     @classmethod
     def get_default_cfg(cls):
-        _C = super(GeneralizedRCNNRunner, GeneralizedRCNNRunner).get_default_cfg()
-        _add_rcnn_default_config(_C)
-        return _C
+        return get_generalized_rcnn_runner_default_cfg(CfgNode())
