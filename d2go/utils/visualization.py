@@ -4,12 +4,28 @@
 
 from typing import Optional, Type
 
+from d2go.config import CfgNode as CN
 from d2go.registry.builtin import META_ARCH_REGISTRY
-
 from detectron2.data import DatasetCatalog, detection_utils as utils, MetadataCatalog
 from detectron2.evaluation import DatasetEvaluator
 from detectron2.utils.events import get_event_storage
 from detectron2.utils.visualizer import Visualizer
+
+
+def add_tensorboard_default_configs(_C):
+    _C.TENSORBOARD = CN()
+    # Output from dataloader will be written to tensorboard at this frequency
+    _C.TENSORBOARD.TRAIN_LOADER_VIS_WRITE_PERIOD = 20
+    # This controls max number of images over all batches, be considerate when
+    # increasing this number because it takes disk space and slows down the training
+    _C.TENSORBOARD.TRAIN_LOADER_VIS_MAX_IMAGES = 16
+    # Max number of images per dataset to visualize in tensorboard during evaluation
+    _C.TENSORBOARD.TEST_VIS_MAX_IMAGES = 16
+
+    # TENSORBOARD.LOG_DIR will be determined solely by OUTPUT_DIR
+    _C.register_deprecated_key("TENSORBOARD.LOG_DIR")
+
+    return _C
 
 
 class VisualizerWrapper(object):

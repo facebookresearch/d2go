@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+
+
 from d2go.config import CfgNode as CN
 from d2go.data.build import (
     add_random_subset_training_sampler_default_configs,
@@ -13,34 +15,24 @@ from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
+from d2go.utils.visualization import add_tensorboard_default_configs
+from detectron2.config import get_cfg as get_d2_cfg
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
-@fb_overwritable()
-def add_tensorboard_default_configs(_C):
-    _C.TENSORBOARD = CN()
-    # Output from dataloader will be written to tensorboard at this frequency
-    _C.TENSORBOARD.TRAIN_LOADER_VIS_WRITE_PERIOD = 20
-    # This controls max number of images over all batches, be considerate when
-    # increasing this number because it takes disk space and slows down the training
-    _C.TENSORBOARD.TRAIN_LOADER_VIS_MAX_IMAGES = 16
-    # Max number of images per dataset to visualize in tensorboard during evaluation
-    _C.TENSORBOARD.TEST_VIS_MAX_IMAGES = 16
-
-    # TENSORBOARD.LOG_DIR will be determined solely by OUTPUT_DIR
-    _C.register_deprecated_key("TENSORBOARD.LOG_DIR")
-
-
-@fb_overwritable()
-def add_abnormal_checker_configs(_C):
+def _add_abnormal_checker_configs(_C: CN) -> None:
     _C.ABNORMAL_CHECKER = CN()
     # check and log the iteration with bad losses if enabled
     _C.ABNORMAL_CHECKER.ENABLED = False
 
 
 @fb_overwritable()
-def get_default_cfg(_C):
-    # _C.MODEL.FBNET...
+def _add_detectron2go_runner_default_fb_cfg(_C: CN) -> None:
+    pass
+
+
+def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
+    # _C.MODEL.FBNET_V2...
     add_fbnet_v2_default_configs(_C)
     # _C.MODEL.FROZEN_LAYER_REG_EXP
     add_model_freezing_configs(_C)
@@ -59,7 +51,7 @@ def get_default_cfg(_C):
     # _C.DATALOADER.RANDOM_SUBSET_RATIO
     add_random_subset_training_sampler_default_configs(_C)
     # _C.ABNORMAL_CHECKER
-    add_abnormal_checker_configs(_C)
+    _add_abnormal_checker_configs(_C)
     # _C.MODEL.SUBCLASS
     add_subclass_configs(_C)
     # _C.MODEL.FCOS
@@ -97,4 +89,53 @@ def get_default_cfg(_C):
     # List of modeling hook names
     _C.MODEL.MODELING_HOOKS = []
 
-    return _C
+    # Profiler
+    _C.PROFILERS = ["default_flop_counter"]
+
+    # Add FB specific configs
+    _add_detectron2go_runner_default_fb_cfg(_C)
+
+
+def _add_rcnn_default_config(_C: CN) -> None:
+    _C.EXPORT_CAFFE2 = CN()
+    _C.EXPORT_CAFFE2.USE_HEATMAP_MAX_KEYPOINT = False
+
+    # Options about how to export the model
+    _C.RCNN_EXPORT = CN()
+    # whether or not to include the postprocess (GeneralizedRCNN._postprocess) step
+    # inside the exported model
+    _C.RCNN_EXPORT.INCLUDE_POSTPROCESS = False
+
+    _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
+    _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
+    _C.RCNN_PREPARE_FOR_QUANT_CONVERT = "default_rcnn_prepare_for_quant_convert"
+
+
+def get_base_runner_default_cfg(cfg: CN) -> CN:
+    assert len(cfg) == 0, f"start from scratch, but previous cfg is non-empty: {cfg}"
+
+    cfg = get_d2_cfg()
+    # upgrade from D2's CfgNode to D2Go's CfgNode
+    cfg = CN.cast_from_other_class(cfg)
+
+    cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
+
+    return cfg
+
+
+def get_detectron2go_runner_default_cfg(cfg: CN) -> CN:
+    assert len(cfg) == 0, f"start from scratch, but previous cfg is non-empty: {cfg}"
+
+    cfg = get_base_runner_default_cfg(cfg)
+    _add_detectron2go_runner_default_cfg(cfg)
+
+    return cfg
+
+
+def get_generalized_rcnn_runner_default_cfg(cfg: CN) -> CN:
+    assert len(cfg) == 0, f"start from scratch, but previous cfg is non-empty: {cfg}"
+
+    cfg = get_detectron2go_runner_default_cfg(cfg)
+    _add_rcnn_default_config(cfg)
+
+    return cfg
