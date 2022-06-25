@@ -19,6 +19,7 @@ from d2go.config.utils import (
     get_cfg_diff_table,
     get_diff_cfg,
     get_from_flattened_config_dict,
+    merge_cfg_lists,
 )
 from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from d2go.runner import GeneralizedRCNNRunner
@@ -215,6 +216,14 @@ class TestConfigUtils(unittest.TestCase):
         self.assertTrue("c0.c1.c2" in table)  # c0.c1.c2 key mismatched
         self.assertTrue("c0.c4.c2" in table)  # c0.c4.c2 key mismatched
         self.assertTrue("Key not exists" in table)  # has mismatched key
+
+    def test_merge_cfg_lists(self):
+        l1 = ["a", "1", "b.b1", "1", "c.c1.c2", "1"]
+        l2 = ["b.b1", "2", "c.c1.c2", "2", "d", "2"]
+
+        merged_list = merge_cfg_lists(l1, l2)
+        expected_results = ["a", "1", "b.b1", "2", "c.c1.c2", "2", "d", "2"]
+        self.assertEqual(merged_list, expected_results)
 
 
 class TestAutoScaleWorldSize(unittest.TestCase):

@@ -262,3 +262,17 @@ def resolve_default_config(cfg):
     cfg[DEFAULTS_KEY] = updater_names
 
     return cfg
+
+
+def merge_cfg_lists(cfg_list1: List[str], cfg_list2: List[str]) -> List[str]:
+    """Merge two override cfg lists by merging the config keys and updating the values.
+    The output list will contain all the override params from both lists and will work with
+    cfg.merge_from_list(...).
+    """
+    cfg_dict = {key: val for key, val in zip(cfg_list1[0::2], cfg_list1[1::2])}
+    cfg_dict.update({key: val for key, val in zip(cfg_list2[0::2], cfg_list2[1::2])})
+    merged_list = []
+    for k, v in cfg_dict.items():
+        merged_list.append(k)
+        merged_list.append(v)
+    return merged_list
