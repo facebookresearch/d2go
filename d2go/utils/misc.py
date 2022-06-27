@@ -98,26 +98,6 @@ def dump_trained_model_configs(
     return trained_model_configs
 
 
-# TODO: Remove once the interface for passing the result of training is figured out.
-def read_trained_model_configs(output_dir: str) -> Dict[str, str]:
-    """Reads trained model config files from output_dir.
-
-    Args:
-        output_dir: output directory.
-
-    Returns:
-        A map of model name to model config path.
-    """
-    trained_model_config_dir = os.path.join(output_dir, TRAINED_MODEL_CONFIGS_DIR)
-    if not PathManager.exists(trained_model_config_dir):
-        return {}
-    return {
-        # model_name.yaml -> model_name
-        os.path.splitext(filename)[0]: os.path.join(trained_model_config_dir, filename)
-        for filename in PathManager.ls(trained_model_config_dir)
-    }
-
-
 def save_binary_outputs(filename: str, outputs: Any) -> None:
     """Helper function to serialize and save function outputs in binary format."""
     with PathManager.open(filename, "wb") as f:
