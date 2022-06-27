@@ -134,7 +134,7 @@ def _open_mock(*args, **kwargs):
     return MoreMagicMock()
 
 
-def _register_mock(self, name: Optional[str], obj: Any):
+def _register_mock(self, name: Optional[str], obj: Any) -> None:
     """Convert `obj` to LazyRegisterable"""
 
     # Instead of register the (possibly mocked) object which is created under the
@@ -163,7 +163,18 @@ def _register_mock(self, name: Optional[str], obj: Any):
             module=_resolve_real_module(obj.__module__), name=obj.__qualname__
         )
 
-    return orig__register(self, name, obj)
+    assert isinstance(obj, LazyRegisterable)
+    # During bootstrap, it's possible that the object is already registered
+    # (as non-lazy), because importing a library first and then bootstramp it. Simply
+    # skip the lazy-registration.
+    if name in self and not isinstance(self[name], LazyRegisterable):
+        if self[name].__module__ == obj.module and (
+            obj.name is None or self[name].__name__ == obj.name
+        ):
+            _log(2, f"{obj} has already registered as {self[name]}, skip...")
+            return
+
+    orig__register(self, name, obj)
 
 
 @contextlib.contextmanager
