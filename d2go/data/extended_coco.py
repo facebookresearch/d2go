@@ -262,7 +262,10 @@ def print_conversion_report(ann_error_report, image_error_report, ex_warning_fn)
 def _assign_annotations_to_record(
     record: Dict, converted_anns: List[Dict], all_cat_names: Optional[List[str]]
 ) -> None:
-    if converted_anns and all(["file_name" in ann for ann in converted_anns]):
+    record["annotations"] = converted_anns
+    if converted_anns and all(
+        [ann.get("file_name", "").endswith(".png") for ann in converted_anns]
+    ):
         if len(converted_anns) == 1:
             record["sem_seg_file_name"] = converted_anns[0]["file_name"]
             return
@@ -273,8 +276,6 @@ def _assign_annotations_to_record(
             all_cat_names[ann["category_id"]]: ann["file_name"]
             for ann in converted_anns
         }
-    else:
-        record["annotations"] = converted_anns
 
 
 def _process_associations(
