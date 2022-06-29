@@ -10,10 +10,9 @@ from typing import Any, Dict, List, Optional, Type, Union
 import mobile_cv.torch.utils_pytorch.comm as comm
 import pytorch_lightning as pl  # type: ignore
 from d2go.config import CfgNode
-from d2go.runner import create_runner
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
-from d2go.runner.lightning_task import DefaultTask, GeneralizedRCNNTask
-from d2go.setup import basic_argument_parser, setup_after_launch
+from d2go.runner.lightning_task import DefaultTask
+from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
 from d2go.trainer.lightning.training_loop import _do_test, _do_train
 from detectron2.utils.file_io import PathManager
 from pytorch_lightning.callbacks import Callback, LearningRateMonitor, TQDMProgressBar
@@ -128,30 +127,10 @@ def main(
     )
 
 
-def build_config(
-    config_file: str,
-    task_cls: Type[DefaultTask],
-    opts: Optional[List[str]] = None,
-) -> CfgNode:
-    """Build config node from config file
-    Args:
-        config_file: Path to a D2go config file
-        output_dir: When given, this will override the OUTPUT_DIR in the config
-        opts: A list of config overrides. e.g. ["SOLVER.IMS_PER_BATCH", "2"]
-    """
-    cfg = task_cls.get_default_cfg()
-    cfg.merge_from_file(config_file)
-
-    if opts:
-        cfg.merge_from_list(opts)
-    return cfg
-
-
 def argument_parser():
     parser = basic_argument_parser(distributed=True, requires_output_dir=False)
-    parser.add_argument(
-        "--num-gpus", type=int, default=0, help="number of GPUs per machine"
-    )
+    # Change default runner argument
+    parser.set_defaults(runner="d2go.runner.lightning_task.GeneralizedRCNNTask")
     parser.add_argument(
         "--eval-only", action="store_true", help="perform evaluation only"
     )
@@ -160,16 +139,12 @@ def argument_parser():
 
 if __name__ == "__main__":
     args = argument_parser().parse_args()
-    task_cls = create_runner(args.runner) if args.runner else GeneralizedRCNNTask
-    cfg = build_config(args.config_file, task_cls, args.opts)
-
-    assert args.output_dir or args.config_file
-    output_dir = args.output_dir or cfg.OUTPUT_DIR
+    cfg, output_dir, runner_name = prepare_for_launch(args)
 
     ret = main(
         cfg,
         output_dir,
-        task_cls,
+        runner_name,
         eval_only=args.eval_only,
     )
     if get_rank() == 0:
