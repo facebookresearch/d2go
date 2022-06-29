@@ -152,6 +152,9 @@ def argument_parser():
     parser.add_argument(
         "--num-gpus", type=int, default=0, help="number of GPUs per machine"
     )
+    parser.add_argument(
+        "--eval-only", action="store_true", help="perform evaluation only"
+    )
     return parser
 
 
@@ -159,11 +162,15 @@ if __name__ == "__main__":
     args = argument_parser().parse_args()
     task_cls = create_runner(args.runner) if args.runner else GeneralizedRCNNTask
     cfg = build_config(args.config_file, task_cls, args.opts)
+
+    assert args.output_dir or args.config_file
+    output_dir = args.output_dir or cfg.OUTPUT_DIR
+
     ret = main(
         cfg,
-        args.output_dir,
+        output_dir,
         task_cls,
-        eval_only=False,  # eval_only
+        eval_only=args.eval_only,
     )
     if get_rank() == 0:
         print(ret)
