@@ -19,7 +19,7 @@ from typing import List
 import torch
 import torch.nn as nn
 from d2go.config import CfgNode as CN
-from d2go.modeling.meta_arch import modeling_hook as mh
+from d2go.modeling import modeling_hook as mh
 from d2go.registry.builtin import (
     DISTILLATION_ALGORITHM_REGISTRY,
     DISTILLATION_HELPER_REGISTRY,

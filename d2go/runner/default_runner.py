@@ -22,7 +22,8 @@ from d2go.data.utils import (
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
-from d2go.modeling import build_model, kmeans_anchors, model_ema
+from d2go.modeling import kmeans_anchors, model_ema
+from d2go.modeling.api import build_d2go_model
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import QATCheckpointer, QATHook, setup_qat_model
@@ -164,7 +165,7 @@ class BaseRunner(object):
 
     def build_model(self, cfg, eval_only=False):
         # cfg may need to be reused to build trace model again, thus clone
-        model = build_model(cfg.clone())
+        model = build_d2go_model(cfg.clone())
 
         if eval_only:
             checkpointer = DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR)
@@ -205,7 +206,7 @@ class Detectron2GoRunner(BaseRunner):
         # build_model might modify the cfg, thus clone
         cfg = cfg.clone()
 
-        model = build_model(cfg)
+        model = build_d2go_model(cfg)
         model_ema.may_build_model_ema(cfg, model)
 
         if cfg.MODEL.FROZEN_LAYER_REG_EXP:
