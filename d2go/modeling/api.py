@@ -2,14 +2,16 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import torch
+import torch.nn as nn
 
-from d2go.modeling.meta_arch import modeling_hook as mh
+from d2go.config import CfgNode
+from d2go.modeling import modeling_hook as mh
 from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.utils.misc import _log_api_usage
 from detectron2.modeling import META_ARCH_REGISTRY as D2_META_ARCH_REGISTRY
 
 
-def build_model(cfg):
+def build_meta_arch(cfg):
     """
     Build the whole model architecture, defined by ``cfg.MODEL.META_ARCHITECTURE``.
     Note that it does not load any weights from ``cfg``.
@@ -28,6 +30,13 @@ def build_model(cfg):
     model = META_ARCH_REGISTRY.get(meta_arch)(cfg)
     model.to(torch.device(cfg.MODEL.DEVICE))
 
+    _log_api_usage("modeling.meta_arch." + meta_arch)
+    return model
+
+
+def build_d2go_model(cfg: CfgNode) -> nn.Module:
+    model = build_meta_arch(cfg)
+
     # apply modeling hooks
     # some custom projects bypass d2go's default config so may not have the
     # MODELING_HOOKS key
@@ -35,5 +44,4 @@ def build_model(cfg):
         hook_names = cfg.MODEL.MODELING_HOOKS
         model = mh.build_and_apply_modeling_hooks(model, cfg, hook_names)
 
-    _log_api_usage("modeling.meta_arch." + meta_arch)
     return model

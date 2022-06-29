@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from d2go.config import CfgNode
+from d2go.modeling import modeling_hook as mh
 from d2go.modeling.distillation import (
     _build_teacher,
     add_distillation_configs,
@@ -20,7 +21,6 @@ from d2go.modeling.distillation import (
     PseudoLabeler,
     RelabelTargetInBatch,
 )
-from d2go.modeling.meta_arch import modeling_hook as mh
 from d2go.registry.builtin import (
     DISTILLATION_ALGORITHM_REGISTRY,
     DISTILLATION_HELPER_REGISTRY,

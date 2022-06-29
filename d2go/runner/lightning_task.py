@@ -14,7 +14,7 @@ from d2go.config import CfgNode
 from d2go.data.build import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import update_cfg_if_using_adhoc_dataset
-from d2go.modeling import build_model
+from d2go.modeling.api import build_meta_arch
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import (
@@ -128,7 +128,7 @@ class DefaultTask(pl.LightningModule):
             self.dataset_evaluators[ModelTag.EMA] = []
 
     def _build_model(self) -> torch.nn.Module:
-        model = build_model(self.cfg)
+        model = build_meta_arch(self.cfg)
 
         if self.cfg.MODEL.FROZEN_LAYER_REG_EXP:
             set_requires_grad(model, self.cfg.MODEL.FROZEN_LAYER_REG_EXP, value=False)
