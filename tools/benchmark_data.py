@@ -143,7 +143,10 @@ def run_with_cmdline_args(args):
         machine_rank=args.machine_rank,
         dist_url=args.dist_url,
         backend=args.dist_backend,
-        args=(cfg, output_dir, runner_name, args.is_train),
+        args=(cfg, output_dir, runner_name),
+        kwargs={
+            "is_train": args.is_train,
+        },
     )
 
 
