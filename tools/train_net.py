@@ -94,7 +94,11 @@ def run_with_cmdline_args(args):
         machine_rank=args.machine_rank,
         dist_url=args.dist_url,
         backend=args.dist_backend,
-        args=(cfg, output_dir, runner_name, args.eval_only, args.resume),
+        args=(cfg, output_dir, runner_name),
+        kwargs={
+            "eval_only": args.eval_only,
+            "resume": args.resume,
+        },
     )
 
     # Only save results from global rank 0 for consistency.

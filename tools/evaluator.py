@@ -64,16 +64,13 @@ def run_with_cmdline_args(args):
         dist_url=args.dist_url,
         backend="GLOO",
         always_spawn=False,
-        args=(
-            cfg,
-            output_dir,
-            runner_name,
-            # binary specific optional arguments
-            args.predictor_path,
-            args.num_threads,
-            args.caffe2_engine,
-            args.caffe2_logging_print_net_summary,
-        ),
+        args=(cfg, output_dir, runner_name),
+        kwargs={
+            "predictor_path": args.predictor_path,
+            "num_threads": args.num_threads,
+            "caffe2_engine": args.caffe2_engine,
+            "caffe2_logging_print_net_summary": args.caffe2_logging_print_net_summary,
+        },
     )
 
 
