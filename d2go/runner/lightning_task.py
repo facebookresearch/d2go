@@ -476,10 +476,11 @@ class DefaultTask(pl.LightningModule):
                 rank_zero_info("Loaded EMA state from checkpoint.")
 
     def prepare_for_quant(self) -> pl.LightningModule:
+        example_input = self.model.example_input
         if hasattr(self.model, "prepare_for_quant"):
-            self.model = self.model.prepare_for_quant(self.cfg)
+            self.model = self.model.prepare_for_quant(self.cfg, example_input)
         else:
-            self.model = default_prepare_for_quant(self.cfg, self.model)
+            self.model = default_prepare_for_quant(self.cfg, self.model, example_input)
         return self
 
     def prepare_for_quant_convert(self) -> pl.LightningModule:

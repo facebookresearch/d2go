@@ -228,7 +228,7 @@ class TestDefaultRunner(unittest.TestCase):
 
         @META_ARCH_REGISTRY.register()
         class MetaArchForTestQAT(MetaArchForTest):
-            def prepare_for_quant(self, cfg):
+            def prepare_for_quant(self, cfg, example_inputs=None):
                 """Set the qconfig to updateable observers"""
                 self.qconfig = updateable_symmetric_moving_avg_minmax_config
                 return self

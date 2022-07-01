@@ -21,7 +21,7 @@ from torch.ao.quantization import (  # @manual
     QuantType,
 )
 from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
-from torch.ao.quantization.utils import get_quant_type
+from torch.ao.quantization.utils import get_fqn_to_example_inputs, get_quant_type
 
 
 QConfigDicts = Dict[str, Dict[str, Union[QConfig, QConfigDynamic]]]
@@ -172,16 +172,19 @@ class QuantizationMixin(ABC):
             attr: rgetattr(root, attr) for attr in attrs if rhasattr(root, attr)
         }
         prepared = root
-        # TODO[quant-example-inputs]: expose example_inputs as argument
-        # may need a dictionary that stores a map from submodule fqn to example_inputs
-        # for submodule
-        example_inputs = (torch.rand(1, 3, 3, 3),)
         if "" in configs:
-            prepared = prep_fn(root, configs[""], example_inputs)
+            prepared = prep_fn(root, configs[""], root.example_input_array)
         else:
+            fqn_to_example_inputs = get_fqn_to_example_inputs(
+                root, root.example_input_array
+            )
+
             for name, config in configs.items():
                 submodule = rgetattr(root, name)
-                rsetattr(root, name, prep_fn(submodule, config, example_inputs))
+                rsetattr(
+                    root, name, prep_fn(submodule, config, fqn_to_example_inputs[name])
+                )
+
         for attr, value in old_attrs.items():
             rsetattr(prepared, attr, value)
         return prepared

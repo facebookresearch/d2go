@@ -211,7 +211,8 @@ def mock_quantization_type(quant_func):
     return wrapper
 
 
-def default_prepare_for_quant(cfg, model):
+def default_prepare_for_quant(cfg, model, example_input=None):
+
     """
     Default implementation of preparing a model for quantization. This function will
     be called to before training if QAT is enabled, or before calibration during PTQ if
@@ -231,6 +232,9 @@ def default_prepare_for_quant(cfg, model):
     Args:
         model (nn.Module): a non-quantized model.
         cfg (CfgNode): config
+        example_input (Optional[Any]): optional example_input for model,
+        if it is not provided we'll use `model.example_input` when example_input
+        is required, Note: d2go assumes we always have a single example_input
 
     Return:
         nn.Module: a ready model for QAT training or PTQ calibration
@@ -249,12 +253,12 @@ def default_prepare_for_quant(cfg, model):
         # here, to be consistent with the FX branch
     else:  # FX graph mode quantization
         qconfig_dict = {"": qconfig}
-        # TODO[quant-example-inputs]: needs follow up to change the api
-        example_inputs = (torch.rand(1, 3, 3, 3),)
+        if example_input is None:
+            example_input = model.example_input
         if model.training:
-            model = prepare_qat_fx(model, qconfig_dict, example_inputs)
+            model = prepare_qat_fx(model, qconfig_dict, (example_input,))
         else:
-            model = prepare_fx(model, qconfig_dict, example_inputs)
+            model = prepare_fx(model, qconfig_dict, (example_input,))
 
     logger.info("Setup the model with qconfig:\n{}".format(qconfig))
 
@@ -265,16 +269,16 @@ def default_prepare_for_quant_convert(cfg, model):
     return convert_fx(model)
 
 
-def apply_prepare_for_quant(cfg, model):
+def apply_prepare_for_quant(cfg, model, example_input=None):
     # TODO: create a warning for the direct use of `torch.ao.quantization.get_default_qconfig`
     # or `torch.ao.quantization.get_default_qat_qconfig` without calling D2Go's high-level
     # `set_backend_and_create_qconfig` API.
 
     if hasattr(model, "prepare_for_quant"):
-        model = model.prepare_for_quant(cfg)
+        model = model.prepare_for_quant(cfg, example_input)
     else:
         logger.info("Using default implementation for prepare_for_quant")
-        model = default_prepare_for_quant(cfg, model)
+        model = default_prepare_for_quant(cfg, model, example_input)
 
     return model
 
@@ -288,7 +292,8 @@ def post_training_quantize(cfg, model, data_loader):
     for param in model.parameters():
         param.requires_grad = False
 
-    model = apply_prepare_for_quant(cfg, model)
+    example_input = next(iter(data_loader))
+    model = apply_prepare_for_quant(cfg, model, example_input)
     if cfg.QUANTIZATION.EAGER_MODE:
         torch.ao.quantization.prepare(model, inplace=True)
     logger.info("Prepared the PTQ model for calibration:\n{}".format(model))
