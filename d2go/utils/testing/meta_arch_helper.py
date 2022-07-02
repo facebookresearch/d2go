@@ -26,6 +26,11 @@ class DetMetaArchForTest(torch.nn.Module):
     def device(self):
         return self.conv.weight.device
 
+    @property
+    def example_input(self):
+        # TODO[quant-example-inputs]: set example_input properly
+        return torch.randn(1, 3, 224, 224)
+
     def forward(self, inputs):
         if not self.training:
             return self.inference(inputs)
@@ -52,7 +57,8 @@ class DetMetaArchForTest(torch.nn.Module):
         ret = [{"instances": instance}]
         return ret
 
-    def prepare_for_quant(self, cfg):
+    def prepare_for_quant(self, cfg, example_input=None):
+        # TODO[quant-example-inputs]: use example_input
         example_inputs = (torch.rand(1, 3, 3, 3),)
         self.avgpool = prepare_qat_fx(
             self.avgpool,
