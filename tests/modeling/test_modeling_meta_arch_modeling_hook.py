@@ -10,7 +10,7 @@ import torch
 from d2go.config import CfgNode
 from d2go.modeling import modeling_hook as mh
 from d2go.modeling.api import build_d2go_model
-from d2go.registry.builtin import META_ARCH_REGISTRY
+from d2go.registry.builtin import META_ARCH_REGISTRY, MODELING_HOOK_REGISTRY
 
 
 @META_ARCH_REGISTRY.register()
@@ -32,7 +32,7 @@ class PlusOneWrapper(torch.nn.Module):
         return self.model(x) + 1
 
 
-@mh.MODELING_HOOK_REGISTRY.register()
+@MODELING_HOOK_REGISTRY.register()
 class PlusOneHook(mh.ModelingHook):
     def __init__(self, cfg):
         super().__init__(cfg)
@@ -55,7 +55,7 @@ class TimesTwoWrapper(torch.nn.Module):
         return self.model(x) * 2
 
 
-@mh.MODELING_HOOK_REGISTRY.register()
+@MODELING_HOOK_REGISTRY.register()
 class TimesTwoHook(mh.ModelingHook):
     def __init__(self, cfg):
         super().__init__(cfg)
