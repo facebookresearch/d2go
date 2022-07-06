@@ -5,15 +5,7 @@ from abc import abstractmethod
 from typing import List
 
 import torch
-from detectron2.utils.registry import Registry
-
-MODELING_HOOK_REGISTRY = Registry("MODELING_HOOK")  # noqa F401 isort:skip
-MODELING_HOOK_REGISTRY.__doc__ = """
-Registry for modeling hook.
-
-The registered object will be called with `obj(cfg)`
-and expected to return a `ModelingHook` object.
-"""
+from d2go.registry.builtin import MODELING_HOOK_REGISTRY
 
 
 class ModelingHook(object):
