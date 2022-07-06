@@ -23,6 +23,7 @@ from d2go.modeling import modeling_hook as mh
 from d2go.registry.builtin import (
     DISTILLATION_ALGORITHM_REGISTRY,
     DISTILLATION_HELPER_REGISTRY,
+    MODELING_HOOK_REGISTRY,
 )
 from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.mixin import dynamic_mixin, remove_dynamic_mixin
@@ -225,7 +226,7 @@ class LabelDistillation(BaseDistillationAlgorithm):
         return super().forward(new_batched_inputs)
 
 
-@mh.MODELING_HOOK_REGISTRY.register()
+@MODELING_HOOK_REGISTRY.register()
 class DistillationModelingHook(mh.ModelingHook):
     """Wrapper hook that allows us to apply different distillation algorithms
     based on config
