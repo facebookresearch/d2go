@@ -22,6 +22,15 @@ CONFIG_UPDATER_REGISTRY = Registry("CONFIG_UPDATER")
 # Registry for meta-arch, registered nn.Module should follow D2Go's meta-arch API
 META_ARCH_REGISTRY = Registry("META_ARCH")
 
+# Modeling hook registry
+MODELING_HOOK_REGISTRY = Registry("MODELING_HOOK")
+MODELING_HOOK_REGISTRY.__doc__ = """
+Registry for modeling hook.
+
+The registered object will be called with `obj(cfg)`
+and expected to return a `ModelingHook` object.
+"""
+
 # Distillation algorithms
 DISTILLATION_ALGORITHM_REGISTRY = Registry("DISTILLATION_ALGORITHM")
 
