@@ -20,8 +20,10 @@ from .qconfig import set_backend_and_create_qconfig, smart_decode_backend
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):
+    from torch.ao.quantization import convert
     from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 else:
+    from torch.quantization import convert
     from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
 logger = logging.getLogger(__name__)
@@ -281,6 +283,21 @@ def apply_prepare_for_quant(cfg, model, example_input=None):
         model = default_prepare_for_quant(cfg, model, example_input)
 
     return model
+
+
+def convert_to_quantized_model(cfg, fp32_model):
+    """
+    Convert fake quant model (fp32 operators) to "real" quantized model (int8 operators)
+    """
+    if cfg.QUANTIZATION.EAGER_MODE:
+        int8_model = convert(fp32_model, inplace=False)
+    else:
+        # FX graph mode quantization
+        if hasattr(fp32_model, "custom_convert_fx"):
+            int8_model = fp32_model.custom_convert_fx(cfg)
+        else:
+            int8_model = convert_fx(fp32_model)
+    return int8_model
 
 
 @mock_quantization_type

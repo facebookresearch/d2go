@@ -29,7 +29,6 @@ from mobile_cv.arch.utils.quantize_utils import (
     wrap_quant_subclass,
 )
 from mobile_cv.predictor.api import FuncInfo
-from torch.ao.quantization import convert
 from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
 # from torch.ao.quantization.utils import get_fqn_to_example_inputs
@@ -329,35 +328,32 @@ def default_rcnn_prepare_for_quant(self, cfg, example_input=None):
 
 @RCNN_CUSTOM_CONVERT_FX_REGISTRY.register()
 def default_rcnn_custom_convert_fx(self, cfg):
-    if cfg.QUANTIZATION.EAGER_MODE:
-        convert(self, inplace=True)
-    else:
-        assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
-        self.backbone = convert_fx(
-            self.backbone,
-            convert_custom_config={
-                "preserved_attributes": ["size_divisibility", "padding_constraints"]
-            },
-        )
-        self.proposal_generator.rpn_head.rpn_feature = convert_fx(
-            self.proposal_generator.rpn_head.rpn_feature
-        )
-        self.proposal_generator.rpn_head.rpn_regressor.cls_logits = convert_fx(
-            self.proposal_generator.rpn_head.rpn_regressor.cls_logits
-        )
-        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = convert_fx(
-            self.proposal_generator.rpn_head.rpn_regressor.bbox_pred
-        )
-        self.roi_heads.box_head.roi_box_conv = convert_fx(
-            self.roi_heads.box_head.roi_box_conv
-        )
-        self.roi_heads.box_head.avgpool = convert_fx(self.roi_heads.box_head.avgpool)
-        self.roi_heads.box_predictor.cls_score = convert_fx(
-            self.roi_heads.box_predictor.cls_score
-        )
-        self.roi_heads.box_predictor.bbox_pred = convert_fx(
-            self.roi_heads.box_predictor.bbox_pred
-        )
+    assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
+    self.backbone = convert_fx(
+        self.backbone,
+        convert_custom_config={
+            "preserved_attributes": ["size_divisibility", "padding_constraints"]
+        },
+    )
+    self.proposal_generator.rpn_head.rpn_feature = convert_fx(
+        self.proposal_generator.rpn_head.rpn_feature
+    )
+    self.proposal_generator.rpn_head.rpn_regressor.cls_logits = convert_fx(
+        self.proposal_generator.rpn_head.rpn_regressor.cls_logits
+    )
+    self.proposal_generator.rpn_head.rpn_regressor.bbox_pred = convert_fx(
+        self.proposal_generator.rpn_head.rpn_regressor.bbox_pred
+    )
+    self.roi_heads.box_head.roi_box_conv = convert_fx(
+        self.roi_heads.box_head.roi_box_conv
+    )
+    self.roi_heads.box_head.avgpool = convert_fx(self.roi_heads.box_head.avgpool)
+    self.roi_heads.box_predictor.cls_score = convert_fx(
+        self.roi_heads.box_predictor.cls_score
+    )
+    self.roi_heads.box_predictor.bbox_pred = convert_fx(
+        self.roi_heads.box_predictor.bbox_pred
+    )
     return self
 
 

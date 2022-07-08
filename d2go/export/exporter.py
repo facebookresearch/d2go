@@ -24,24 +24,19 @@ NOTE:
 import json
 import logging
 import os
-from typing import Iterable, Tuple
+from typing import Iterable
 
-import torch
 import torch.nn as nn
 from d2go.config import CfgNode
 from d2go.export.api import ModelExportMethod, ModelExportMethodRegistry
-from d2go.quantization.modeling import post_training_quantize
+from d2go.quantization.modeling import (
+    convert_to_quantized_model,
+    post_training_quantize,
+)
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.predictor.api import ModelInfo, PredictorInfo
 
-TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
-if TORCH_VERSION > (1, 10):
-    from torch.ao.quantization import convert
-    from torch.ao.quantization.quantize_fx import convert_fx
-else:
-    from torch.quantization import convert
-    from torch.quantization.quantize_fx import convert_fx
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +58,9 @@ def convert_model(
 def convert_quantized_model(
     cfg: CfgNode, pytorch_model: nn.Module, data_loader: Iterable
 ) -> nn.Module:
-    """Converts pytorch model to fake-quantized pytorch model."""
     if not cfg.QUANTIZATION.QAT.ENABLED:
+        # For PTQ, converts pytorch model to fake-quantized pytorch model. For QAT, the
+        # built pytorch model is already fake-quantized.
         logger.info(
             "The model is not quantized during training, running post"
             " training quantization ..."
@@ -76,15 +72,8 @@ def convert_quantized_model(
             logger.warn("Post training quantized model has bn inside fused ops")
     logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
 
-    if hasattr(pytorch_model, "custom_convert_fx"):
-        pytorch_model = pytorch_model.custom_convert_fx(cfg)
-    else:
-        # TODO(T93870381): move this to a default function
-        if cfg.QUANTIZATION.EAGER_MODE:
-            pytorch_model = convert(pytorch_model, inplace=False)
-        else:  # FX graph mode quantization
-            pytorch_model = convert_fx(pytorch_model)
-
+    # convert the fake-quantized model to int8 model
+    pytorch_model = convert_to_quantized_model(cfg, pytorch_model)
     logger.info(f"Quantized Model:\n{pytorch_model}")
     return pytorch_model
 
