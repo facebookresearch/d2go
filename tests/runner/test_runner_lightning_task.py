@@ -184,7 +184,7 @@ class TestLightningTask(unittest.TestCase):
                 )
                 return self
 
-            def prepare_for_quant_convert(self, cfg):
+            def custom_convert_fx(self, cfg):
                 self.avgpool = convert_fx(
                     self.avgpool, convert_custom_config=self.custom_config_dict
                 )

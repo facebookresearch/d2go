@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # of registries might be over-kill.
 RCNN_PREPARE_FOR_EXPORT_REGISTRY = Registry("RCNN_PREPARE_FOR_EXPORT")
 RCNN_PREPARE_FOR_QUANT_REGISTRY = Registry("RCNN_PREPARE_FOR_QUANT")
-RCNN_PREPARE_FOR_QUANT_CONVERT_REGISTRY = Registry("RCNN_PREPARE_FOR_QUANT_CONVERT")
+RCNN_CUSTOM_CONVERT_FX_REGISTRY = Registry("RCNN_CUSTOM_CONVERT_FX")
 
 
 # Re-register D2's meta-arch in D2Go with updated APIs
@@ -57,10 +57,8 @@ class GeneralizedRCNN(_GeneralizedRCNN):
         func = RCNN_PREPARE_FOR_QUANT_REGISTRY.get(cfg.RCNN_PREPARE_FOR_QUANT)
         return func(self, cfg, *args, **kwargs)
 
-    def prepare_for_quant_convert(self, cfg, *args, **kwargs):
-        func = RCNN_PREPARE_FOR_QUANT_CONVERT_REGISTRY.get(
-            cfg.RCNN_PREPARE_FOR_QUANT_CONVERT
-        )
+    def custom_convert_fx(self, cfg, *args, **kwargs):
+        func = RCNN_CUSTOM_CONVERT_FX_REGISTRY.get(cfg.RCNN_CUSTOM_CONVERT_FX)
         return func(self, cfg, *args, **kwargs)
 
     def _cast_model_to_device(self, device):
@@ -329,8 +327,8 @@ def default_rcnn_prepare_for_quant(self, cfg, example_input=None):
     return model
 
 
-@RCNN_PREPARE_FOR_QUANT_CONVERT_REGISTRY.register()
-def default_rcnn_prepare_for_quant_convert(self, cfg):
+@RCNN_CUSTOM_CONVERT_FX_REGISTRY.register()
+def default_rcnn_custom_convert_fx(self, cfg):
     if cfg.QUANTIZATION.EAGER_MODE:
         convert(self, inplace=True)
     else:

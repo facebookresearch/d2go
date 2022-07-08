@@ -35,7 +35,7 @@ class CfgNode(_CfgNode):
     @classmethod
     def cast_from_other_class(cls, other_cfg):
         """Cast an instance of other CfgNode to D2Go's CfgNode (or its subclass)"""
-        new_cfg = CfgNode(other_cfg)
+        new_cfg = cls(other_cfg)
         # copy all fields inside __dict__, this will preserve fields like __deprecated_keys__
         for k, v in other_cfg.__dict__.items():
             new_cfg.__dict__[k] = v

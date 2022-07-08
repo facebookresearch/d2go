@@ -265,7 +265,7 @@ def default_prepare_for_quant(cfg, model, example_input=None):
     return model
 
 
-def default_prepare_for_quant_convert(cfg, model):
+def default_custom_convert_fx(cfg, model):
     return convert_fx(model)
 
 
