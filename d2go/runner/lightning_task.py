@@ -18,8 +18,8 @@ from d2go.modeling.api import build_meta_arch
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import (
+    default_custom_convert_fx,
     default_prepare_for_quant,
-    default_prepare_for_quant_convert,
 )
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
@@ -483,11 +483,11 @@ class DefaultTask(pl.LightningModule):
             self.model = default_prepare_for_quant(self.cfg, self.model, example_input)
         return self
 
-    def prepare_for_quant_convert(self) -> pl.LightningModule:
-        if hasattr(self.model, "prepare_for_quant_convert"):
-            self.model = self.model.prepare_for_quant_convert(self.cfg)
+    def custom_convert_fx(self) -> pl.LightningModule:
+        if hasattr(self.model, "custom_convert_fx"):
+            self.model = self.model.custom_convert_fx(self.cfg)
         else:
-            self.model = default_prepare_for_quant_convert(self.cfg, self.model)
+            self.model = default_custom_convert_fx(self.cfg, self.model)
         return self
 
 

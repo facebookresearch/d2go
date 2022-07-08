@@ -76,8 +76,8 @@ def convert_quantized_model(
             logger.warn("Post training quantized model has bn inside fused ops")
     logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
 
-    if hasattr(pytorch_model, "prepare_for_quant_convert"):
-        pytorch_model = pytorch_model.prepare_for_quant_convert(cfg)
+    if hasattr(pytorch_model, "custom_convert_fx"):
+        pytorch_model = pytorch_model.custom_convert_fx(cfg)
     else:
         # TODO(T93870381): move this to a default function
         if cfg.QUANTIZATION.EAGER_MODE:

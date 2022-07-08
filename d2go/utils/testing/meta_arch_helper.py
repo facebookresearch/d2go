@@ -67,7 +67,7 @@ class DetMetaArchForTest(torch.nn.Module):
         )
         return self
 
-    def prepare_for_quant_convert(self, cfg):
+    def custom_convert_fx(self, cfg):
         self.avgpool = convert_fx(self.avgpool)
         return self
 

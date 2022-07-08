@@ -206,8 +206,8 @@ class QuantizationMixin(ABC):
         Returns:
             The quantized model.
         """
-        if hasattr(root, "prepare_for_quant_convert"):
-            return root.prepare_for_quant_convert()
+        if hasattr(root, "custom_convert_fx"):
+            return root.custom_convert_fx()
         old_attrs = {
             attr: rgetattr(root, attr) for attr in attrs if rhasattr(root, attr)
         }
