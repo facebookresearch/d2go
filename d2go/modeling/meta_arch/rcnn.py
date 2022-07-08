@@ -282,7 +282,10 @@ def _fx_quant_prepare(self, cfg, example_input):
         self.roi_heads.box_head.avgpool,
         qconfig,
         fqn_to_example_inputs["roi_heads.box_head.avgpool"],
-        prepare_custom_config={"input_quantized_idxs": [0]},
+        prepare_custom_config={
+            "input_quantized_idxs": [0],
+            "output_quantized_idxs": [0],
+        },
     )
     self.roi_heads.box_predictor.cls_score = prep_fn(
         self.roi_heads.box_predictor.cls_score,
