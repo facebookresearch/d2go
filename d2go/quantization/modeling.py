@@ -276,11 +276,27 @@ def apply_prepare_for_quant(cfg, model, example_input=None):
     # or `torch.ao.quantization.get_default_qat_qconfig` without calling D2Go's high-level
     # `set_backend_and_create_qconfig` API.
 
-    if hasattr(model, "prepare_for_quant"):
-        model = model.prepare_for_quant(cfg, example_input)
+    if cfg.QUANTIZATION.EAGER_MODE:
+        if hasattr(model, "prepare_for_quant"):
+            model = model.prepare_for_quant(cfg)
+        else:
+            logger.info("Using default implementation for prepare_for_quant")
+            model = default_prepare_for_quant(cfg, model, example_input)
+        # NOTE: eager model needs to call prepare after `prepare_for_quant`
+        if model.training:
+            torch.ao.quantization.prepare_qat(model, inplace=True)
+        else:
+            torch.ao.quantization.prepare(model, inplace=True)
+
     else:
-        logger.info("Using default implementation for prepare_for_quant")
-        model = default_prepare_for_quant(cfg, model, example_input)
+        if hasattr(model, "custom_prepare_fx"):
+            model = model.custom_prepare_fx(cfg, example_input)
+        # TODO: remove this branch after completely separating the eager and FX APIs
+        elif hasattr(model, "prepare_for_quant"):
+            model = model.prepare_for_quant(cfg, example_input)
+        else:
+            logger.info("Using default implementation for prepare_for_quant")
+            model = default_prepare_for_quant(cfg, model, example_input)
 
     return model
 
@@ -311,8 +327,6 @@ def post_training_quantize(cfg, model, data_loader):
 
     example_input = next(iter(data_loader))
     model = apply_prepare_for_quant(cfg, model, example_input)
-    if cfg.QUANTIZATION.EAGER_MODE:
-        torch.ao.quantization.prepare(model, inplace=True)
     logger.info("Prepared the PTQ model for calibration:\n{}".format(model))
 
     # Option for forcing running calibration on GPU, works only when the model supports
@@ -374,8 +388,6 @@ def setup_qat_model(
 
     # prepare model for qat
     model = apply_prepare_for_quant(cfg, model_fp32)
-    if cfg.QUANTIZATION.EAGER_MODE:
-        torch.ao.quantization.prepare_qat(model, inplace=True)
 
     # make sure the proper qconfig are used in the model
     learnable_qat.check_for_learnable_fake_quant_ops(qat_method, model)
