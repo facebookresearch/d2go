@@ -108,7 +108,6 @@ def _add_rcnn_default_config(_C: CN) -> None:
 
     _C.RCNN_PREPARE_FOR_EXPORT = "default_rcnn_prepare_for_export"
     _C.RCNN_PREPARE_FOR_QUANT = "default_rcnn_prepare_for_quant"
-    _C.RCNN_CUSTOM_CONVERT_FX = "default_rcnn_custom_convert_fx"
     _C.register_deprecated_key("RCNN_PREPARE_FOR_QUANT_CONVERT")
 
 
