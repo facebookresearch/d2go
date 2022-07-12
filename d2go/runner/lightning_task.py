@@ -14,7 +14,9 @@ from d2go.config import CfgNode
 from d2go.data.build import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import update_cfg_if_using_adhoc_dataset
-from d2go.modeling.api import build_meta_arch
+
+from d2go.modeling import ema  # noqa  # needed for EMA hook
+from d2go.modeling.api import build_d2go_model
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import (
@@ -30,10 +32,7 @@ from d2go.runner.default_runner import (
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import VisualizationEvaluator
-from detectron2.solver import (
-    build_lr_scheduler as d2_build_lr_scheduler,
-    build_optimizer as d2_build_optimizer,
-)
+from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.logger import _flatten_dict
 
@@ -119,16 +118,13 @@ class DefaultTask(pl.LightningModule):
             # activate manual optimization for custom training step
             self.automatic_optimization = False
 
-        self.ema_state: Optional[EMAState] = None
-        if cfg.MODEL_EMA.ENABLED:
-            self.ema_state = EMAState(
-                decay=cfg.MODEL_EMA.DECAY,
-                device=cfg.MODEL_EMA.DEVICE or cfg.MODEL.DEVICE,
-            )
+        self.has_model_ema_state = hasattr(self.model, "ema_state")
+
+        if self.has_model_ema_state:
             self.dataset_evaluators[ModelTag.EMA] = []
 
     def _build_model(self) -> torch.nn.Module:
-        model = build_meta_arch(self.cfg)
+        model = build_d2go_model(self.cfg)
 
         if self.cfg.MODEL.FROZEN_LAYER_REG_EXP:
             set_requires_grad(model, self.cfg.MODEL.FROZEN_LAYER_REG_EXP, value=False)
@@ -154,10 +150,6 @@ class DefaultTask(pl.LightningModule):
             task = cls.load_from_checkpoint(cfg.MODEL.WEIGHTS, cfg=cfg, strict=False)
         else:
             task = cls(cfg)
-
-        if cfg.MODEL_EMA.ENABLED and cfg.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY:
-            assert task.ema_state, "EMA state is not loaded from checkpoint."
-            task.ema_state.apply_to(task.model)
 
         if eval_only:
             task.eval()
@@ -202,7 +194,7 @@ class DefaultTask(pl.LightningModule):
             batch, outputs
         )
 
-        if self.ema_state:
+        if self.has_model_ema_state:
             ema_outputs = self.model_ema(batch)
             self.dataset_evaluators[ModelTag.EMA][dataloader_idx].process(
                 batch, ema_outputs
@@ -402,21 +394,22 @@ class DefaultTask(pl.LightningModule):
     # Hooks
     # ---------------------------------------------------------------------------
     def on_pretrain_routine_end(self) -> None:
-        if self.cfg.MODEL_EMA.ENABLED:
-            if self.ema_state and self.ema_state.has_inited():
+        if self.has_model_ema_state:
+            if self.model.ema_state and self.model.ema_state.has_inited():
                 # ema_state could have been loaded from checkpoint
                 # move to the current CUDA device if not on CPU
-                self.ema_state.to(self.ema_state.device)
+                self.model.ema_state.to(self.model.ema_state.device)
                 return
-            self.ema_state = EMAState.from_model(
+            # do we still need this?
+            self.model.ema_state = EMAState.from_model(
                 self.model,
                 decay=self.cfg.MODEL_EMA.DECAY,
                 device=self.cfg.MODEL_EMA.DEVICE or self.cfg.MODEL.DEVICE,
             )
 
     def on_train_batch_end(self, *_) -> None:
-        if self.ema_state:
-            self.ema_state.update(self.model)
+        if self.has_model_ema_state:
+            self.model.ema_state.update(self.model)
 
     def on_test_epoch_start(self):
         self._on_evaluation_epoch_start()
@@ -425,21 +418,21 @@ class DefaultTask(pl.LightningModule):
         self._on_evaluation_epoch_start()
 
     def _on_evaluation_epoch_start(self):
-        if self.ema_state:
+        if self.has_model_ema_state:
             self.model_ema = deepcopy(self.model)
-            self.ema_state.apply_to(self.model_ema)
+            self.model.ema_state.apply_to(self.model_ema)
 
     def on_validation_epoch_end(self):
-        if self.ema_state and hasattr(self, "model_ema"):
+        if self.has_model_ema_state and hasattr(self, "model_ema"):
             del self.model_ema
 
     def on_test_epoch_end(self):
-        if self.ema_state and hasattr(self, "model_ema"):
+        if self.has_model_ema_state and hasattr(self, "model_ema"):
             del self.model_ema
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        if self.ema_state:
-            checkpoint["model_ema"] = self.ema_state.state_dict()
+        if self.has_model_ema_state:
+            checkpoint["model_ema"] = self.model.ema_state.state_dict()
 
     def on_load_checkpoint(self, checkpointed_state: Dict[str, Any]) -> None:
         """
@@ -462,17 +455,17 @@ class DefaultTask(pl.LightningModule):
 
         maybe_prepare_for_quantization(self, checkpointed_state)
 
-        if self.ema_state:
+        if self.has_model_ema_state:
             if "model_ema" not in checkpointed_state:
                 rank_zero_info(
                     "EMA is enabled but EMA state is not found in given checkpoint"
                 )
             else:
-                self.ema_state = EMAState(
+                self.model.ema_state = EMAState(
                     decay=self.cfg.MODEL_EMA.DECAY,
                     device=self.cfg.MODEL_EMA.DEVICE or self.cfg.MODEL.DEVICE,
                 )
-                self.ema_state.load_state_dict(checkpointed_state["model_ema"])
+                self.model.ema_state.load_state_dict(checkpointed_state["model_ema"])
                 rank_zero_info("Loaded EMA state from checkpoint.")
 
     def prepare_for_quant(self) -> pl.LightningModule:
