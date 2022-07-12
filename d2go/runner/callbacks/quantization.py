@@ -99,7 +99,7 @@ def checkpoint_has_prepared(checkpoint: Dict[str, Any]) -> bool:
 def maybe_prepare_for_quantization(model: LightningModule, checkpoint: Dict[str, Any]):
     if checkpoint_has_prepared(checkpoint) and not hasattr(model, PREPARED):
         # model has been prepared for QAT before saving into checkpoint
-        setattr(model, PREPARED, _deepcopy(model).prepare_for_quant())
+        setattr(model, PREPARED, _deepcopy(model).custom_prepare_fx())
 
 
 class QuantizationMixin(ABC):
@@ -161,8 +161,8 @@ class QuantizationMixin(ABC):
         Returns:
             The prepared Module to be used for quantized aware training.
         """
-        if hasattr(root, "prepare_for_quant"):
-            return root.prepare_for_quant()
+        if hasattr(root, "custom_prepare_fx"):
+            return root.custom_prepare_fx()
         prep_fn = (
             prepare_qat_fx
             if isinstance(self, QuantizationAwareTraining)

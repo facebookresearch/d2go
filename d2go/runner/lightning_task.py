@@ -19,7 +19,7 @@ from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import (
     default_custom_convert_fx,
-    default_prepare_for_quant,
+    default_custom_prepare_fx,
 )
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
@@ -475,12 +475,13 @@ class DefaultTask(pl.LightningModule):
                 self.ema_state.load_state_dict(checkpointed_state["model_ema"])
                 rank_zero_info("Loaded EMA state from checkpoint.")
 
-    def prepare_for_quant(self) -> pl.LightningModule:
-        example_input = self.model.example_input
-        if hasattr(self.model, "prepare_for_quant"):
-            self.model = self.model.prepare_for_quant(self.cfg, example_input)
+    def custom_prepare_fx(self) -> pl.LightningModule:
+        if hasattr(self.model, "custom_prepare_fx"):
+            self.model = self.model.custom_prepare_fx(self.cfg, example_input=None)
         else:
-            self.model = default_prepare_for_quant(self.cfg, self.model, example_input)
+            self.model = default_custom_prepare_fx(
+                self.cfg, self.model, example_input=None
+            )
         return self
 
     def custom_convert_fx(self) -> pl.LightningModule:
