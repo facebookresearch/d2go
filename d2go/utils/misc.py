@@ -127,3 +127,20 @@ def _log_api_usage(identifier: str):
     inside facebook's infra.
     """
     torch._C._log_api_usage_once("d2go." + identifier)
+
+
+def inplace_delegate(self, api_name, sub_module_name, *args, **kwargs):
+    """Helper function to delegate API calls to its submodule"""
+
+    sub_module = getattr(self, sub_module_name)
+    api_name = f"delegate_{api_name}"
+    if hasattr(sub_module, api_name):
+        func = getattr(sub_module, api_name)
+        # Assume the return of `func` will replace the submodule
+        setattr(self, sub_module_name, func(*args, **kwargs))
+        return self
+    else:
+        raise RuntimeError(
+            f"It seems the {sub_module_name} doesn't implement {api_name},"
+            " quantization might fail."
+        )
