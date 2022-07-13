@@ -161,9 +161,6 @@ class TestLightningTask(unittest.TestCase):
             )
 
     @tempdir
-    @unittest.skip(
-        "FX Graph Mode Quantization API has been updated, re-enable the test after PyTorch 1.13 stable release"
-    )
     def test_qat(self, tmp_dir):
         @META_ARCH_REGISTRY.register()
         class QuantizableDetMetaArchForTest(mah.DetMetaArchForTest):
@@ -174,7 +171,7 @@ class TestLightningTask(unittest.TestCase):
                 self.avgpool.preserved_attr = "foo"
                 self.avgpool.not_preserved_attr = "bar"
 
-            def prepare_for_quant(self, cfg):
+            def custom_prepare_fx(self, cfg, example_input=None):
                 example_inputs = (torch.rand(1, 3, 3, 3),)
                 self.avgpool = prepare_qat_fx(
                     self.avgpool,
