@@ -253,7 +253,7 @@ def default_prepare_for_quant(cfg, model):
     return model
 
 
-def default_custom_prepare_fx(cfg, model, example_input=None):
+def default_custom_prepare_fx(cfg, model, is_qat, example_input=None):
     """
     Similar to default_prepare_for_quant, but for FX graph mode.
 
@@ -264,11 +264,15 @@ def default_custom_prepare_fx(cfg, model, example_input=None):
     """
 
     assert not cfg.QUANTIZATION.EAGER_MODE
-    qconfig = set_backend_and_create_qconfig(cfg, is_train=model.training)
+    qconfig = set_backend_and_create_qconfig(cfg, is_train=is_qat)
     qconfig_dict = {"": qconfig}
     if example_input is None:
-        example_input = model.example_input
-    if model.training:
+        raise NotImplementedError(
+            "prepare FX requires `example_input`, user should implement this for"
+            " their own MetaArch."
+        )
+
+    if is_qat:
         model = prepare_qat_fx(model, qconfig_dict, (example_input,))
     else:
         model = prepare_fx(model, qconfig_dict, (example_input,))
@@ -281,7 +285,7 @@ def default_custom_convert_fx(cfg, model):
     return convert_fx(model)
 
 
-def convert_to_fake_quant_model(cfg, model, example_input=None):
+def convert_to_fake_quant_model(cfg, model, is_qat, example_input=None):
     """
     Centralized function to convert fp32 model (D2Go's MetaArch) to fake quant model.
     """
@@ -296,20 +300,20 @@ def convert_to_fake_quant_model(cfg, model, example_input=None):
             logger.info("Using default implementation for prepare_for_quant")
             model = default_prepare_for_quant(cfg, model)
         # NOTE: eager model needs to call prepare after `prepare_for_quant`
-        if model.training:
+        if is_qat:
             torch.ao.quantization.prepare_qat(model, inplace=True)
         else:
             torch.ao.quantization.prepare(model, inplace=True)
 
     else:
         if hasattr(model, "custom_prepare_fx"):
-            model = model.custom_prepare_fx(cfg, example_input)
+            model = model.custom_prepare_fx(cfg, is_qat, example_input)
         # TODO: remove this branch after completely separating the eager and FX APIs
         elif hasattr(model, "prepare_for_quant"):
             model = model.prepare_for_quant(cfg, example_input)
         else:
             logger.info("Using default implementation for custom_prepare_fx")
-            model = default_custom_prepare_fx(cfg, model, example_input)
+            model = default_custom_prepare_fx(cfg, model, is_qat, example_input)
 
     return model
 
@@ -340,7 +344,7 @@ def post_training_quantize(cfg, model, data_loader):
         param.requires_grad = False
 
     example_input = next(iter(data_loader))
-    model = convert_to_fake_quant_model(cfg, model, example_input)
+    model = convert_to_fake_quant_model(cfg, model, False, example_input)
     logger.info("Prepared the PTQ model for calibration:\n{}".format(model))
 
     # Option for forcing running calibration on GPU, works only when the model supports
@@ -401,7 +405,7 @@ def setup_qat_model(
     model_fp32_state_dict = model_fp32.state_dict()
 
     # prepare model for qat
-    model = convert_to_fake_quant_model(cfg, model_fp32)
+    model = convert_to_fake_quant_model(cfg, model_fp32, True)
 
     # make sure the proper qconfig are used in the model
     learnable_qat.check_for_learnable_fake_quant_ops(qat_method, model)

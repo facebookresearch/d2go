@@ -475,12 +475,14 @@ class DefaultTask(pl.LightningModule):
                 self.ema_state.load_state_dict(checkpointed_state["model_ema"])
                 rank_zero_info("Loaded EMA state from checkpoint.")
 
+    # TODO: remove custom_prepare_fx/custom_convert_fx from LightningModule
+
     def custom_prepare_fx(self) -> pl.LightningModule:
         if hasattr(self.model, "custom_prepare_fx"):
             self.model = self.model.custom_prepare_fx(self.cfg, example_input=None)
         else:
             self.model = default_custom_prepare_fx(
-                self.cfg, self.model, example_input=None
+                self.cfg, self.model, self.model.training, example_input=None
             )
         return self
 
