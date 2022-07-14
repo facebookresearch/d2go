@@ -58,8 +58,8 @@ class GeneralizedRCNN(_GeneralizedRCNN):
         func = RCNN_PREPARE_FOR_QUANT_REGISTRY.get(cfg.RCNN_PREPARE_FOR_QUANT)
         return func(self, cfg, *args, **kwargs)
 
-    def custom_prepare_fx(self, cfg, example_input=None):
-        return default_rcnn_custom_prepare_fx(self, cfg, example_input)
+    def custom_prepare_fx(self, cfg, is_qat, example_input=None):
+        return default_rcnn_custom_prepare_fx(self, cfg, is_qat, example_input)
 
     def custom_convert_fx(self, cfg):
         return default_rcnn_custom_convert_fx(self, cfg)
@@ -262,8 +262,8 @@ def _get_example_rcnn_input(image_tensor_size: int):
     return [_get_batch(), _get_batch()]
 
 
-def _set_qconfig(model, cfg):
-    model.qconfig = set_backend_and_create_qconfig(cfg, is_train=model.training)
+def _set_qconfig(model, cfg, is_qat):
+    model.qconfig = set_backend_and_create_qconfig(cfg, is_train=is_qat)
     # skip quantization for point rend head
     if (
         hasattr(model, "roi_heads")
@@ -277,7 +277,7 @@ def _set_qconfig(model, cfg):
 @RCNN_PREPARE_FOR_QUANT_REGISTRY.register()
 def default_rcnn_prepare_for_quant(self, cfg):
     model = self
-    _set_qconfig(model, cfg)
+    _set_qconfig(model, cfg, model.training)
 
     # Modify the model for eager mode
     model = _apply_eager_mode_quant(cfg, model)
@@ -289,14 +289,14 @@ def default_rcnn_prepare_for_quant(self, cfg):
     return model
 
 
-def default_rcnn_custom_prepare_fx(self, cfg, example_input=None):
+def default_rcnn_custom_prepare_fx(self, cfg, is_qat, example_input=None):
     model = self
-    _set_qconfig(model, cfg)
+    _set_qconfig(model, cfg, is_qat)
 
     # construct example input for FX when not provided
     if example_input is None:
         assert (
-            model.training
+            is_qat
         ), "Currently only (FX mode) QAT requires user-provided `example_input`"
 
         # make sure the image size can be divided by all strides and size_divisibility
@@ -307,13 +307,13 @@ def default_rcnn_custom_prepare_fx(self, cfg, example_input=None):
 
         example_input = _get_example_rcnn_input(image_tensor_size)
 
-    _fx_quant_prepare(model, cfg, example_input)
+    _fx_quant_prepare(model, cfg, is_qat, example_input)
 
     return model
 
 
-def _fx_quant_prepare(self, cfg, example_input):
-    prep_fn = prepare_qat_fx if self.training else prepare_fx
+def _fx_quant_prepare(self, cfg, is_qat, example_input):
+    prep_fn = prepare_qat_fx if is_qat else prepare_fx
     qconfig = {"": self.qconfig}
     assert not isinstance(self.backbone, FPN), "FPN is not supported in FX mode"
     with EventStorage() as _:  # D2's rcnn requires EventStorage when for loss
