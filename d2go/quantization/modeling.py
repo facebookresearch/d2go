@@ -306,6 +306,13 @@ def convert_to_fake_quant_model(cfg, model, is_qat, example_input=None):
             torch.ao.quantization.prepare(model, inplace=True)
 
     else:
+        # FX graph mode requires the model to be symbolically traceable, swap common
+        # modules like SyncBN to FX-friendly version.
+        if not is_qat:
+            # NOTE: we only do this for PTQ, because we want to keep using unmodified
+            # model during QAT.
+            model = fuse_utils.swap_modules(model)
+
         if hasattr(model, "custom_prepare_fx"):
             model = model.custom_prepare_fx(cfg, is_qat, example_input)
         # TODO: remove this branch after completely separating the eager and FX APIs
