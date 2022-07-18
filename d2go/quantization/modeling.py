@@ -297,7 +297,9 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
         if hasattr(model, "prepare_for_quant"):
             model = model.prepare_for_quant(cfg)
         else:
-            logger.info("Using default implementation for prepare_for_quant")
+            logger.info(
+                "Using default implementation for prepare_for_quant (eager mode)"
+            )
             model = default_prepare_for_quant(cfg, model)
         # NOTE: eager model needs to call prepare after `prepare_for_quant`
         if is_qat:
@@ -315,11 +317,10 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
 
         if hasattr(model, "custom_prepare_fx"):
             model = model.custom_prepare_fx(cfg, is_qat, example_input)
-        # TODO: remove this branch after completely separating the eager and FX APIs
-        elif hasattr(model, "prepare_for_quant"):
-            model = model.prepare_for_quant(cfg, example_input)
         else:
-            logger.info("Using default implementation for custom_prepare_fx")
+            logger.info(
+                "Using default implementation for custom_prepare_fx (FX graph mode)"
+            )
             model = default_custom_prepare_fx(cfg, model, is_qat, example_input)
 
     return model
