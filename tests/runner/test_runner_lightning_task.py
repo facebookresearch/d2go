@@ -171,7 +171,7 @@ class TestLightningTask(unittest.TestCase):
                 self.avgpool.preserved_attr = "foo"
                 self.avgpool.not_preserved_attr = "bar"
 
-            def custom_prepare_fx(self, cfg, example_input=None):
+            def custom_prepare_fx(self, cfg, is_qat, example_input=None):
                 example_inputs = (torch.rand(1, 3, 3, 3),)
                 self.avgpool = prepare_qat_fx(
                     self.avgpool,

@@ -52,7 +52,7 @@ class DetMetaArchForTest(torch.nn.Module):
         ret = [{"instances": instance}]
         return ret
 
-    def custom_prepare_fx(self, cfg, example_input=None):
+    def custom_prepare_fx(self, cfg, is_qat, example_input=None):
         example_inputs = (torch.rand(1, 3, 3, 3),)
         self.avgpool = prepare_qat_fx(
             self.avgpool,
