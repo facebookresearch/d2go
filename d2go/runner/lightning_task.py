@@ -477,12 +477,14 @@ class DefaultTask(pl.LightningModule):
 
     # TODO: remove custom_prepare_fx/custom_convert_fx from LightningModule
 
-    def custom_prepare_fx(self) -> pl.LightningModule:
+    def custom_prepare_fx(self, is_qat) -> pl.LightningModule:
         if hasattr(self.model, "custom_prepare_fx"):
-            self.model = self.model.custom_prepare_fx(self.cfg, example_input=None)
+            self.model = self.model.custom_prepare_fx(
+                self.cfg, is_qat, example_input=None
+            )
         else:
             self.model = default_custom_prepare_fx(
-                self.cfg, self.model, self.model.training, example_input=None
+                self.cfg, self.model, is_qat, example_input=None
             )
         return self
 
