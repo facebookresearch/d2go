@@ -9,7 +9,8 @@ deployable format (such as torchscript, caffe2, ...)
 import copy
 import logging
 import sys
-from typing import Dict, List, Type, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List, Type, Union
 
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
 from d2go.config import CfgNode, temp_defrost
@@ -22,6 +23,12 @@ from mobile_cv.common.misc.py import post_mortem_if_fail
 logger = logging.getLogger("d2go.tools.export")
 
 
+@dataclass
+class ExporterOutput:
+    predictor_paths: Dict[str, str]
+    accuracy_comparison: Dict[str, Any]
+
+
 def main(
     cfg: CfgNode,
     output_dir: str,
@@ -31,7 +38,7 @@ def main(
     device: str = "cpu",
     compare_accuracy: bool = False,
     skip_if_fail: bool = False,
-):
+) -> ExporterOutput:
     if compare_accuracy:
         raise NotImplementedError(
             "compare_accuracy functionality isn't currently supported."
@@ -76,9 +83,10 @@ def main(
             if not skip_if_fail:
                 raise e
 
-    ret = {"predictor_paths": predictor_paths, "accuracy_comparison": {}}
-
-    return ret
+    return ExporterOutput(
+        predictor_paths=predictor_paths,
+        accuracy_comparison={},
+    )
 
 
 @post_mortem_if_fail()
