@@ -9,11 +9,12 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 import logging
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Type, Union
+from typing import Optional, Type, Union
 
 import torch
 from d2go.config import CfgNode
 from d2go.distributed import launch
+from d2go.evaluation.api import AccuracyDict, MetricsDict
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
@@ -31,9 +32,8 @@ logger = logging.getLogger("d2go.tools.caffe2_evaluator")
 
 @dataclass
 class EvaluatorOutput:
-    accuracy: Dict[str, Any]
-    # TODO: support arbitrary levels of dicts
-    metrics: Dict[str, Dict[str, Dict[str, Dict[str, float]]]]
+    accuracy: AccuracyDict[float]
+    metrics: MetricsDict[float]
 
 
 def main(

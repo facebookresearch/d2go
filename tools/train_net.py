@@ -8,11 +8,12 @@ Detection Training Script.
 import logging
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 
 import detectron2.utils.comm as comm
 from d2go.config import CfgNode
 from d2go.distributed import launch
+from d2go.evaluation.api import AccuracyDict, MetricsDict
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
@@ -34,9 +35,8 @@ logger = logging.getLogger("d2go.tools.train_net")
 
 @dataclass
 class TrainNetOutput:
-    accuracy: Dict[str, Any]
-    # TODO: support arbitrary levels of dicts
-    metrics: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]
+    accuracy: AccuracyDict[float]
+    metrics: MetricsDict[float]
     model_configs: Dict[str, str]
     # TODO: decide if `tensorboard_log_dir` should be part of output
     tensorboard_log_dir: Optional[str] = None
