@@ -8,7 +8,8 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 
 import logging
 import sys
-from typing import Optional, Type, Union
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Type, Union
 
 import torch
 from d2go.config import CfgNode
@@ -28,6 +29,13 @@ from mobile_cv.predictor.api import create_predictor
 logger = logging.getLogger("d2go.tools.caffe2_evaluator")
 
 
+@dataclass
+class EvaluatorOutput:
+    accuracy: Dict[str, Any]
+    # TODO: support arbitrary levels of dicts
+    metrics: Dict[str, Dict[str, Dict[str, Dict[str, float]]]]
+
+
 def main(
     cfg: CfgNode,
     output_dir: str,
@@ -37,7 +45,7 @@ def main(
     num_threads: Optional[int] = None,
     caffe2_engine: Optional[int] = None,
     caffe2_logging_print_net_summary: int = 0,
-):
+) -> EvaluatorOutput:
     torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
     print("run with quantized engine: ", torch.backends.quantized.engine)
 
@@ -47,10 +55,10 @@ def main(
     predictor = create_predictor(predictor_path)
     metrics = runner.do_test(cfg, predictor)
     print_metrics_table(metrics)
-    return {
-        "accuracy": metrics,
-        "metrics": metrics,
-    }
+    return EvaluatorOutput(
+        accuracy=metrics,
+        metrics=metrics,
+    )
 
 
 @post_mortem_if_fail()

@@ -4,8 +4,7 @@
 
 import logging
 import os
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Type, Union
 
 import mobile_cv.torch.utils_pytorch.comm as comm
 import pytorch_lightning as pl  # type: ignore
@@ -13,6 +12,7 @@ from d2go.config import CfgNode
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import DefaultTask
 from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
+from d2go.tools.train_net import TrainNetOutput
 from d2go.trainer.lightning.training_loop import _do_test, _do_train
 from detectron2.utils.file_io import PathManager
 from pytorch_lightning.callbacks import Callback, LearningRateMonitor, TQDMProgressBar
@@ -26,14 +26,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("detectron2go.lightning.train_net")
 
 FINAL_MODEL_CKPT = f"model_final{ModelCheckpoint.FILE_EXTENSION}"
-
-
-@dataclass
-class TrainOutput:
-    output_dir: str
-    accuracy: Optional[Dict[str, Any]] = None
-    tensorboard_log_dir: Optional[str] = None
-    model_configs: Optional[Dict[str, str]] = None
 
 
 def _get_trainer_callbacks(cfg: CfgNode) -> List[Callback]:
@@ -93,7 +85,7 @@ def main(
     output_dir: str,
     runner_class: Union[str, Type[DefaultTask]],
     eval_only: bool = False,
-) -> TrainOutput:
+) -> TrainNetOutput:
     """Main function for launching a training with lightning trainer
     Args:
         cfg: D2go config node
@@ -119,10 +111,10 @@ def main(
     else:
         model_configs = _do_train(cfg, trainer, task)
 
-    return TrainOutput(
-        output_dir=cfg.OUTPUT_DIR,
+    return TrainNetOutput(
         tensorboard_log_dir=trainer_params["logger"].log_dir,
         accuracy=task.eval_res,
+        metrics=task.eval_res,
         model_configs=model_configs,
     )
 

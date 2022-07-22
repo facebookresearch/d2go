@@ -6,7 +6,8 @@ Tool for benchmarking data loading
 
 import logging
 import time
-from typing import Type, Union
+from dataclasses import dataclass
+from typing import Any, Dict, Type, Union
 
 import detectron2.utils.comm as comm
 import numpy as np
@@ -27,12 +28,19 @@ from fvcore.common.history_buffer import HistoryBuffer
 logger = logging.getLogger("d2go.tools.benchmark_data")
 
 
+@dataclass
+class BenchmarkDataOutput:
+    accuracy: Dict[str, Any]
+    # TODO: support arbitrary levels of dicts
+    metrics: Dict[str, Dict[str, Dict[str, Dict[str, float]]]]
+
+
 def main(
     cfg: CfgNode,
     output_dir: str,
     runner_class: Union[str, Type[BaseRunner]],
     is_train: bool = True,
-):
+) -> BenchmarkDataOutput:
     runner = setup_after_launch(cfg, output_dir, runner_class)
 
     if is_train:
@@ -128,10 +136,10 @@ def main(
     metrics = {"_name_": {dataset_name: results}}
     print_metrics_table(metrics)
 
-    return {
-        "accuracy": metrics,
-        "metrics": metrics,
-    }
+    return BenchmarkDataOutput(
+        accuracy=metrics,
+        metrics=metrics,
+    )
 
 
 def run_with_cmdline_args(args):

@@ -7,7 +7,8 @@ Detection Training Script.
 
 import logging
 import sys
-from typing import List, Type, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Type, Union
 
 import detectron2.utils.comm as comm
 from d2go.config import CfgNode
@@ -31,13 +32,23 @@ from detectron2.engine.defaults import create_ddp_model
 logger = logging.getLogger("d2go.tools.train_net")
 
 
+@dataclass
+class TrainNetOutput:
+    accuracy: Dict[str, Any]
+    # TODO: support arbitrary levels of dicts
+    metrics: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]
+    model_configs: Dict[str, str]
+    # TODO: decide if `tensorboard_log_dir` should be part of output
+    tensorboard_log_dir: Optional[str] = None
+
+
 def main(
     cfg: CfgNode,
     output_dir: str,
     runner_class: Union[str, Type[BaseRunner]],
     eval_only: bool = False,
     resume: bool = True,  # NOTE: always enable resume when running on cluster
-):
+) -> TrainNetOutput:
     runner = setup_after_launch(cfg, output_dir, runner_class)
 
     model = runner.build_model(cfg)
@@ -55,11 +66,11 @@ def main(
         model.eval()
         metrics = runner.do_test(cfg, model, train_iter=train_iter)
         print_metrics_table(metrics)
-        return {
-            "accuracy": metrics,
-            "model_configs": {},
-            "metrics": metrics,
-        }
+        return TrainNetOutput(
+            accuracy=metrics,
+            model_configs={},
+            metrics=metrics,
+        )
 
     model = create_ddp_model(
         model,
@@ -75,13 +86,13 @@ def main(
 
     # dump config files for trained models
     trained_model_configs = dump_trained_model_configs(cfg.OUTPUT_DIR, trained_cfgs)
-    return {
+    return TrainNetOutput(
         # for e2e_workflow
-        "accuracy": metrics,
+        accuracy=metrics,
         # for unit_workflow
-        "model_configs": trained_model_configs,
-        "metrics": metrics,
-    }
+        model_configs=trained_model_configs,
+        metrics=metrics,
+    )
 
 
 def run_with_cmdline_args(args):
