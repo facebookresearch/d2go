@@ -7,12 +7,13 @@ Tool for benchmarking data loading
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Type, Union
+from typing import Type, Union
 
 import detectron2.utils.comm as comm
 import numpy as np
 from d2go.config import CfgNode
 from d2go.distributed import get_num_processes_per_machine, launch
+from d2go.evaluation.api import AccuracyDict, MetricsDict
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
@@ -30,9 +31,8 @@ logger = logging.getLogger("d2go.tools.benchmark_data")
 
 @dataclass
 class BenchmarkDataOutput:
-    accuracy: Dict[str, Any]
-    # TODO: support arbitrary levels of dicts
-    metrics: Dict[str, Dict[str, Dict[str, Dict[str, float]]]]
+    accuracy: AccuracyDict[float]
+    metrics: MetricsDict[float]
 
 
 def main(
