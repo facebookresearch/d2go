@@ -12,6 +12,7 @@ import torch
 from d2go.quantization import learnable_qat
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.engine import HookBase, SimpleTrainer
+from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
@@ -34,6 +35,8 @@ def _is_observer_key(state_dict_key):
     return any(x in state_dict_key for x in observer_keys)
 
 
+# TODO: replace QATCheckpointer with central D2GoCheckpointer which supports customize
+# state_dict re-mapping (which includes QAT re-mapping).
 class QATCheckpointer(DetectionCheckpointer):
     """
     Extend the Checkpointer to support loading (QAT / non-QAT) weight into
@@ -43,6 +46,20 @@ class QATCheckpointer(DetectionCheckpointer):
     @classmethod
     def _is_q_state_dict(cls, state_dict):
         return any(_is_observer_key(k) for k in state_dict)
+
+    # HACK: temporarily put it here, move to centrail D2GoCheckpointer later on
+    def _load_file(self, filename):
+        # support loading lightning checkpointer
+        if filename.endswith(".ckpt"):
+            # assume file is from lightning; no one else seems to use the ".ckpt" extension
+            with PathManager.open(filename, "rb") as f:
+                data = torch.load(f, map_location=torch.device("cpu"))
+            from d2go.runner.lightning_task import _convert_to_d2
+
+            _convert_to_d2(data)
+            return data
+
+        return super()._load_file(filename)
 
     def _load_model(self, checkpoint):
         model_is_qat = self._is_q_state_dict(self.model.state_dict())
