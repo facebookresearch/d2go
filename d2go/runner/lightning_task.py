@@ -96,6 +96,36 @@ def _convert_to_lightning(d2_checkpoint: Dict[str, Any]) -> None:
     d2_checkpoint["epoch"] = 0
 
 
+def _convert_to_d2(lightning_checkpoint: Dict[str, Any]) -> None:
+    prefix = "model"  # based on DefaultTask.model.
+    old_keys = [x.lstrip("model.") for x in lightning_checkpoint[_STATE_DICT_KEY]]
+    for key in old_keys:
+        lightning_checkpoint[_STATE_DICT_KEY][key] = lightning_checkpoint[
+            _STATE_DICT_KEY
+        ][f"{prefix}.{key}"]
+        del lightning_checkpoint[_STATE_DICT_KEY][f"{prefix}.{key}"]
+
+    for old, new in zip(
+        [_STATE_DICT_KEY, "global_step"], [_OLD_STATE_DICT_KEY, "iteration"]
+    ):
+        lightning_checkpoint[new] = lightning_checkpoint[old]
+        del lightning_checkpoint[old]
+
+    for old, new in zip(
+        ["optimizer_states", "lr_schedulers"], ["optimizer", "scheduler"]
+    ):
+        if old not in lightning_checkpoint:
+            continue
+        lightning_checkpoint[new] = [lightning_checkpoint[old]]
+        del lightning_checkpoint[old]
+
+    del lightning_checkpoint["epoch"]
+    del lightning_checkpoint["pytorch-lightning_version"]
+    del lightning_checkpoint["callbacks"]
+    del lightning_checkpoint["hparams_name"]
+    del lightning_checkpoint["hyper_parameters"]
+
+
 class ModelTag(str, Enum):
     DEFAULT = "default"
     EMA = "ema"
