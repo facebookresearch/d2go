@@ -44,3 +44,21 @@ class TestDataTransformsAutoAug(unittest.TestCase):
 
         self.assertEqual(img.shape, trans_img.shape)
         self.assertEqual(img.dtype, trans_img.dtype)
+
+    def test_aug_mix_transforms(self):
+        default_cfg = Detectron2GoRunner().get_default_cfg()
+        img = np.concatenate(
+            [
+                (np.random.uniform(0, 1, size=(80, 60, 1)) * 255).astype(np.uint8),
+                (np.random.uniform(0, 1, size=(80, 60, 1)) * 255).astype(np.uint8),
+                (np.random.uniform(0, 1, size=(80, 60, 1)) * 255).astype(np.uint8),
+            ],
+            axis=2,
+        )
+
+        default_cfg.D2GO_DATA.AUG_OPS.TRAIN = ['AugMixImageOp::{"severity": 3}']
+        tfm = build_transform_gen(default_cfg, is_train=True)
+        trans_img, _ = apply_augmentations(tfm, img)
+
+        self.assertEqual(img.shape, trans_img.shape)
+        self.assertEqual(img.dtype, trans_img.dtype)
