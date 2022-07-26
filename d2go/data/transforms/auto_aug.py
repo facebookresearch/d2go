@@ -78,6 +78,37 @@ class TrivialAugmentWideImage(Transform):
         raise NotImplementedError()
 
 
+class AugMixImage(Transform):
+    """AugMix transform, only support image transformation"""
+
+    def __init__(
+        self,
+        severity: int = 3,
+        mixture_width: int = 3,
+        chain_depth: int = -1,
+        alpha: float = 1.0,
+        all_ops: bool = True,
+        interpolation: tvtf.functional.InterpolationMode = tvtf.functional.InterpolationMode.NEAREST,
+        fill: Optional[List[float]] = None,
+    ):
+        transform = tvtf.AugMix(
+            severity, mixture_width, chain_depth, alpha, all_ops, interpolation, fill
+        )
+        self.transform = ToTensorWrapper(transform)
+
+    def apply_image(self, img: np.ndarray) -> np.array:
+        assert (
+            img.dtype == np.uint8
+        ), f"Only uint8 image format is supported, got {img.dtype}"
+        return self.transform(img)
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+
+
 # example repr: 'RandAugmentImageOp::{"magnitude": 9}'
 @TRANSFORM_OP_REGISTRY.register()
 def RandAugmentImageOp(
@@ -98,3 +129,14 @@ def TrivialAugmentWideImageOp(
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [TrivialAugmentWideImage(**kwargs)]
+
+
+# example repr: 'AugMixImageOp::{"severity": 3}'
+@TRANSFORM_OP_REGISTRY.register()
+def AugMixImageOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
+    assert is_train
+    kwargs = _json_load(arg_str) if arg_str is not None else {}
+    assert isinstance(kwargs, dict)
+    return [AugMixImage(**kwargs)]
