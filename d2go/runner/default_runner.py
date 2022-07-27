@@ -471,7 +471,7 @@ class Detectron2GoRunner(BaseRunner):
                 JSONWriter(os.path.join(cfg.OUTPUT_DIR, "metrics.json")),
                 tbx_writer,
             ]
-            trainer_hooks.append(hooks.PeriodicWriter(writers))
+            trainer_hooks.append(hooks.PeriodicWriter(writers, cfg.WRITER_PERIOD))
         update_hooks_from_registry(trainer_hooks)
         trainer.register_hooks(trainer_hooks)
         trainer.train(start_iter, max_iter)
