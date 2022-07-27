@@ -4,12 +4,13 @@
 
 import copy
 import unittest
+from typing import List
 
 import d2go.runner.default_runner as default_runner
 import torch
 from d2go.config import CfgNode
 from d2go.modeling import modeling_hook as mh
-from d2go.modeling.api import build_d2go_model
+from d2go.modeling.api import build_d2go_model, D2GoModelBuildResult
 from d2go.registry.builtin import META_ARCH_REGISTRY, MODELING_HOOK_REGISTRY
 
 
@@ -84,8 +85,13 @@ class TestModelingHook(unittest.TestCase):
         cfg.MODEL.DEVICE = "cpu"
         cfg.MODEL.META_ARCHITECTURE = "TestArch"
         cfg.MODEL.MODELING_HOOKS = ["PlusOneHook", "TimesTwoHook"]
-        model = build_d2go_model(cfg)
+
+        model_info: D2GoModelBuildResult = build_d2go_model(cfg)
+        model: torch.nn.Module = model_info.model
+        modeling_hooks: List[mh.ModelingHook] = model_info.modeling_hooks
+
         self.assertEqual(model(2), 10)
+        self.assertEqual(len(modeling_hooks), 2)
 
         self.assertTrue(hasattr(model, "_modeling_hooks"))
         self.assertTrue(hasattr(model, "unapply_modeling_hooks"))
@@ -118,8 +124,13 @@ class TestModelingHook(unittest.TestCase):
         cfg.MODEL.DEVICE = "cpu"
         cfg.MODEL.META_ARCHITECTURE = "TestArch"
         cfg.MODEL.MODELING_HOOKS = ["PlusOneHook", "TimesTwoHook"]
-        model = build_d2go_model(cfg)
+
+        model_info: D2GoModelBuildResult = build_d2go_model(cfg)
+        model: torch.nn.Module = model_info.model
+        modeling_hooks: List[mh.ModelingHook] = model_info.modeling_hooks
+
         self.assertEqual(model(2), 10)
+        self.assertEqual(len(modeling_hooks), 2)
 
         model_copy = copy.deepcopy(model)
 

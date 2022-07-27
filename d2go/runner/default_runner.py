@@ -58,6 +58,7 @@ from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 from mobile_cv.predictor.api import PredictorWrapper
+from torch import nn
 
 
 logger = logging.getLogger(__name__)
@@ -163,9 +164,9 @@ class BaseRunner(object):
     def get_default_cfg(cls):
         return get_base_runner_default_cfg(CfgNode())
 
-    def build_model(self, cfg, eval_only=False):
+    def build_model(self, cfg, eval_only=False) -> nn.Module:
         # cfg may need to be reused to build trace model again, thus clone
-        model = build_d2go_model(cfg.clone())
+        model = build_d2go_model(cfg.clone()).model
 
         if eval_only:
             checkpointer = DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR)
@@ -206,7 +207,7 @@ class Detectron2GoRunner(BaseRunner):
         # build_model might modify the cfg, thus clone
         cfg = cfg.clone()
 
-        model = build_d2go_model(cfg)
+        model = build_d2go_model(cfg).model
         model_ema.may_build_model_ema(cfg, model)
 
         if cfg.MODEL.FROZEN_LAYER_REG_EXP:

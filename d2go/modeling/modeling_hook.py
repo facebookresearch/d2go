@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from abc import abstractmethod
-from typing import List
+from typing import List, Tuple
 
 import torch
 from d2go.registry.builtin import MODELING_HOOK_REGISTRY
@@ -85,7 +85,7 @@ def _apply_modeling_hooks(
 
 def build_and_apply_modeling_hooks(
     model: torch.nn.Module, cfg, hook_names: List[str]
-) -> torch.nn.Module:
+) -> Tuple[torch.nn.Module, List[ModelingHook]]:
     """Build modeling hooks from cfg and apply hooks on the model. Users could
     call model.unapply_modeling_hooks() to return the model that removes all
     the hooks.
@@ -93,4 +93,4 @@ def build_and_apply_modeling_hooks(
     hooks = _build_modeling_hooks(cfg, hook_names)
     model = _apply_modeling_hooks(model, hooks)
 
-    return model
+    return model, hooks
