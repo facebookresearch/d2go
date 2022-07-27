@@ -5,6 +5,7 @@
 import os
 import unittest
 from copy import deepcopy
+from tempfile import TemporaryDirectory
 from typing import Dict
 
 import pytorch_lightning as pl  # type: ignore
@@ -91,7 +92,7 @@ class TestLightningTask(unittest.TestCase):
         )
 
     @tempdir
-    def test_load_ema_weights(self, tmp_dir):
+    def test_load_ema_weights(self, tmp_dir) -> None:
         cfg = self._get_cfg(tmp_dir)
         cfg.MODEL_EMA.ENABLED = True
         task = GeneralizedRCNNTask(cfg)
@@ -116,6 +117,40 @@ class TestLightningTask(unittest.TestCase):
             self._compare_state_dict(
                 task.ema_state.state_dict(), task2.model.state_dict()
             )
+        )
+
+    @tempdir
+    def test_ema_eval_only_mode(self, tmp_dir: TemporaryDirectory) -> None:
+        """Train one model for one iteration, then check if the
+        second task is loaded correctly from config and applied to model.x"""
+        cfg = self._get_cfg(tmp_dir)
+        cfg.MODEL.MODELING_HOOKS = ["EMA"]
+        cfg.MODEL_EMA.ENABLED = True
+
+        task = GeneralizedRCNNTask(cfg)
+        trainer = self._get_trainer(tmp_dir)
+        with EventStorage() as storage:
+            task.storage = storage
+            trainer.fit(task)
+
+        # load EMA weights from checkpoint
+        cfg2 = self._get_cfg(tmp_dir)
+        cfg2.MODEL.MODELING_HOOKS = ["EMA"]
+        cfg2.MODEL_EMA.ENABLED = True
+        cfg2.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY = True
+        cfg2.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
+
+        task2 = GeneralizedRCNNTask.from_config(cfg2)
+
+        self.assertTrue(task2.ema_state, "EMA state is not loaded from checkpoint.")
+        self.assertTrue(
+            len(task2.ema_state.state_dict()) > 0, "EMA state should not be empty."
+        )
+        self.assertTrue(
+            self._compare_state_dict(
+                task.ema_state.state_dict(), task2.model.state_dict()
+            ),
+            "Task loaded from config should apply the ema_state to the model.",
         )
 
     def test_create_runner(self):
