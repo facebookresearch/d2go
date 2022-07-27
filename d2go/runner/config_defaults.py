@@ -123,6 +123,10 @@ def get_base_runner_default_cfg(cfg: CN) -> CN:
     # Frequency of metric printer, tensorboard writer, etc.
     cfg.WRITER_PERIOD = 20
 
+    # train_net specific arguments, define in runner but used in train_net
+    # run evaluation after training is done
+    cfg.TEST.FINAL_EVAL = True
+
     return cfg
 
 

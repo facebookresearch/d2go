@@ -81,8 +81,14 @@ def main(
     )
 
     trained_cfgs = runner.do_train(cfg, model, resume=resume)
-    metrics = runner.do_test(cfg, model)
-    print_metrics_table(metrics)
+
+    final_eval = cfg.TEST.FINAL_EVAL
+    if final_eval:
+        # run evaluation after training in the same processes
+        metrics = runner.do_test(cfg, model)
+        print_metrics_table(metrics)
+    else:
+        metrics = {}
 
     # dump config files for trained models
     trained_model_configs = dump_trained_model_configs(cfg.OUTPUT_DIR, trained_cfgs)
