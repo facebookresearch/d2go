@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from dataclasses import dataclass
+from typing import List
+
 import torch
 import torch.nn as nn
 
@@ -9,6 +12,20 @@ from d2go.modeling import modeling_hook as mh
 from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.utils.misc import _log_api_usage
 from detectron2.modeling import META_ARCH_REGISTRY as D2_META_ARCH_REGISTRY
+
+
+@dataclass
+class D2GoModelBuildResult:
+    """Class to store the output of build_d2go_model.
+    It stores the model, a key-value mapping of modeling hooks and can be further
+    extended with other fields, e.g. state_dict.
+    """
+
+    # Stores model with applied modeling hooks.
+    # If modeling hooks (e.g. EMA) are not enabled in config
+    # the modeling hook will be no-op (e.g. return original model)
+    model: nn.Module
+    modeling_hooks: List[mh.ModelingHook]
 
 
 def build_meta_arch(cfg):
@@ -34,14 +51,17 @@ def build_meta_arch(cfg):
     return model
 
 
-def build_d2go_model(cfg: CfgNode) -> nn.Module:
+def build_d2go_model(
+    cfg: CfgNode,
+) -> D2GoModelBuildResult:
     model = build_meta_arch(cfg)
-
+    modeling_hooks: List[mh.ModelingHook] = []
     # apply modeling hooks
     # some custom projects bypass d2go's default config so may not have the
     # MODELING_HOOKS key
     if hasattr(cfg.MODEL, "MODELING_HOOKS"):
         hook_names = cfg.MODEL.MODELING_HOOKS
-        model = mh.build_and_apply_modeling_hooks(model, cfg, hook_names)
-
-    return model
+        model, modeling_hooks = mh.build_and_apply_modeling_hooks(
+            model, cfg, hook_names
+        )
+    return D2GoModelBuildResult(model=model, modeling_hooks=modeling_hooks)
