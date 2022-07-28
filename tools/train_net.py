@@ -32,13 +32,15 @@ from detectron2.engine.defaults import create_ddp_model
 
 logger = logging.getLogger("d2go.tools.train_net")
 
-
+# TODO (T127368935) Split to TrainNetOutput and TestNetOutput
 @dataclass
 class TrainNetOutput:
     accuracy: AccuracyDict[float]
     metrics: MetricsDict[float]
-    model_configs: Dict[str, str]
-    # TODO: decide if `tensorboard_log_dir` should be part of output
+    # Optional, because we use None to distinguish "not used" from
+    # empty model configs. With T127368935, this should be reverted to dict.
+    model_configs: Optional[Dict[str, str]]
+    # TODO (T127368603): decide if `tensorboard_log_dir` should be part of output
     tensorboard_log_dir: Optional[str] = None
 
 
