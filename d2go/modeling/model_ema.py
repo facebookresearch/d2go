@@ -6,6 +6,7 @@ import copy
 import itertools
 import logging
 from contextlib import contextmanager
+from typing import Any, Dict, Iterable, Optional
 
 import torch
 from detectron2.engine.train_loop import HookBase
@@ -14,34 +15,47 @@ from detectron2.engine.train_loop import HookBase
 logger = logging.getLogger(__name__)
 
 
-class EMAState(object):
-    def __init__(self):
-        self.state = {}
+class EMAState:
+    """Stores Exponential Moving Average state for a model.
+
+    Args:
+        decay: EMA decay factor, should be in [0, 1]. A decay of 0 corresponds to
+            always using the latest value (no EMA) and a decay of 1 corresponds to
+            not updating weights after initialization. Default to 0.999.
+        device: If not None, move model EMA state to device.
+    """
+
+    def __init__(self, decay: float = 0.999):
+        if decay < 0 or decay > 1.0:
+            raise ValueError(f"Decay should be in [0, 1], {decay} was given.")
+        self.decay: float = decay
+        self.state: Dict[str, Any] = {}
 
     @classmethod
-    def FromModel(cls, model: torch.nn.Module, device: str = ""):
+    def from_model(cls, model: torch.nn.Module, device: str = "") -> "EMAState":
+        """Constructs model state from the model and move to device if given."""
         ret = cls()
-        ret.save_from(model, device)
+        ret.load_from(model, device)
         return ret
 
-    def save_from(self, model: torch.nn.Module, device: str = ""):
+    def load_from(self, model: torch.nn.Module, device: str = ""):
         """Save model state from `model` to this object"""
         for name, val in self.get_model_state_iterator(model):
             val = val.detach().clone()
             self.state[name] = val.to(device) if device else val
 
-    def apply_to(self, model: torch.nn.Module):
+    def apply_to(self, model: torch.nn.Module) -> None:
         """Apply state to `model` from this object"""
         with torch.no_grad():
             for name, val in self.get_model_state_iterator(model):
                 assert (
                     name in self.state
-                ), f"Name {name} not existed, available names {self.state.keys()}"
+                ), f"Name {name} does not exist, available names are {self.state.keys()}"
                 val.copy_(self.state[name])
 
     @contextmanager
     def apply_and_restore(self, model):
-        old_state = EMAState.FromModel(model, self.device)
+        old_state = EMAState.from_model(model)
         self.apply_to(model)
         yield old_state
         old_state.apply_to(model)
@@ -52,29 +66,27 @@ class EMAState(object):
         return ret
 
     @property
-    def device(self):
-        if not self.has_inited():
-            return None
-        return next(iter(self.state.values())).device
+    def device(self) -> Optional[torch.device]:
+        next(iter(self.state.values())).device if self.has_inited() else None
 
-    def to(self, device):
+    def to(self, device: torch.device) -> "EMAState":
         for name in self.state:
             self.state[name] = self.state[name].to(device)
         return self
 
-    def has_inited(self):
-        return self.state
+    def has_inited(self) -> bool:
+        return len(self.state) > 0
 
-    def clear(self):
+    def clear(self) -> "EMAState":
         self.state.clear()
         return self
 
-    def get_model_state_iterator(self, model):
+    def get_model_state_iterator(self, model: torch.nn.Module) -> Iterable:
         param_iter = model.named_parameters()
         buffer_iter = model.named_buffers()
         return itertools.chain(param_iter, buffer_iter)
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         return self.state
 
     def load_state_dict(self, state_dict, strict: bool = True):
@@ -110,12 +122,11 @@ class EMAUpdater(object):
     def __init__(self, state: EMAState, decay: float = 0.999, device: str = ""):
         self.decay = decay
         self.device = device
-
         self.state = state
 
     def init_state(self, model):
         self.state.clear()
-        self.state.save_from(model, self.device)
+        self.state.load_from(model, self.device)
 
     def update(self, model):
         with torch.no_grad():
@@ -181,7 +192,7 @@ def apply_model_ema(model, state=None, save_current=False):
 
     if save_current:
         # save current model state
-        old_state = EMAState.FromModel(model, state.device)
+        old_state = EMAState.from_model(model, state.device)
     state.apply_to(model)
 
     if save_current:
@@ -199,7 +210,8 @@ def apply_model_ema_and_restore(model, state=None):
     if state is None:
         state = get_model_ema_state(model)
 
-    old_state = EMAState.FromModel(model, state.device)
+    old_state = EMAState.from_model(model)
+
     state.apply_to(model)
     yield old_state
     old_state.apply_to(model)

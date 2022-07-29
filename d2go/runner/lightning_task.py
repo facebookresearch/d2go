@@ -15,6 +15,7 @@ from d2go.data.build import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import update_cfg_if_using_adhoc_dataset
 from d2go.modeling.api import build_meta_arch
+from d2go.modeling.model_ema import EMAState
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.quantization.modeling import (
@@ -27,13 +28,10 @@ from d2go.runner.default_runner import (
     Detectron2GoRunner,
     GeneralizedRCNNRunner,
 )
-from d2go.utils.ema_state import EMAState
+
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import VisualizationEvaluator
-from detectron2.solver import (
-    build_lr_scheduler as d2_build_lr_scheduler,
-    build_optimizer as d2_build_optimizer,
-)
+from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.logger import _flatten_dict
 
@@ -151,10 +149,8 @@ class DefaultTask(pl.LightningModule):
 
         self.ema_state: Optional[EMAState] = None
         if cfg.MODEL_EMA.ENABLED:
-            self.ema_state = EMAState(
-                decay=cfg.MODEL_EMA.DECAY,
-                device=cfg.MODEL_EMA.DEVICE or cfg.MODEL.DEVICE,
-            )
+            self.ema_state = EMAState(decay=cfg.MODEL_EMA.DECAY)
+            self.ema_state.to(torch.device(cfg.MODEL_EMA.DEVICE or cfg.MODEL.DEVICE))
             self.dataset_evaluators[ModelTag.EMA] = []
 
     def _build_model(self) -> torch.nn.Module:
