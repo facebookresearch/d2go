@@ -616,8 +616,4 @@ def _reset_qat_data_loader_if_needed(cfg, trainer, build_loader_func):
         )
         # This method assumes the data loader can be replaced from trainer
         assert trainer.__class__ == SimpleTrainer
-        del trainer._data_loader_iter
-        del trainer.data_loader
-        data_loader = build_loader_func(loader_cfg)
-        trainer.data_loader = data_loader
-        trainer._data_loader_iter = iter(data_loader)
+        trainer.reset_data_loader(lambda: build_loader_func(loader_cfg))
