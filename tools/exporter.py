@@ -16,8 +16,12 @@ import mobile_cv.lut.lib.pt.flops_utils as flops_utils
 from d2go.config import CfgNode, temp_defrost
 from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import BaseRunner
-from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
-from mobile_cv.common.misc.py import post_mortem_if_fail
+from d2go.setup import (
+    basic_argument_parser,
+    post_mortem_if_fail_for_main,
+    prepare_for_launch,
+    setup_after_launch,
+)
 
 
 logger = logging.getLogger("d2go.tools.export")
@@ -89,10 +93,10 @@ def main(
     )
 
 
-@post_mortem_if_fail()
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
-    return main(
+    main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
+    return main_func(
         cfg,
         output_dir,
         runner_name,
