@@ -7,13 +7,11 @@ Detection Training Script.
 
 import logging
 import sys
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Type, Union
+from typing import List, Type, Union
 
 import detectron2.utils.comm as comm
 from d2go.config import CfgNode
 from d2go.distributed import launch
-from d2go.evaluation.api import AccuracyDict, MetricsDict
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
@@ -22,6 +20,7 @@ from d2go.setup import (
     prepare_for_launch,
     setup_after_launch,
 )
+from d2go.trainer.api import TrainNetOutput
 from d2go.utils.misc import (
     dump_trained_model_configs,
     print_metrics_table,
@@ -31,17 +30,6 @@ from detectron2.engine.defaults import create_ddp_model
 
 
 logger = logging.getLogger("d2go.tools.train_net")
-
-# TODO (T127368935) Split to TrainNetOutput and TestNetOutput
-@dataclass
-class TrainNetOutput:
-    accuracy: AccuracyDict[float]
-    metrics: MetricsDict[float]
-    # Optional, because we use None to distinguish "not used" from
-    # empty model configs. With T127368935, this should be reverted to dict.
-    model_configs: Optional[Dict[str, str]]
-    # TODO (T127368603): decide if `tensorboard_log_dir` should be part of output
-    tensorboard_log_dir: Optional[str] = None
 
 
 def main(
