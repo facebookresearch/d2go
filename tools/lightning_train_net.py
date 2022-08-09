@@ -12,7 +12,7 @@ from d2go.config import CfgNode
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import DefaultTask
 from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
-from d2go.tools.train_net import TrainNetOutput
+from d2go.trainer.api import TrainNetOutput
 from d2go.trainer.lightning.training_loop import _do_test, _do_train
 from detectron2.utils.file_io import PathManager
 from pytorch_lightning.callbacks import Callback, LearningRateMonitor, TQDMProgressBar
