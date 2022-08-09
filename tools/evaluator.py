@@ -24,7 +24,6 @@ from d2go.setup import (
     setup_after_launch,
 )
 from d2go.utils.misc import print_metrics_table
-from mobile_cv.common.misc.py import post_mortem_if_fail
 from mobile_cv.predictor.api import create_predictor
 
 logger = logging.getLogger("d2go.tools.caffe2_evaluator")
@@ -61,11 +60,11 @@ def main(
     )
 
 
-@post_mortem_if_fail()
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
+    main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
     launch(
-        post_mortem_if_fail_for_main(main),
+        main_func,
         args.num_processes,
         num_machines=args.num_machines,
         machine_rank=args.machine_rank,

@@ -68,6 +68,11 @@ def basic_argument_parser(
         default=None,
         type=str,
     )
+    parser.add_argument(
+        "--disable-post-mortem",
+        action="store_true",
+        help="whether to NOT connect pdb on failure, which only works locally",
+    )
 
     if distributed:
         parser.add_argument(
@@ -98,6 +103,7 @@ def build_basic_cli_args(
     machine_rank: Optional[Union[int, str]] = None,
     dist_url: Optional[str] = None,
     dist_backend: Optional[str] = None,
+    disable_post_mortem: bool = False,
 ) -> List[str]:
     """
     Returns parameters in the form of CLI arguments for the binary using
@@ -114,6 +120,8 @@ def build_basic_cli_args(
         args += ["--runner", runner_name]
     if save_return_file is not None:
         args += ["--save-return-file", str(save_return_file)]
+    if disable_post_mortem:
+        args += ["--disable-post-mortem"]
     if num_processes is not None:
         args += ["--num-processes", str(num_processes)]
     if num_machines is not None:

@@ -106,8 +106,9 @@ def main(
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
 
+    main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
     outputs = launch(
-        post_mortem_if_fail_for_main(main),
+        main_func,
         num_processes_per_machine=args.num_processes,
         num_machines=args.num_machines,
         machine_rank=args.machine_rank,
