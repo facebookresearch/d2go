@@ -68,6 +68,7 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     _C.SOLVER.OPTIMIZER = "sgd"
     _C.SOLVER.LR_MULTIPLIER_OVERWRITE = []
     _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
+    _C.SOLVER.WEIGHT_DECAY_OVERWRITE = []
 
     # Betas are used in the AdamW optimizer
     _C.SOLVER.BETAS = (0.9, 0.999)

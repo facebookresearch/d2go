@@ -49,6 +49,7 @@ def get_optimizer_param_groups(model: OptimizerModelsType, cfg):
         weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
         weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
+        weight_decay_overwrite=_merge_dict(cfg.SOLVER.WEIGHT_DECAY_OVERWRITE),
     )
 
     # parameter groups from model function `model.get_optimizer_param_groups(opts)`
@@ -125,6 +126,7 @@ def get_optimizer_param_groups_weight_decay(
     weight_decay_norm: Optional[float] = None,
     weight_decay_bias: Optional[float] = None,
     weight_decay_embed: Optional[float] = None,
+    weight_decay_overwrite: Optional[Dict[str, float]] = None,
 ):
     """
     Allow setting up weight decay for normalization, embedding and bias
@@ -162,6 +164,11 @@ def get_optimizer_param_groups_weight_decay(
             cur_wd = weight_decay_embed
         elif module_param_name == "bias":
             cur_wd = weight_decay_bias
+        if weight_decay_overwrite is not None:
+            for kname, wd in weight_decay_overwrite.items():
+                if kname in module_param_name:
+                    cur_wd = wd
+
         if cur_wd is not None:
             params += [
                 {
