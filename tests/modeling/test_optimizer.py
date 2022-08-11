@@ -163,7 +163,7 @@ class TestOptimizer(unittest.TestCase):
         cfg = runner.get_default_cfg()
         multipliers = [None, [{"conv": 0.1}]]
 
-        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT"]:
+        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT", "Adam"]:
             for mult in multipliers:
                 cfg.SOLVER.BASE_LR = 0.01
                 cfg.SOLVER.OPTIMIZER = optimizer_name
@@ -174,7 +174,7 @@ class TestOptimizer(unittest.TestCase):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
 
-        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT"]:
+        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT", "Adam"]:
             cfg.SOLVER.BASE_LR = 0.02
             cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE = 0.2
             cfg.SOLVER.CLIP_GRADIENTS.ENABLED = True
