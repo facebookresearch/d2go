@@ -255,6 +255,19 @@ def sgd(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
 
 
 @D2GO_OPTIM_MAPPER_REGISTRY.register()
+def adam(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
+    """
+    Build an optimizer from config.
+    """
+    params = get_optimizer_param_groups(model, cfg)
+
+    optim = maybe_add_gradient_clipping(cfg, torch.optim.Adam)(
+        params, cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS
+    )
+    return optim
+
+
+@D2GO_OPTIM_MAPPER_REGISTRY.register()
 def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     """
     Build an optimizer from config.
