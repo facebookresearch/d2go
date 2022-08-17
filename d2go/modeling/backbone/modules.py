@@ -7,6 +7,7 @@ from typing import List
 import torch
 import torch.nn as nn
 from detectron2 import layers
+from detectron2.utils.tracing import assert_fx_safe
 from mobile_cv.arch.fbnet_v2.irf_block import IRFBlock
 
 
@@ -33,7 +34,7 @@ class RPNHeadConvRegressor(nn.Module):
             torch.nn.init.constant_(l.bias, 0)
 
     def forward(self, x: List[torch.Tensor]):
-        assert isinstance(x, (list, tuple))
+        assert_fx_safe(isinstance(x, (list, tuple)), "Unexpected data type")
         logits = [self.cls_logits(y) for y in x]
         bbox_reg = [self.bbox_pred(y) for y in x]
 
