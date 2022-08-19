@@ -576,7 +576,12 @@ class Detectron2GoRunner(BaseRunner):
             trainer.storage.put_scalar(
                 "lr", optimizer.param_groups[0]["lr"], smoothing_hint=False
             )
-            scheduler.step()
+            if trainer.iter < cfg.SOLVER.MAX_ITER - 1:
+                # Since scheduler.step() is called after the backward at each iteration,
+                # this will cause "where = 1.0" in the scheduler after the last interation,
+                # which will trigger "IndexError: list index out of range" in StepParamScheduler.
+                # See test_warmup_stepwithfixedgamma in vision/fair/detectron2/tests:test_scheduler for an example
+                scheduler.step()
             # Note: when precise BN is enabled, some checkpoints will have more precise
             # statistics than others, if they are saved immediately after eval.
             if comm.is_main_process():
