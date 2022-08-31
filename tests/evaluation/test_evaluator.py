@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import torch
 from d2go.evaluation.evaluator import inference_on_dataset, ResultCache
-from detectron2.evaluation import DatasetEvaluator
+from detectron2.evaluation import DatasetEvaluator, DatasetEvaluators
 
 
 class EvaluatorForTest(DatasetEvaluator):
@@ -85,3 +85,15 @@ class TestEvaluator(unittest.TestCase):
             self.assertEqual(evaluator._call_count["process"], 5)
             self.assertEqual(evaluator._call_count["evaluate"], 2)
             self.assertTrue(os.path.isfile(evaluator.result_cache.cache_file))
+
+    def test_evaluators_patch(self):
+        with tempfile.TemporaryDirectory() as save_dir:
+            cp_evaluator = EvaluatorWithCheckpointForTest(save_dir)
+            evaluator = DatasetEvaluators([cp_evaluator])
+            self.assertFalse(evaluator.has_finished_process())
+
+            cp_evaluator.reset()
+            cp_evaluator.process(1, 1)
+            cp_evaluator.evaluate()
+
+            self.assertTrue(evaluator.has_finished_process())
