@@ -18,6 +18,20 @@ from detectron2.utils.file_io import PathManager
 logger = logging.getLogger(__name__)
 
 
+def DatasetEvaluators_has_finished_process(self):
+    ret = True
+    for x in self._evaluators:
+        if hasattr(x, "has_finished_process"):
+            ret &= x.has_finished_process()
+        else:
+            ret &= False
+    return ret
+
+
+# patch evaluators defined in d2
+DatasetEvaluators.has_finished_process = DatasetEvaluators_has_finished_process
+
+
 def inference_on_dataset(
     model: torch.nn.Module,
     data_loader: Iterable,

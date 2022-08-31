@@ -276,3 +276,6 @@ class VisualizationEvaluator(DatasetEvaluator):
             self._log_remaining -= 1
 
         self._iter += 1
+
+    def has_finished_process(self):
+        return True
