@@ -145,7 +145,7 @@ def add_quantization_default_configs(_C):
 
     # post-training quantization
     _C.QUANTIZATION.PTQ = CfgNode()
-    _C.QUANTIZATION.PTQ.CALIBRATION_NUM_IMAGES = 1
+    _C.QUANTIZATION.PTQ.CALIBRATION_NUM_IMAGES = 16  # NOTE: this is actually iterations
     _C.QUANTIZATION.PTQ.CALIBRATION_FORCE_ON_GPU = False
 
     # register deprecated and renamed keys
