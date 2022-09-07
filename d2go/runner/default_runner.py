@@ -10,6 +10,7 @@ from typing import List, Optional, Type, Union
 
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
+import seaborn as sn
 import torch
 from d2go.config import CfgNode, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost
 from d2go.config.utils import get_cfg_diff_table
@@ -367,7 +368,13 @@ class Detectron2GoRunner(BaseRunner):
             flattened_results = flatten_results_dict(results)
             for k, v in flattened_results.items():
                 tbx_writer = self.get_tbx_writer(cfg)
-                tbx_writer._writer.add_scalar("eval_{}".format(k), v, train_iter)
+                if "confusion_matrix" in k:
+                    cm_fig = sn.heatmap(v, annot=True).get_figure()
+                    tbx_writer._writer.add_figure(
+                        "eval_{}".format(k), cm_fig, train_iter
+                    )
+                else:
+                    tbx_writer._writer.add_scalar("eval_{}".format(k), v, train_iter)
 
         if comm.is_main_process():
             tbx_writer = self.get_tbx_writer(cfg)

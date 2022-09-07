@@ -7,7 +7,7 @@ Tool for benchmarking data loading
 import logging
 import time
 from dataclasses import dataclass
-from typing import Type, Union
+from typing import Any, Type, Union
 
 import detectron2.utils.comm as comm
 import numpy as np
@@ -31,8 +31,8 @@ logger = logging.getLogger("d2go.tools.benchmark_data")
 
 @dataclass
 class BenchmarkDataOutput:
-    accuracy: AccuracyDict[float]
-    metrics: MetricsDict[float]
+    accuracy: AccuracyDict[Any]
+    metrics: MetricsDict[Any]
 
 
 def main(

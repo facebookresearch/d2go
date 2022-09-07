@@ -9,7 +9,7 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 import logging
 import sys
 from dataclasses import dataclass
-from typing import Optional, Type, Union
+from typing import Any, Optional, Type, Union
 
 import torch
 from d2go.config import CfgNode
@@ -31,8 +31,8 @@ logger = logging.getLogger("d2go.tools.caffe2_evaluator")
 
 @dataclass
 class EvaluatorOutput:
-    accuracy: AccuracyDict[float]
-    metrics: MetricsDict[float]
+    accuracy: AccuracyDict[Any]
+    metrics: MetricsDict[Any]
 
 
 def main(
