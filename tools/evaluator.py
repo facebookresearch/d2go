@@ -15,6 +15,7 @@ import torch
 from d2go.config import CfgNode
 from d2go.distributed import launch
 from d2go.evaluation.api import AccuracyDict, MetricsDict
+from d2go.quantization.qconfig import smart_decode_backend
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
@@ -45,7 +46,10 @@ def main(
     caffe2_engine: Optional[int] = None,
     caffe2_logging_print_net_summary: int = 0,
 ) -> EvaluatorOutput:
-    torch.backends.quantized.engine = cfg.QUANTIZATION.BACKEND
+    # FIXME: Ideally the quantization backend should be encoded in the torchscript model
+    # or the predictor, and be used automatically during the inference, without user
+    # manually setting the global variable.
+    torch.backends.quantized.engine = smart_decode_backend(cfg.QUANTIZATION.BACKEND)
     print("run with quantized engine: ", torch.backends.quantized.engine)
 
     runner = setup_after_launch(cfg, output_dir, runner_class)
