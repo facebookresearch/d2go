@@ -21,6 +21,8 @@ def add_tensorboard_default_configs(_C):
     _C.TENSORBOARD.TRAIN_LOADER_VIS_MAX_IMAGES = 16
     # Max number of images per dataset to visualize in tensorboard during evaluation
     _C.TENSORBOARD.TEST_VIS_MAX_IMAGES = 16
+    # Frequency of sending data to tensorboard during evaluation
+    _C.TENSORBOARD.TEST_VIS_WRITE_PERIOD = 1
 
     # TENSORBOARD.LOG_DIR will be determined solely by OUTPUT_DIR
     _C.register_deprecated_key("TENSORBOARD.LOG_DIR")
@@ -215,6 +217,8 @@ class VisualizationEvaluator(DatasetEvaluator):
         self.tag_postfix = tag_postfix or ""
 
         self.log_limit = max(cfg.TENSORBOARD.TEST_VIS_MAX_IMAGES, 0)
+        self.log_frequency = cfg.TENSORBOARD.TEST_VIS_WRITE_PERIOD
+
         self._metadata = None
         self._dataset_dict = None
         self._file_name_to_dataset_dict = None
@@ -241,10 +245,15 @@ class VisualizationEvaluator(DatasetEvaluator):
         self._log_remaining = self.log_limit
 
     def process(self, inputs, outputs):
-        for input, output in zip(inputs, outputs):
-            if self._log_remaining <= 0:
-                return
+        if (
+            self.log_frequency == 0
+            or self._iter % self.log_frequency != 0
+            or self._log_remaining <= 0
+        ):
+            self._iter += 1
+            return
 
+        for input, output in zip(inputs, outputs):
             file_name = input["file_name"]
             dataset_dict = self._file_name_to_dataset_dict[file_name]
             gt_img = self._visualizer.visualize_dataset_dict(
