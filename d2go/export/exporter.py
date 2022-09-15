@@ -73,7 +73,7 @@ def convert_quantized_model(
     logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
 
     # convert the fake-quantized model to int8 model
-    pytorch_model = convert_to_quantized_model(cfg, pytorch_model)
+    pytorch_model = convert_to_quantized_model(cfg, pytorch_model, data_loader)
     logger.info(f"Quantized Model:\n{pytorch_model}")
     return pytorch_model
 

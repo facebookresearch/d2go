@@ -17,6 +17,7 @@ from mobile_cv.arch.quantization.observer import update_stat as observer_update_
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
 
+from .fx import get_convert_fx_fn, get_prepare_fx_fn
 from .qconfig import set_backend_and_create_qconfig, smart_decode_backend
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
@@ -289,12 +290,12 @@ def default_custom_prepare_fx(cfg, model, is_qat, example_input=None):
             " their own MetaArch."
         )
 
-    if is_qat:
-        model = prepare_qat_fx(model, qconfig_dict, (example_input,))
-    else:
-        model = prepare_fx(model, qconfig_dict, (example_input,))
-
-    logger.info("Setup the model with qconfig:\n{}".format(qconfig))
+    prepare_fn = get_prepare_fx_fn(cfg, is_qat)
+    model = prepare_fn(
+        model,
+        qconfig_mapping=qconfig_dict,
+        example_inputs=(example_input,),
+    )
     return model
 
 
@@ -343,7 +344,7 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
     return model
 
 
-def convert_to_quantized_model(cfg, fp32_model):
+def convert_to_quantized_model(cfg, fp32_model, data_loader):
     """
     Contralized function to convert fake quant model (fp32 operators) to "real"
     quantized model (int8 operators).
@@ -352,10 +353,12 @@ def convert_to_quantized_model(cfg, fp32_model):
         int8_model = convert(fp32_model, inplace=False)
     else:
         # FX graph mode quantization
+        example_input = next(iter(data_loader))
         if hasattr(fp32_model, "custom_convert_fx"):
-            int8_model = fp32_model.custom_convert_fx(cfg)
+            int8_model = fp32_model.custom_convert_fx(cfg, example_input)
         else:
-            int8_model = convert_fx(fp32_model)
+            convert_fn = get_convert_fx_fn(cfg, (example_input,))
+            int8_model = convert_fn(fp32_model)
     return int8_model
 
 
