@@ -2,6 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-# Set up custom environment before nearly anything else is imported
-# NOTE: this should be the first import (no not reorder)
-from d2go import initializer, optimizer  # NOQA
+from d2go.initializer import initialize_all
+
+# NOTE: by default a list of initializations will run whenever D2Go is first imported,
+# so that users don't need to do any manual iniitialization other than importing `d2go`.
+initialize_all()
