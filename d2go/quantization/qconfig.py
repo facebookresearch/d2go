@@ -9,7 +9,6 @@ if TORCH_VERSION > (1, 10):
     from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 else:
     from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
-from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
 QCONFIG_CREATOR_REGISTRY = Registry("QCONFIG_CREATOR_REGISTRY")
@@ -83,7 +82,6 @@ def validate_native_backend(backend):
         )
 
 
-@fb_overwritable()
 def _smart_parse_extended_backend(extended_backend):
     """
     D2Go extends the definition of quantization "backend". In addition to PyTorch's
