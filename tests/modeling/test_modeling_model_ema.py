@@ -58,7 +58,7 @@ def _compare_state_dict(model1, model2, abs_error=1e-3):
 class TestModelingModelEMA(unittest.TestCase):
     def test_emastate(self):
         model = TestArch()
-        state = model_ema.EMAState.FromModel(model)
+        state = model_ema.EMAState.from_model(model)
         # two for conv (conv.weight, conv.bias),
         # five for bn (bn.weight, bn.bias, bn.running_mean, bn.running_var, bn.num_batches_tracked)
         self.assertEqual(len(state.state), 7)
@@ -74,7 +74,7 @@ class TestModelingModelEMA(unittest.TestCase):
 
     def test_emastate_saveload(self):
         model = TestArch()
-        state = model_ema.EMAState.FromModel(model)
+        state = model_ema.EMAState.from_model(model)
 
         model1 = TestArch()
         self.assertFalse(_compare_state_dict(model, model1))
@@ -89,7 +89,7 @@ class TestModelingModelEMA(unittest.TestCase):
         model = TestArch()
         model.cuda()
         # state on gpu
-        state = model_ema.EMAState.FromModel(model)
+        state = model_ema.EMAState.from_model(model)
         self.assertEqual(state.device, torch.device("cuda:0"))
         # target model on cpu
         model1 = TestArch()
@@ -98,7 +98,7 @@ class TestModelingModelEMA(unittest.TestCase):
         self.assertTrue(_compare_state_dict(copy.deepcopy(model).cpu(), model1))
 
         # state on cpu
-        state1 = model_ema.EMAState.FromModel(model, device="cpu")
+        state1 = model_ema.EMAState.from_model(model, device="cpu")
         self.assertEqual(state1.device, torch.device("cpu"))
         # target model on gpu
         model2 = TestArch()
