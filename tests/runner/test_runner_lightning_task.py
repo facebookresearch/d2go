@@ -24,6 +24,10 @@ from torch import Tensor
 from torch.ao.quantization.quantize_fx import convert_fx, prepare_qat_fx
 
 
+DEFAULT_EMA_DECAY: float = 0.7
+EMA_HOOK_KEY: str = "EMA"
+
+
 class TestLightningTask(unittest.TestCase):
     def _get_cfg(self, tmp_dir: str) -> CfgNode:
         cfg = mah.create_detection_cfg(GeneralizedRCNNTask, tmp_dir)
@@ -75,9 +79,12 @@ class TestLightningTask(unittest.TestCase):
     def test_train_ema(self, tmp_dir):
         cfg = self._get_cfg(tmp_dir)
         cfg.MODEL_EMA.ENABLED = True
-        cfg.MODEL_EMA.DECAY = 0.7
+        cfg.MODEL_EMA.DECAY = DEFAULT_EMA_DECAY
+        cfg.MODEL.MODELING_HOOKS = [EMA_HOOK_KEY]
         task = GeneralizedRCNNTask(cfg)
         init_state = deepcopy(task.model.state_dict())
+
+        self.assertTrue(hasattr(task.model, "ema_state"))
 
         trainer = self._get_trainer(tmp_dir)
         with EventStorage() as storage:
@@ -85,16 +92,20 @@ class TestLightningTask(unittest.TestCase):
             trainer.fit(task)
 
         for k, v in task.model.state_dict().items():
-            init_state[k].copy_(init_state[k] * 0.7 + 0.3 * v)
+            init_state[k].copy_(
+                init_state[k] * DEFAULT_EMA_DECAY + (1.0 - DEFAULT_EMA_DECAY) * v
+            )
 
         self.assertTrue(
-            self._compare_state_dict(init_state, task.ema_state.state_dict())
+            self._compare_state_dict(init_state, task.model.ema_state.state_dict()),
         )
 
     @tempdir
     def test_load_ema_weights(self, tmp_dir) -> None:
         cfg = self._get_cfg(tmp_dir)
         cfg.MODEL_EMA.ENABLED = True
+        cfg.MODEL.MODELING_HOOKS = [EMA_HOOK_KEY]
+
         task = GeneralizedRCNNTask(cfg)
         trainer = self._get_trainer(tmp_dir)
         with EventStorage() as storage:
@@ -107,15 +118,15 @@ class TestLightningTask(unittest.TestCase):
         )
         self.assertTrue(
             self._compare_state_dict(
-                task.ema_state.state_dict(), task2.ema_state.state_dict()
+                task.model.ema_state.state_dict(), task2.model.ema_state.state_dict()
             )
         )
 
         # apply EMA weights to model
-        task2.ema_state.apply_to(task2.model)
+        task2.model.ema_state.apply_to(task2.model)
         self.assertTrue(
             self._compare_state_dict(
-                task.ema_state.state_dict(), task2.model.state_dict()
+                task.model.ema_state.state_dict(), task2.model.state_dict()
             )
         )
 
@@ -163,6 +174,8 @@ class TestLightningTask(unittest.TestCase):
     def test_build_model(self, tmp_dir):
         cfg = self._get_cfg(tmp_dir)
         cfg.MODEL_EMA.ENABLED = True
+        cfg.MODEL.MODELING_HOOKS = [EMA_HOOK_KEY]
+
         task = GeneralizedRCNNTask(cfg)
         trainer = self._get_trainer(tmp_dir)
 
@@ -183,6 +196,9 @@ class TestLightningTask(unittest.TestCase):
                 self._compare_state_dict(model.state_dict(), task.model.state_dict())
             )
 
+        # check if model has EMA:
+        self.assertTrue(hasattr(model, "ema_state"))
+
         # test loading EMA weights
         with temp_defrost(cfg):
             cfg.MODEL.WEIGHTS = os.path.join(tmp_dir, "last.ckpt")
@@ -191,7 +207,7 @@ class TestLightningTask(unittest.TestCase):
             self.assertFalse(model.training)
             self.assertTrue(
                 self._compare_state_dict(
-                    model.state_dict(), task.ema_state.state_dict()
+                    model.ema_state.state_dict(), task.model.ema_state.state_dict()
                 )
             )
 
