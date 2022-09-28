@@ -136,7 +136,6 @@ def get_dir_path(relative_path):
 
 
 # copy util function for oss
-@fb_overwritable()
 def alias(x, name, is_backward=False):
     if not torch.onnx.is_in_onnx_export():
         return x
