@@ -30,13 +30,22 @@ from mobile_cv.common.misc.mixin import dynamic_mixin, remove_dynamic_mixin
 
 
 def add_distillation_configs(_C: CN) -> None:
-    """Add default parameters to config"""
+    """Add default parameters to config
+
+    The TEACHER.CONFIG field allows us to build a PyTorch model using an
+    existing config.  We can build any model that is normally supported by
+    D2Go (e.g., FBNet) because we just use the same config
+    """
     _C.DISTILLATION = CN()
     _C.DISTILLATION.ALGORITHM = "LabelDistillation"
     _C.DISTILLATION.HELPER = "BaseDistillationHelper"
     _C.DISTILLATION.TEACHER = CN()
     _C.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME = ""
     _C.DISTILLATION.TEACHER.DEVICE = ""
+    _C.DISTILLATION.TEACHER.TYPE = "torchscript"
+    _C.DISTILLATION.TEACHER.CONFIG_FNAME = ""
+    _C.DISTILLATION.TEACHER.RUNNER_NAME = "d2go.runner.GeneralizedRCNNRunner"
+    _C.DISTILLATION.TEACHER.OVERWRITE_OPTS = []
 
 
 class PseudoLabeler:
@@ -293,22 +302,54 @@ class DistillationModelingHook(mh.ModelingHook):
         return model
 
 
-def _build_teacher(cfg):
+def _build_teacher(cfg) -> nn.Module:
     """Create teacher using config settings
 
-    Only supports torchscript
+    Supports torchscript or creating pytorch model using config.
     """
-    assert (
-        cfg.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME
-    ), "Only supports teacher loaded as torchscript"
+    _validate_teacher_config(cfg)
+    if cfg.DISTILLATION.TEACHER.TYPE == "torchscript":
+        with PathManager.open(cfg.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME, "rb") as f:
+            model = torch.jit.load(f)
+    elif cfg.DISTILLATION.TEACHER.TYPE == "config":
+        from d2go.runner import import_runner
+        from d2go.setup import create_cfg_from_cli
 
-    torchscript_fname = cfg.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME
-    with PathManager.open(torchscript_fname, "rb") as f:
-        ts = torch.jit.load(f)
+        teacher_cfg = create_cfg_from_cli(
+            cfg.DISTILLATION.TEACHER.CONFIG_FNAME,
+            cfg.DISTILLATION.TEACHER.OVERWRITE_OPTS,
+            cfg.DISTILLATION.TEACHER.RUNNER_NAME,
+        )
+        runner = import_runner(cfg.DISTILLATION.TEACHER.RUNNER_NAME)()
+        model = runner.build_model(teacher_cfg, eval_only=True)
+    else:
+        raise ValueError(f"Unexpected teacher type: {cfg.DISTILLATION.TEACHER.TYPE}")
 
     # move teacher to same device as student unless specified
     device = torch.device(cfg.DISTILLATION.TEACHER.DEVICE or cfg.MODEL.DEVICE)
-    ts = ts.to(device)
-    ts.device = device
-    ts.eval()
-    return ts
+    model = model.to(device)
+    model.device = device
+    model.eval()
+    return model
+
+
+def _validate_teacher_config(cfg: CN) -> None:
+    """We support torchscript or PyTorch checkpoint as teacher models
+
+    If torchscript, need:
+        * torchscript_filename
+    If config, needs:
+        * config_fname
+    """
+    if cfg.DISTILLATION.TEACHER.TYPE == "torchscript":
+        assert (
+            cfg.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME
+        ), "Trying to load torchscript model without fname"
+    elif cfg.DISTILLATION.TEACHER.TYPE == "config":
+        assert (
+            cfg.DISTILLATION.TEACHER.CONFIG_FNAME
+        ), "Trying to load D2Go teacher model without config"
+    else:
+        raise ValueError(
+            f"Unrecognized DISTILLATION.TEACHER.TYPE: {cfg.DISTILLATION.TEACHER.TYPE}"
+        )

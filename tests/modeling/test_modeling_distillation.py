@@ -24,8 +24,12 @@ from d2go.modeling.distillation import (
 from d2go.registry.builtin import (
     DISTILLATION_ALGORITHM_REGISTRY,
     DISTILLATION_HELPER_REGISTRY,
+    META_ARCH_REGISTRY,
 )
+from d2go.runner.default_runner import BaseRunner
 from d2go.utils.testing import helper
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory
 
 
@@ -65,6 +69,16 @@ class TestLabeler(PseudoLabeler):
         return self.teacher(x)
 
 
+@META_ARCH_REGISTRY.register()
+class TestMetaArchAddRand(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.weight = nn.Parameter(torch.rand(1))
+
+    def forward(self, x):
+        return x + self.weight
+
+
 @DISTILLATION_HELPER_REGISTRY.register()
 class TestHelper(BaseDistillationHelper):
     def get_pseudo_labeler(self):
@@ -97,6 +111,7 @@ def _get_default_cfg():
     cfg.MODEL.DEVICE = "cpu"
     cfg.MODEL.META_ARCHITECTURE = "TestArch"
     add_distillation_configs(cfg)
+    # model_ema.add_model_ema_configs(cfg)
     cfg.DISTILLATION.ALGORITHM = "LabelDistillation"
     cfg.DISTILLATION.HELPER = "BaseDistillationHelper"
     cfg.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME = ""
@@ -111,8 +126,11 @@ class TestDistillation(unittest.TestCase):
         add_distillation_configs(cfg)
         self.assertTrue(isinstance(cfg.DISTILLATION.TEACHER, CfgNode))
 
-    def test_build_teacher(self):
-        """Check can build teacher using config"""
+        # check teacher model config is clone of student model
+        self.assertEqual(cfg.DISTILLATION.TEACHER.CONFIG_FNAME, "")
+
+    def test_build_teacher_torchscript(self):
+        """Check can build teacher using torchscript fname in config"""
         # create torchscript
         model = DivideInputBy2()
         traced_model = torch.jit.trace(model, torch.randn(5))
@@ -130,7 +148,7 @@ class TestDistillation(unittest.TestCase):
             torch.testing.assert_close(torch.Tensor(output), gt)
 
     @helper.skip_if_no_gpu
-    def test_build_teacher_gpu(self):
+    def test_build_teacher_torchscript_gpu(self):
         """Check teacher moved to cuda"""
         model = AddOne()
         traced_model = torch.jit.trace(model, torch.randn(5))
@@ -147,6 +165,27 @@ class TestDistillation(unittest.TestCase):
             gt = batched_inputs + torch.Tensor([1]).to("cuda")
             output = teacher(batched_inputs)
             torch.testing.assert_close(torch.Tensor(output), gt)
+
+    def test_build_teacher_config(self):
+        """Check build pytorch model using config"""
+        # build model
+        cfg = _get_default_cfg()
+        cfg.MODEL.META_ARCHITECTURE = "TestMetaArchAddRand"
+        gt_model = BaseRunner().build_model(cfg)
+        with make_temp_directory("tmp") as output_dir:
+            # save model
+            checkpointer = DetectionCheckpointer(gt_model, save_dir=output_dir)
+            checkpointer.save("checkpoint")
+            cfg.MODEL.WEIGHTS = f"{output_dir}/checkpoint.pth"
+            config_fname = f"{output_dir}/config.yaml"
+            with PathManager.open(config_fname, "w") as f:
+                f.write(cfg.dump())
+
+            # load model and compare to gt
+            cfg.DISTILLATION.TEACHER.TYPE = "config"
+            cfg.DISTILLATION.TEACHER.CONFIG_FNAME = config_fname
+            model = _build_teacher(cfg)
+            self.assertEqual(gt_model.weight, model.weight)
 
 
 class TestPseudoLabeler(unittest.TestCase):
@@ -302,3 +341,47 @@ class TestDistillationModelingHook(unittest.TestCase):
         model.train()
         output = model(batched_inputs)
         torch.testing.assert_close(output, gt)
+
+
+class DistillationMiscTests(unittest.TestCase):
+    def test_teacher_outside_updated_parameters(self):
+        """
+        Check that teacher values are ignored when updating student
+
+        The teacher can often be referenced in the mixed in model. A common
+        example is when the teacher is an attributed of the distillation
+        helper.
+         => DistillationModel.distillation_helper.teacher
+
+        This raises the question of whether the teacher model will be affected
+        by calls to the mixed in model:
+            DisillationModel.train() => does teacher switch to training?
+            setup_qat(DistillationModel) => will fuse occur on the teacher modules?
+
+        The answer to these questions should be no as we want the teacher to remain static
+        during training (unless specified). This is the case as long as teacher is an
+        attribute of a non-module class (e.g., distillation_helper). This is because
+        modules are registered in PyTorch as part of __setattr__. __setattr__ only checks
+        if the value is a module or parameter. If the value is an object
+        (e.g., distillation_helper) which contains modules, these modules are ignored.
+        https://pytorch.org/docs/stable/_modules/torch/nn/modules/module.html#Module.register_parameter
+
+        This unittest builds the teacher model and checks that only the student
+        parameter is registered.
+        """
+        cfg = _get_default_cfg()
+        cfg.MODEL.META_ARCHITECTURE = "TestMetaArchAddRand"
+        prebuilt_teacher = BaseRunner().build_model(cfg)
+        with make_temp_directory("tmp") as output_dir:
+            checkpointer = DetectionCheckpointer(prebuilt_teacher, save_dir=output_dir)
+            checkpointer.save("checkpoint")
+            cfg.MODEL.WEIGHTS = f"{output_dir}/checkpoint.pth"
+            config_fname = f"{output_dir}/config.yaml"
+            with PathManager.open(config_fname, "w") as f:
+                f.write(cfg.dump())
+            cfg.DISTILLATION.TEACHER.TYPE = "config"
+            cfg.DISTILLATION.TEACHER.CONFIG_FNAME = config_fname
+            cfg.DISTILLATION.HELPER = "TestHelper"
+            cfg.MODEL.MODELING_HOOKS = ["DistillationModelingHook"]
+            distilled_model = BaseRunner().build_model(cfg)
+            self.assertEqual(len(list(distilled_model.parameters())), 1)
