@@ -63,7 +63,7 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
     strategy = _get_strategy(cfg)
     accelerator = _get_accelerator(use_cpu)
 
-    return {
+    params = {
         "max_epochs": -1,
         "max_steps": cfg.SOLVER.MAX_ITER,
         "val_check_interval": cfg.TEST.EVAL_PERIOD
@@ -77,7 +77,20 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
         "replace_sampler_ddp": False,
+        "precision": "mixed" if cfg.SOLVER.AMP.ENABLED else 32,
     }
+    if cfg.SOLVER.CLIP_GRADIENTS.ENABLED:
+        if (
+            cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE.lower() == "norm"
+            and cfg.SOLVER.CLIP_GRADIENTS.NORM_TYPE != 2.0
+        ):
+            raise ValueError(
+                "D2Go Lightning backend supports only L2-norm for norm-based gradient clipping!"
+            )
+        params["gradient_clip_val"] = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
+        params["gradient_clip_algorithm"] = cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE
+
+    return params
 
 
 def main(
