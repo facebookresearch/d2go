@@ -31,9 +31,13 @@ jobs:
           pip install git+https://github.com/facebookresearch/detectron2.git
           pip install git+https://github.com/facebookresearch/mobile-vision
           pip install scikit-learn
-          pip install pytest
+          pip install pytest nbval
           pip install -e .
 
       - name: Run pytest
         run: |
           python -m unittest discover -v -s tests
+
+      - name: Test Notebooks
+        run: |
+          find . -name *.ipynb | CI=true xargs pytest --nbval-lax --current-env
