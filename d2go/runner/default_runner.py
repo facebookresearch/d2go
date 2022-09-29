@@ -95,12 +95,11 @@ def default_scale_d2_configs(cfg, new_world_size):
     # lr scale
     lr_scales = {
         "sgd": gpu_scale,
-        "adamw": 1,
         "sgd_mt": gpu_scale,
-        "adamw_mt": 1,
     }
     optim_name = cfg.SOLVER.OPTIMIZER.lower()
-    lr_scale = lr_scales[optim_name] if optim_name in lr_scales else gpu_scale
+    # only scale the lr for the optimizers specified in `lr_scales`
+    lr_scale = lr_scales.get(optim_name, 1.0)
 
     # default configs in D2
     cfg.SOLVER.BASE_LR = base_lr * lr_scale
