@@ -17,10 +17,6 @@ from d2go.data.utils import update_cfg_if_using_adhoc_dataset
 from d2go.modeling.api import build_meta_arch
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
-from d2go.quantization.modeling import (
-    default_custom_convert_fx,
-    default_custom_prepare_fx,
-)
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
     _get_tbx_writer,
@@ -504,26 +500,6 @@ class DefaultTask(pl.LightningModule):
                 )
                 self.ema_state.load_state_dict(checkpointed_state["model_ema"])
                 rank_zero_info("Loaded EMA state from checkpoint.")
-
-    # TODO: remove custom_prepare_fx/custom_convert_fx from LightningModule
-
-    def custom_prepare_fx(self, is_qat) -> pl.LightningModule:
-        if hasattr(self.model, "custom_prepare_fx"):
-            self.model = self.model.custom_prepare_fx(
-                self.cfg, is_qat, example_input=None
-            )
-        else:
-            self.model = default_custom_prepare_fx(
-                self.cfg, self.model, is_qat, example_input=None
-            )
-        return self
-
-    def custom_convert_fx(self) -> pl.LightningModule:
-        if hasattr(self.model, "custom_convert_fx"):
-            self.model = self.model.custom_convert_fx(self.cfg)
-        else:
-            self.model = default_custom_convert_fx(self.cfg, self.model)
-        return self
 
 
 # TODO(T123654122): subclass of DefaultTask will be refactored

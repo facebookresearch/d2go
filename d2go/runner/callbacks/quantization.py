@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import torch
 from d2go.config import CfgNode
+from d2go.quantization.modeling import prepare_fake_quant_model
 from d2go.utils.misc import mode
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from pytorch_lightning import LightningModule, Trainer
@@ -99,7 +100,10 @@ def checkpoint_has_prepared(checkpoint: Dict[str, Any]) -> bool:
 def maybe_prepare_for_quantization(model: LightningModule, checkpoint: Dict[str, Any]):
     if checkpoint_has_prepared(checkpoint) and not hasattr(model, PREPARED):
         # model has been prepared for QAT before saving into checkpoint
-        setattr(model, PREPARED, _deepcopy(model).custom_prepare_fx(is_qat=True))
+        copied = _deepcopy(model)
+        prepared = prepare_fake_quant_model(copied.cfg, copied.model, is_qat=True)
+        copied.model = prepared
+        setattr(model, PREPARED, copied)
 
 
 class QuantizationMixin(ABC):
@@ -162,8 +166,14 @@ class QuantizationMixin(ABC):
             The prepared Module to be used for quantized aware training.
         """
         is_qat = isinstance(self, QuantizationAwareTraining)
-        if hasattr(root, "custom_prepare_fx"):
-            return root.custom_prepare_fx(is_qat)
+        self._convert_fx_callback = None
+        if hasattr(root.model, "custom_prepare_fx"):
+            prepared, convert_fx_callback = root.model.custom_prepare_fx(
+                root.cfg, is_qat
+            )
+            self._convert_fx_callback = convert_fx_callback
+            root.model = prepared
+            return root
         prep_fn = prepare_qat_fx if is_qat else prepare_fx
         old_attrs = {
             attr: rgetattr(root, attr) for attr in attrs if rhasattr(root, attr)
@@ -203,8 +213,8 @@ class QuantizationMixin(ABC):
         Returns:
             The quantized model.
         """
-        if hasattr(root, "custom_convert_fx"):
-            return root.custom_convert_fx()
+        if self._convert_fx_callback is not None:
+            return self._convert_fx_callback(root)
         old_attrs = {
             attr: rgetattr(root, attr) for attr in attrs if rhasattr(root, attr)
         }

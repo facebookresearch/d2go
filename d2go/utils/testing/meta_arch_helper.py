@@ -59,11 +59,12 @@ class DetMetaArchForTest(torch.nn.Module):
             {"": set_backend_and_create_qconfig(cfg, is_train=self.training)},
             example_inputs,
         )
-        return self
 
-    def custom_convert_fx(self, cfg):
-        self.avgpool = convert_fx(self.avgpool)
-        return self
+        def convert_fx_callback(model):
+            model.avgpool = convert_fx(model.avgpool)
+            return model
+
+        return self, convert_fx_callback
 
 
 def get_det_meta_arch_cfg(cfg, dataset_name, output_dir):
