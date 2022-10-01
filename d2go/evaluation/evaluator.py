@@ -80,11 +80,11 @@ class ResultCache(object):
         gather (bool): gather cache results arcoss ranks to a list
         """
         if self.cache_file is None or not PathManager.exists(self.cache_file):
-            return None
-
-        with PathManager.open(self.cache_file, "rb") as fp:
-            ret = torch.load(fp)
-        logger.info(f"Loaded from checkpoint {self.cache_file}")
+            ret = None
+        else:
+            with PathManager.open(self.cache_file, "rb") as fp:
+                ret = torch.load(fp)
+            logger.info(f"Loaded from checkpoint {self.cache_file}")
 
         if gather:
             ret = comm.all_gather(ret)
