@@ -29,6 +29,8 @@ else:
 
 logger = logging.getLogger(__name__)
 
+_CONVERT_FX_CALLBACK_ATTRIBUTE = "_convert_fx_callback"
+
 
 def _is_observer_key(state_dict_key):
     observer_keys = ["activation_post_process", "weight_fake_quant"]
@@ -295,11 +297,7 @@ def default_custom_prepare_fx(cfg, model, is_qat, example_input=None):
         model = prepare_fx(model, qconfig_dict, (example_input,))
 
     logger.info("Setup the model with qconfig:\n{}".format(qconfig))
-    return model
-
-
-def default_custom_convert_fx(cfg, model):
-    return convert_fx(model)
+    return model, convert_fx
 
 
 def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
@@ -333,12 +331,28 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
             model = fuse_utils.swap_modules(model)
 
         if hasattr(model, "custom_prepare_fx"):
-            model = model.custom_prepare_fx(cfg, is_qat, example_input)
+            ret = model.custom_prepare_fx(cfg, is_qat, example_input)
+            if not (isinstance(ret, tuple) and len(ret) == 2):
+                raise ValueError(
+                    "`custom_prepare_fx` requires return model and convert_callback"
+                )
+            model, convert_fx_callback = ret
         else:
             logger.info(
                 "Using default implementation for custom_prepare_fx (FX graph mode)"
             )
-            model = default_custom_prepare_fx(cfg, model, is_qat, example_input)
+            model, convert_fx_callback = default_custom_prepare_fx(
+                cfg, model, is_qat, example_input
+            )
+
+        # HACK: store the convert_callback function as model attribute, which can be
+        # later accessed to convert fake quant model to quantized model. We'll find a
+        # better place to store this.
+        if hasattr(model, _CONVERT_FX_CALLBACK_ATTRIBUTE):
+            raise AttributeError(
+                f"{_CONVERT_FX_CALLBACK_ATTRIBUTE} is already set in model: {model}"
+            )
+        setattr(model, _CONVERT_FX_CALLBACK_ATTRIBUTE, convert_fx_callback)
 
     return model
 
@@ -352,10 +366,15 @@ def convert_to_quantized_model(cfg, fp32_model):
         int8_model = convert(fp32_model, inplace=False)
     else:
         # FX graph mode quantization
-        if hasattr(fp32_model, "custom_convert_fx"):
-            int8_model = fp32_model.custom_convert_fx(cfg)
-        else:
-            int8_model = convert_fx(fp32_model)
+        if not hasattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE):
+            raise AttributeError(
+                f"Can't find {_CONVERT_FX_CALLBACK_ATTRIBUTE} in model, please check "
+                f"`prepare_fake_quant_model` has been called: {fp32_model}"
+            )
+
+        convert_fx_callback = getattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE)
+        int8_model = convert_fx_callback(fp32_model)
+
     return int8_model
 
 
@@ -617,3 +636,15 @@ def _reset_qat_data_loader_if_needed(cfg, trainer, build_loader_func):
         # This method assumes the data loader can be replaced from trainer
         assert trainer.__class__ == SimpleTrainer
         trainer.reset_data_loader(lambda: build_loader_func(loader_cfg))
+
+
+def forward_custom_prepare_fx(root, sub_module_name, orig_ret):
+    """Helper function to forward return of `custom_prepare_fx` from sub module"""
+    new_sub_module, callback = orig_ret
+    setattr(root, sub_module_name, new_sub_module)
+
+    def new_callback(m):
+        setattr(m, sub_module_name, callback(getattr(m, sub_module_name)))
+        return m
+
+    return root, new_callback

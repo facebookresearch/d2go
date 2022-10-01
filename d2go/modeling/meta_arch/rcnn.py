@@ -61,9 +61,6 @@ class GeneralizedRCNN(_GeneralizedRCNN):
     def custom_prepare_fx(self, cfg, is_qat, example_input=None):
         return default_rcnn_custom_prepare_fx(self, cfg, is_qat, example_input)
 
-    def custom_convert_fx(self, cfg):
-        return default_rcnn_custom_convert_fx(self, cfg)
-
     def _cast_model_to_device(self, device):
         return _cast_detection_model(self, device)
 
@@ -309,7 +306,10 @@ def default_rcnn_custom_prepare_fx(self, cfg, is_qat, example_input=None):
 
     _fx_quant_prepare(model, cfg, is_qat, example_input)
 
-    return model
+    def convert_fx_callback(model):
+        return default_rcnn_custom_convert_fx(model, cfg)
+
+    return model, convert_fx_callback
 
 
 def _fx_quant_prepare(self, cfg, is_qat, example_input):

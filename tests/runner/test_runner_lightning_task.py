@@ -214,17 +214,19 @@ class TestLightningTask(unittest.TestCase):
                     example_inputs,
                     self.custom_config_dict,
                 )
-                return self
 
-            def custom_convert_fx(self, cfg):
-                self.avgpool = convert_fx(
-                    self.avgpool, convert_custom_config=self.custom_config_dict
-                )
-                return self
+                def convert_fx_callback(model):
+                    model.avgpool = convert_fx(
+                        model.avgpool, convert_custom_config=model.custom_config_dict
+                    )
+                    return model
+
+                return self, convert_fx_callback
 
         cfg = self._get_cfg(tmp_dir)
         cfg.MODEL.META_ARCHITECTURE = "QuantizableDetMetaArchForTest"
         cfg.QUANTIZATION.QAT.ENABLED = True
+        cfg.QUANTIZATION.EAGER_MODE = False
         task = GeneralizedRCNNTask(cfg)
 
         callbacks = [
