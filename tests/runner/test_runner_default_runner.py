@@ -355,7 +355,7 @@ class TestDefaultRunner(unittest.TestCase):
         counts = 0
 
         @TRAINER_HOOKS_REGISTRY.register()
-        def _check_hook_func(hooks):
+        def _check_hook_func(hooks, cfg):
             nonlocal counts
             counts = len(hooks)
             print(hooks)
