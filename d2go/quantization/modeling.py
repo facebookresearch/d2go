@@ -17,6 +17,7 @@ from mobile_cv.arch.quantization.observer import update_stat as observer_update_
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
 
+from .fx import get_convert_fx_fn, get_prepare_fx_fn
 from .qconfig import set_backend_and_create_qconfig, smart_decode_backend
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
@@ -291,13 +292,14 @@ def default_custom_prepare_fx(cfg, model, is_qat, example_input=None):
             " their own MetaArch."
         )
 
-    if is_qat:
-        model = prepare_qat_fx(model, qconfig_dict, (example_input,))
-    else:
-        model = prepare_fx(model, qconfig_dict, (example_input,))
-
-    logger.info("Setup the model with qconfig:\n{}".format(qconfig))
-    return model, convert_fx
+    prepare_fn = get_prepare_fx_fn(cfg, is_qat)
+    model = prepare_fn(
+        model,
+        qconfig_mapping=qconfig_dict,
+        example_inputs=(example_input,),
+    )
+    convert_fn = get_convert_fx_fn(cfg, (example_input,))
+    return model, convert_fn
 
 
 def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
