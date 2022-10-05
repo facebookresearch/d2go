@@ -58,6 +58,18 @@ def _get_accelerator(use_cpu: bool) -> str:
     return "cpu" if use_cpu else "gpu"
 
 
+def _get_lightning_precision(precision: str) -> Union[str, int]:
+    """
+    Convert our string format for precision to what lightning Trainer expects
+    """
+    if precision == "float16":
+        return 16
+    elif precision == "bfloat16":
+        return "bf16"
+    else:
+        return precision
+
+
 def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
     use_cpu = cfg.MODEL.DEVICE.lower() == "cpu"
     strategy = _get_strategy(cfg)
@@ -77,7 +89,9 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
         "replace_sampler_ddp": False,
-        "precision": "mixed" if cfg.SOLVER.AMP.ENABLED else 32,
+        "precision": _get_lightning_precision(cfg.SOLVER.AMP.PRECISION)
+        if cfg.SOLVER.AMP.ENABLED
+        else 32,
     }
     if cfg.SOLVER.CLIP_GRADIENTS.ENABLED:
         if (
