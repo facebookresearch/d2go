@@ -1,54 +1,16 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 #!/usr/bin/python
-import errno
+
 import importlib
-import inspect
-import logging
-import math
 import os
-import pickle
-import re
-import signal
-import sys
-import tempfile
-import threading
-import time
-import traceback
-import typing
-import warnings
-import zipfile
-from contextlib import contextmanager
-from functools import partial, wraps
-from random import random
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from functools import wraps
+from typing import Any, Callable, List, TypeVar
 
 import detectron2.utils.comm as comm
-import pkg_resources
-import six
 import torch
-from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
-from detectron2.engine import (
-    default_argument_parser,
-    default_setup,
-    DefaultTrainer,
-    hooks,
-    launch,
-)
+from detectron2.engine import DefaultTrainer
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
     CityscapesSemSegEvaluator,
@@ -58,18 +20,22 @@ from detectron2.evaluation import (
     LVISEvaluator,
     PascalVOCDetectionEvaluator,
     SemSegEvaluator,
-    verify_results,
 )
+from detectron2.utils.events import TensorboardXWriter
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 T = TypeVar("T")
-CallbackMapping = Mapping[Callable, Optional[Iterable[Any]]]
 FuncType = Callable[..., Any]
 F = TypeVar("F", bound=FuncType)
-RT = TypeVar("RT")
-NT = TypeVar("T", bound=NamedTuple)
 
-from detectron2.utils.events import TensorboardXWriter
+
+__all__ = [
+    "run_once",
+    "retryable",
+    "get_dir_path",
+    "TensorboardXWriter",  # TODO: move to D2Go's vis utils if needed
+    "D2Trainer",  # TODO: move to trainer folder
+]
 
 
 class MultipleFunctionCallError(Exception):
@@ -135,15 +101,6 @@ def get_dir_path(relative_path):
     return os.path.dirname(importlib.import_module(relative_path).__file__)
 
 
-# copy util function for oss
-def alias(x, name, is_backward=False):
-    if not torch.onnx.is_in_onnx_export():
-        return x
-    assert isinstance(x, torch.Tensor)
-    return torch.ops._caffe2.AliasWithName(x, name, is_backward=is_backward)
-
-
-@fb_overwritable()
 class D2Trainer(DefaultTrainer):
     @classmethod
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
