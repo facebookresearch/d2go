@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import logging
+import re
 from functools import partial
+from typing import Generator, List, Optional, Tuple, Union
 
 import torch
 import torch.distributed as dist
@@ -42,8 +44,46 @@ def check_for_learnable_fake_quant_ops(qat_method, model):
             )
 
 
-def iterate_module_named_parameters(model, check_requires_grad=True):
-    """Iterate over all parameters for the model"""
+def _matches_regex(module_name: str, param_name: str, reg_exps: List[str]) -> bool:
+    """Validates if module_name + "." + param_name matches any of the regex str-s."""
+    if not reg_exps:
+        return False
+
+    for exp in reg_exps:
+        full_name = (module_name + "." if module_name else "") + param_name
+        if re.match(exp, full_name):
+            return True
+    return False
+
+
+def iterate_module_named_parameters(
+    model: Union[torch.nn.Module, torch.nn.parallel.DistributedDataParallel],
+    check_requires_grad: Optional[bool] = True,
+    param_name_reg_exps: Optional[List[str]] = None,
+) -> Generator[Tuple[str, torch.nn.Module, str, torch.nn.Parameter], None, None]:
+    """
+    Iterate over all parameters for the model optionally filtering parameters.
+
+    Filtering can be done based on:
+    * checking if requires_grad field is True or not
+    * checking if module_name + param_name matches a list of regular expressions
+
+    Args:
+        model: model to iterate over
+        check_requies_grad: whether to return requires_grad params only or not
+        param_name_reg_exps: list of strings that each is representing a regex
+            that will be matched against module_name + "." + param_name.
+            if param_name_reg_exps is empty or None then we don't require
+            param name to match against the regular expression.
+
+    Yields:
+        module_name, module, parameter_name, parameter
+
+        module_name - is FQN of the module
+        module - torch.nn.Module object
+        parameter_name - string name of the parameter
+        parameter - torch.nn.Parameter object
+    """
     memo = set()
     for module_name, module in model.named_modules():
         for module_param_name, value in module.named_parameters(recurse=False):
@@ -53,6 +93,12 @@ def iterate_module_named_parameters(model, check_requires_grad=True):
             if value in memo:
                 continue
             memo.add(value)
+
+            # Skip parameters that don't match param_name_reg_exps if necessary.
+            if param_name_reg_exps and not _matches_regex(
+                module_name, module_param_name, param_name_reg_exps
+            ):
+                continue
 
             yield module_name, module, module_param_name, value
 
