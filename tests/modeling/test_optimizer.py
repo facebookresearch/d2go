@@ -39,7 +39,8 @@ def _test_each_optimizer(cfg):
     optimizer.zero_grad()
 
     random.seed(20210912)
-    for _ in range(2500):
+    num_iter = 500
+    for _ in range(num_iter):
         target = torch.empty(1, 1, 1, 1).fill_(random.randint(0, 1))
         x = torch.add(torch.rand(1, 3, 16, 16), 2 * target)
         y_pred = model(x)
@@ -48,14 +49,15 @@ def _test_each_optimizer(cfg):
         optimizer.step()
 
     n_correct = 0
-    for _ in range(200):
+    n_eval = 100
+    for _ in range(n_eval):
         target = torch.empty(1, 1, 1, 1).fill_(random.randint(0, 1))
         x = torch.add(torch.rand(1, 3, 16, 16), 2 * target)
         y_pred = torch.round(torch.sigmoid(model(x)))
         if y_pred == target:
             n_correct += 1
 
-    print("Correct prediction rate {0}.".format(n_correct / 200))
+    print("Correct prediction rate {0}.".format(n_correct / n_eval))
 
 
 def _check_param_group(self, group, num_params=None, **kwargs):
@@ -158,29 +160,44 @@ class TestOptimizer(unittest.TestCase):
             self, optimizer.param_groups[1], num_params=2, lr=1.0, weight_decay=2.0
         )
 
-    def test_all_optimizers(self):
+    OPTIMIZER_NAMES_PART1 = ["SGD", "AdamW", "SGD_MT"]
+    OPTIMIZER_NAMES_PART2 = ["AdamW_MT", "Adam"]
+
+    def _test_optimizers_list(self, optimizers_list):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
         multipliers = [None, [{"conv": 0.1}]]
 
-        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT", "Adam"]:
+        for optimizer_name in optimizers_list:
             for mult in multipliers:
                 cfg.SOLVER.BASE_LR = 0.01
                 cfg.SOLVER.OPTIMIZER = optimizer_name
                 cfg.SOLVER.MULTIPLIERS = mult
                 _test_each_optimizer(cfg)
 
-    def test_full_model_grad_clipping(self):
+    def test_all_optimizers_part_1(self):
+        self._test_optimizers_list(self.OPTIMIZER_NAMES_PART1)
+
+    def test_all_optimizers_part_2(self):
+        self._test_optimizers_list(self.OPTIMIZER_NAMES_PART2)
+
+    def _test_full_model_grad_clipping(self, optimizers_list):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
 
-        for optimizer_name in ["SGD", "AdamW", "SGD_MT", "AdamW_MT", "Adam"]:
+        for optimizer_name in optimizers_list:
             cfg.SOLVER.BASE_LR = 0.02
             cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE = 0.2
             cfg.SOLVER.CLIP_GRADIENTS.ENABLED = True
             cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE = "full_model"
             cfg.SOLVER.OPTIMIZER = optimizer_name
             _test_each_optimizer(cfg)
+
+    def test_full_model_grad_clipping_part1(self):
+        self._test_full_model_grad_clipping(self.OPTIMIZER_NAMES_PART1)
+
+    def test_full_model_grad_clipping_part2(self):
+        self._test_full_model_grad_clipping(self.OPTIMIZER_NAMES_PART2)
 
     def test_create_optimizer_custom(self):
         class Model(torch.nn.Module):
