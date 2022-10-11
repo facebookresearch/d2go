@@ -7,6 +7,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Type
 
+import d2go.runner.default_runner
+
 import detectron2.utils.comm as comm
 import pytorch_lightning as pl
 import torch
@@ -18,18 +20,11 @@ from d2go.modeling.api import build_meta_arch
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
-from d2go.runner.default_runner import (
-    _get_tbx_writer,
-    Detectron2GoRunner,
-    GeneralizedRCNNRunner,
-)
+from d2go.runner.default_runner import Detectron2GoRunner, GeneralizedRCNNRunner
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import VisualizationEvaluator
-from detectron2.solver import (
-    build_lr_scheduler as d2_build_lr_scheduler,
-    build_optimizer as d2_build_optimizer,
-)
+from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.logger import _flatten_dict
 
@@ -277,6 +272,10 @@ class DefaultTask(pl.LightningModule):
     def train_dataloader(self):
         return self.build_detection_train_loader(self.cfg)
 
+    def _get_tbx_writer(self, log_dir):
+        """Get Tensorboard writer"""
+        return d2go.runner.default_runner._get_tbx_writer(log_dir)
+
     def _reset_dataset_evaluators(self):
         """reset validation dataset evaluator to be run in EVAL_PERIOD steps"""
         assert (
@@ -308,7 +307,9 @@ class DefaultTask(pl.LightningModule):
             mapper = self.get_mapper(self.cfg, is_train=False)
             vis_eval_type = self.get_visualization_evaluator()
             # TODO: replace tbx_writter with Lightning's self.logger.experiment
-            tbx_writter = _get_tbx_writer(get_tensorboard_log_dir(self.cfg.OUTPUT_DIR))
+            tbx_writter = self._get_tbx_writer(
+                get_tensorboard_log_dir(self.cfg.OUTPUT_DIR)
+            )
             if vis_eval_type is not None:
                 evaluator._evaluators.append(
                     vis_eval_type(
