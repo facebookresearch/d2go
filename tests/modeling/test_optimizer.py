@@ -5,9 +5,13 @@
 import random
 import unittest
 
+from types import MethodType
+
 import d2go.runner.default_runner as default_runner
 import torch
 from d2go.optimizer import build_optimizer_mapper
+
+from d2go.runner.config_defaults import add_optimizer_config
 from d2go.utils.testing import helper
 
 
@@ -89,18 +93,41 @@ def get_optimizer_cfg(
     return cfg
 
 
+def get_toy_model():
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv = torch.nn.Conv2d(3, 3, 1)
+            self.bn = torch.nn.BatchNorm2d(3)
+
+        def forward(self, x):
+            return self.bn(self.conv(x))
+
+    return Model()
+
+
+def get_cfg_with_mult_optimizers(
+    names, lrs, weight_decays, weight_decay_norms, weight_decay_biases
+):
+    runner = default_runner.Detectron2GoRunner()
+    cfg = runner.get_default_cfg()
+
+    for name, lr, weight_decay, weight_decay_norm, weight_decay_bias in zip(
+        names, lrs, weight_decays, weight_decay_norms, weight_decay_biases
+    ):
+        name = name.upper()
+        cfg = add_optimizer_config(cfg, name, remove_solver=True)
+        cfg.SOLVERS[name].SOLVER.BASE_LR = lr
+        cfg.SOLVERS[name].SOLVER.WEIGHT_DECAY = weight_decay
+        cfg.SOLVERS[name].SOLVER.WEIGHT_DECAY_NORM = weight_decay_norm
+        cfg.SOLVERS[name].SOLVER.WEIGHT_DECAY_BIAS = weight_decay_bias
+
+    return cfg
+
+
 class TestOptimizer(unittest.TestCase):
     def test_create_optimizer_default(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.conv = torch.nn.Conv2d(3, 3, 1)
-                self.bn = torch.nn.BatchNorm2d(3)
-
-            def forward(self, x):
-                return self.bn(self.conv(x))
-
-        model = Model()
+        model = get_toy_model()
         cfg = get_optimizer_cfg(
             lr=1.0, weight_decay=1.0, weight_decay_norm=1.0, weight_decay_bias=1.0
         )
@@ -109,6 +136,60 @@ class TestOptimizer(unittest.TestCase):
         _check_param_group(
             self, optimizer.param_groups[0], num_params=4, weight_decay=1.0, lr=1.0
         )
+
+    def test_creating_multiple_optimizers(self):
+        def _get_optimizer_param_groups(self, cfg):
+            return {
+                "mobile_opt": [{"params": list(self.conv.parameters())}],
+                "vision_opt": [{"params": list(self.bn.parameters())}],
+            }
+
+        def _bad_get_optimizer_param_groups(self, cfg):
+            return {
+                "mobile_opt": [{"params": list(self.conv.parameters())}],
+            }
+
+        model = get_toy_model()
+        opt_names = ["mobile_opt", "vision_opt"]
+        lrs = [0.01, 0.02]
+        weight_decays = [1.0, 1.0]
+        weight_decay_norms = [1.0, 1.0]
+        weight_decay_biases = [1.0, 1.0]
+        cfg = get_cfg_with_mult_optimizers(
+            names=opt_names,
+            lrs=lrs,
+            weight_decays=weight_decays,
+            weight_decay_norms=weight_decay_norms,
+            weight_decay_biases=weight_decay_biases,
+        )
+        # Should raise exception since we didn't implement get_optimizer_param_groups
+        # but have two optimizers
+        with self.assertRaisesRegex(
+            Exception, expected_regex="get_optimizer_param_groups"
+        ):
+            optimizers = build_optimizer_mapper(cfg, model)
+
+        model.get_optimizer_param_groups = MethodType(
+            _bad_get_optimizer_param_groups, model
+        )
+        with self.assertRaisesRegex(
+            Exception,
+            expected_regex="Missing parameters for optimizer: 'VISION_OPT'",
+        ):
+            optimizers = build_optimizer_mapper(cfg, model)
+
+        # Now we shouldn't fail.
+        model.get_optimizer_param_groups = MethodType(
+            _get_optimizer_param_groups, model
+        )
+        optimizers = build_optimizer_mapper(cfg, model)
+        self.assertIsInstance(optimizers, dict)
+        self.assertSetEqual(set(opt_names), set(optimizers.keys()))
+        for (_, opt), lr, wd in zip(optimizers.items(), lrs, weight_decays):
+            self.assertIsInstance(opt, torch.optim.Optimizer)
+            _check_param_group(
+                self, opt.param_groups[0], num_params=2, weight_decay=wd, lr=lr
+            )
 
     def test_create_optimizer_lr(self):
         class Model(torch.nn.Module):
@@ -150,7 +231,6 @@ class TestOptimizer(unittest.TestCase):
             lr=1.0, weight_decay=1.0, weight_decay_norm=2.0, weight_decay_bias=1.0
         )
         optimizer = build_optimizer_mapper(cfg, model)
-
         self.assertEqual(len(optimizer.param_groups), 2)
 
         _check_param_group(

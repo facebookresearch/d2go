@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import logging
 
 from d2go.config import CfgNode as CN
 from d2go.data.build import (
@@ -20,6 +21,9 @@ from detectron2.config import get_cfg as get_d2_cfg
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
+logger = logging.getLogger(__name__)
+
+
 def _add_abnormal_checker_configs(_C: CN) -> None:
     _C.ABNORMAL_CHECKER = CN()
     # check and log the iteration with bad losses if enabled
@@ -29,6 +33,85 @@ def _add_abnormal_checker_configs(_C: CN) -> None:
 @fb_overwritable()
 def _add_detectron2go_runner_default_fb_cfg(_C: CN) -> None:
     pass
+
+
+def _add_d2go_default_optimizer_config(_C: CN):
+    """Populates given config node with some default d2go optimizer
+    settings.
+
+    _C: can be a root level config node or a relative config node that
+    needs to be populated with reasonable defaults.
+    """
+    _C.SOLVER.OPTIMIZER = "sgd"
+    _C.SOLVER.LR_MULTIPLIER_OVERWRITE = []
+    _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
+    _C.SOLVER.WEIGHT_DECAY_OVERWRITE = []
+
+    # AMP precision is used by the lightning backend. Can be "float16" or "bfloat16".
+    _C.SOLVER.AMP.PRECISION = "float16"
+
+    # Betas are used in the AdamW optimizer
+    _C.SOLVER.BETAS = (0.9, 0.999)
+
+    # RECOMPUTE_BOXES for LSJ Training
+    _C.INPUT.RECOMPUTE_BOXES = False
+
+    # For D2Go auto scale is encouraged, setting it to 8
+    _C.SOLVER.REFERENCE_WORLD_SIZE = 8
+
+    # Also scale quantization configs
+    _C.SOLVER.AUTO_SCALING_METHODS = [
+        "default_scale_d2_configs",
+        "default_scale_quantization_configs",
+    ]
+
+
+def _get_d2go_default_optimizer_config() -> CN:
+    """Populates default config for an optimizer based on d2 and d2go
+    default settings.
+    """
+    cfg = get_d2_cfg()
+    cfg = CN.cast_from_other_class(cfg)
+    _add_d2go_default_optimizer_config(cfg)
+
+    return cfg.SOLVER
+
+
+def add_optimizer_config(
+    _C: CN,
+    optimizer_key_name: str,
+    remove_solver: bool = True,
+    override_solver_cfg: CN = None,
+) -> CN:
+    """Adds optimizer entry config under "SOLVERS" section.
+
+    Assumes _C is a root level config. Adds one more optimizer entry
+    under "SOLVERS" section of the config with the given key name. Newly added config
+    will either have default values or user can optionally pass an
+    override_solver_cfg
+
+    Note that this will remove "SOLVER" section unless instructed otherwise.
+
+    """
+    if "SOLVERS" not in _C:
+        _C.SOLVERS = CN()
+    optimizer_cfg = (
+        override_solver_cfg
+        if override_solver_cfg is not None
+        else _get_d2go_default_optimizer_config()
+    )
+    optimizer_key_name = optimizer_key_name.upper()
+    if optimizer_key_name in _C.SOLVERS:
+        logger.warn(
+            f"We're overriding optimizer config for key: '{optimizer_key_name}'."
+        )
+
+    _C.SOLVERS[optimizer_key_name] = CN()
+    _C.SOLVERS[optimizer_key_name].SOLVER = optimizer_cfg
+    if remove_solver and "SOLVER" in _C:
+        logger.warn("Deleting _C.SOLVER as instructed.")
+        _C.pop("SOLVER")
+    return _C
 
 
 def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
@@ -65,29 +148,15 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     _C.MODEL.DDP_FP16_GRAD_COMPRESS = False
 
     # Set default optimizer
-    _C.SOLVER.OPTIMIZER = "sgd"
-    _C.SOLVER.LR_MULTIPLIER_OVERWRITE = []
-    _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
-    _C.SOLVER.WEIGHT_DECAY_OVERWRITE = []
     assert not _C.SOLVER.AMP.ENABLED
-    # AMP precision is used by the lightning backend. Can be "float16" or "bfloat16".
-    _C.SOLVER.AMP.PRECISION = "float16"
 
-    # Betas are used in the AdamW optimizer
-    _C.SOLVER.BETAS = (0.9, 0.999)
+    # Default world size in D2 is 0, which means scaling is not applied.
+    assert _C.SOLVER.REFERENCE_WORLD_SIZE == 0
+
+    _add_d2go_default_optimizer_config(_C)
 
     # RECOMPUTE_BOXES for LSJ Training
     _C.INPUT.RECOMPUTE_BOXES = False
-
-    # Default world size in D2 is 0, which means scaling is not applied. For D2Go
-    # auto scale is encouraged, setting it to 8
-    assert _C.SOLVER.REFERENCE_WORLD_SIZE == 0
-    _C.SOLVER.REFERENCE_WORLD_SIZE = 8
-    # Besides scaling default D2 configs, also scale quantization configs
-    _C.SOLVER.AUTO_SCALING_METHODS = [
-        "default_scale_d2_configs",
-        "default_scale_quantization_configs",
-    ]
 
     # Modeling hooks
     # List of modeling hook names
