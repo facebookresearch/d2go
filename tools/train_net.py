@@ -145,4 +145,6 @@ def build_cli_args(
 
 
 if __name__ == "__main__":
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
     cli()
