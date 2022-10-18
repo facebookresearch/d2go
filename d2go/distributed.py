@@ -16,6 +16,7 @@ import mobile_cv.torch.utils_pytorch.comm as mcv_comm
 import torch
 from d2go.config import CfgNode, temp_defrost
 from d2go.utils.launch_environment import get_launch_environment
+from mobile_cv.common.misc.oss_utils import fb_overwritable
 from mobile_cv.torch.utils_pytorch.distributed_helper import (
     DEFAULT_TIMEOUT,
     DistributedParams,
@@ -56,6 +57,11 @@ def distributed_worker(
         return deco(main_func)(*args, **kwargs)
 
 
+@fb_overwritable()
+def update_dist_url(dist_url: str) -> str:
+    return dist_url
+
+
 def launch(
     main_func: Callable,
     num_processes_per_machine: int,
@@ -86,6 +92,8 @@ def launch(
             with temp_defrost(cfg):
                 cfg.MODEL.DEVICE = "cpu"
         backend = "GLOO"
+
+    dist_url = update_dist_url(dist_url)
 
     return _launch(
         main_func=main_func,
