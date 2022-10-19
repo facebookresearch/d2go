@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+# @fb-only: from . import fb  # isort:skip  # noqa 
 from .build import build_dataset_mapper, D2GO_DATA_MAPPER_REGISTRY  # noqa
 from .d2go_dataset_mapper import D2GoDatasetMapper  # noqa
 from .rotated_dataset_mapper import RotatedDatasetMapper  # noqa
