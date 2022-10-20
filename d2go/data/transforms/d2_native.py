@@ -24,6 +24,7 @@ D2_RANDOM_TRANSFORMS = {
     "RandomFlip": d2T.RandomFlip,
     "RandomSaturation": d2T.RandomSaturation,
     "RandomLighting": d2T.RandomLighting,
+    "RandomResize": d2T.RandomResize,
     "FixedSizeCrop": d2T.FixedSizeCrop,
     "ResizeScale": d2T.ResizeScale,
 }
@@ -123,3 +124,11 @@ def FixedSizeCropOp(
     cfg: CfgNode, arg_str: Optional[str], is_train: bool
 ) -> List[aug.Augmentation]:
     return build_func(cfg, arg_str, is_train, name="FixedSizeCrop")
+
+
+# example repr: RandomResizeOp::{"shape_list": [[224, 224], [256, 256], [320, 320]]}
+@TRANSFORM_OP_REGISTRY.register()
+def RandomResizeOp(
+    cfg: CfgNode, arg_str: Optional[str], is_train: bool
+) -> List[aug.Augmentation]:
+    return build_func(cfg, arg_str, is_train, name="RandomResize")
