@@ -53,15 +53,24 @@ class BaseRegistryPopulationTests(object):
 
 
 class TestMetaArchRegistryPopulation(unittest.TestCase, BaseRegistryPopulationTests):
-    def setUp(self):
-        import d2go.modeling
-
-        self._package = d2go.modeling
-
     def get_registered_items(self):
         from d2go.registry.builtin import META_ARCH_REGISTRY
 
         return [k for k, v in META_ARCH_REGISTRY]
 
     def import_all_modules(self):
-        import_submodules(self._package)
+        import d2go.modeling
+
+        import_submodules(d2go.modeling)
+
+
+class TestDataMapperRegistryPopulation(unittest.TestCase, BaseRegistryPopulationTests):
+    def get_registered_items(self):
+        from d2go.data.dataset_mappers import D2GO_DATA_MAPPER_REGISTRY
+
+        return [k for k, v in D2GO_DATA_MAPPER_REGISTRY]
+
+    def import_all_modules(self):
+        import d2go.data.dataset_mappers
+
+        import_submodules(d2go.data.dataset_mappers)
