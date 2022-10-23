@@ -23,6 +23,7 @@ from d2go.setup import (
     post_mortem_if_fail_for_main,
     prepare_for_launch,
     setup_after_launch,
+    setup_before_launch,
 )
 from d2go.utils.misc import print_metrics_table
 from mobile_cv.predictor.api import create_predictor
@@ -66,6 +67,7 @@ def main(
 
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
+    shared_context = setup_before_launch(cfg, output_dir, runner_name)
     main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
     launch(
         main_func,
@@ -75,6 +77,7 @@ def run_with_cmdline_args(args):
         dist_url=args.dist_url,
         backend="GLOO",
         always_spawn=False,
+        shared_context=shared_context,
         args=(cfg, output_dir, runner_name),
         kwargs={
             "predictor_path": args.predictor_path,
