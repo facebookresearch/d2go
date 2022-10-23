@@ -8,6 +8,7 @@ features, functions in this module share the same signatures as the ones from mo
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -16,6 +17,11 @@ import mobile_cv.torch.utils_pytorch.comm as mcv_comm
 import torch
 from d2go.config import CfgNode, temp_defrost
 from d2go.utils.launch_environment import get_launch_environment
+from mobile_cv.torch.utils_pytorch.comm import (  # noqa
+    BaseSharedContext,
+    get_shared_context,
+    set_shared_context,
+)
 from mobile_cv.torch.utils_pytorch.distributed_helper import (
     DEFAULT_TIMEOUT,
     DistributedParams,
@@ -24,7 +30,18 @@ from mobile_cv.torch.utils_pytorch.distributed_helper import (
     save_return_deco,
 )
 
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class D2GoSharedContext(BaseSharedContext):
+    """
+    Shared context that can be initialied before launching the workers
+    passed to all workers.
+    """
+
+    runner_shared_context: Any
 
 
 # BC-compatible
@@ -47,7 +64,12 @@ def distributed_worker(
     dist_params: Optional[DistributedParams] = None,
     return_save_file: Optional[str] = None,
     timeout: timedelta = DEFAULT_TIMEOUT,
+    shared_context: Optional[BaseSharedContext] = None,
 ):
+    if shared_context:
+        set_shared_context(
+            shared_context
+        )  # set the global shared context from the args passed in by mp spawn
     dist_params = dist_params or DistributedParams.from_environ()
     with enable_dist_process_groups(backend, init_method, dist_params, timeout):
         d2_comm._LOCAL_PROCESS_GROUP = mcv_comm._LOCAL_PROCESS_GROUP
@@ -65,6 +87,7 @@ def launch(
     backend: str = "NCCL",
     always_spawn: bool = False,
     launch_method: str = "multiprocessing",
+    shared_context: Optional[D2GoSharedContext] = None,
     timeout: timedelta = DEFAULT_TIMEOUT,
     args: Tuple[Any, ...] = (),
     kwargs: Dict[str, Any] = None,
@@ -96,6 +119,7 @@ def launch(
         backend=backend,
         always_spawn=always_spawn,
         launch_method=launch_method,
+        shared_context=shared_context,
         timeout=timeout,
         args=args,
         kwargs=kwargs,

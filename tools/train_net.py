@@ -19,6 +19,7 @@ from d2go.setup import (
     post_mortem_if_fail_for_main,
     prepare_for_launch,
     setup_after_launch,
+    setup_before_launch,
 )
 from d2go.trainer.api import TrainNetOutput
 from d2go.utils.misc import (
@@ -93,6 +94,7 @@ def main(
 
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
+    shared_context = setup_before_launch(cfg, output_dir, runner_name)
 
     main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
     outputs = launch(
@@ -102,6 +104,7 @@ def run_with_cmdline_args(args):
         machine_rank=args.machine_rank,
         dist_url=args.dist_url,
         backend=args.dist_backend,
+        shared_context=shared_context,
         args=(cfg, output_dir, runner_name),
         kwargs={
             "eval_only": args.eval_only,

@@ -18,7 +18,11 @@ from d2go.config import (
     temp_defrost,
 )
 from d2go.config.utils import get_diff_cfg
-from d2go.distributed import get_local_rank, get_num_processes_per_machine
+from d2go.distributed import (
+    D2GoSharedContext,
+    get_local_rank,
+    get_num_processes_per_machine,
+)
 from d2go.runner import BaseRunner, DefaultTask, import_runner, RunnerV2Mixin
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
@@ -200,6 +204,24 @@ def maybe_override_output_dir(cfg: CfgNode, output_dir: str):
                 )
             )
             cfg.OUTPUT_DIR = output_dir
+
+
+def setup_before_launch(
+    cfg: CfgNode,
+    output_dir: str,
+    runner_class: Union[None, str, Type[BaseRunner], Type[DefaultTask]],
+) -> Union[None, D2GoSharedContext]:
+    """
+    Setup logic before spawning workers. Including:
+        - Shared context initilization to be passed to all workers
+    """
+    if isinstance(runner_class, str):
+        logger.info(f"Importing runner: {runner_class} ...")
+        runner_class = import_runner(runner_class)
+
+    if hasattr(runner_class, "create_shared_context"):
+        return runner_class.create_shared_context(cfg)
+    return None
 
 
 def setup_after_launch(

@@ -22,6 +22,7 @@ from d2go.data.utils import (
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
+from d2go.distributed import D2GoSharedContext
 from d2go.evaluation.evaluator import inference_on_dataset
 from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.api import build_d2go_model
@@ -59,7 +60,6 @@ from detectron2.utils.events import CommonMetricPrinter, JSONWriter
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 from mobile_cv.predictor.api import PredictorWrapper
 from torch import nn
-
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +156,13 @@ class BaseRunner(object):
         Override `register` in order to run customized code before other things like:
             - registering datasets.
             - registering model using Registry.
+        """
+        pass
+
+    @classmethod
+    def create_shared_context(cls, cfg) -> D2GoSharedContext:
+        """
+        Override `create_shared_context` in order to run customized code to create distributed shared context that can be accessed by all workers
         """
         pass
 
