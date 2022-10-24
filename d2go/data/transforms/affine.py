@@ -161,8 +161,8 @@ class RandomAffine(TransformGen):
         # Center in output patch
         img_corners = np.array(
             [
-                [0, 0, im_w, im_w],
-                [0, im_h, 0, im_h],
+                [0, 0, im_w - 1, im_w - 1],
+                [0, im_h - 1, 0, im_h - 1],
                 [1, 1, 1, 1],
             ]
         )
