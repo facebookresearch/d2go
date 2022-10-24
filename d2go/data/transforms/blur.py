@@ -4,6 +4,7 @@
 from typing import Dict, List, Tuple
 
 import detectron2.data.transforms.augmentation as aug
+
 import numpy as np
 from detectron2.config import CfgNode
 from detectron2.data.transforms import NoOpTransform, Transform
@@ -122,14 +123,21 @@ class MotionBlurTransform(Transform):
         Args:
            will apply the specified blur to the image
         """
-        import imgaug.augmenters as iaa
 
         super().__init__()
         self._set_attributes(locals())
-        self.aug = iaa.MotionBlur(k, angle, direction, 1)
+        self.k = k
+        self.angle = angle
+        self.direction = direction
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
-        img = self.aug.augment_image(img)
+        # Imported here and not in __init__to avoid linting errors
+        # also, imported here and not in the header section
+        # since the rest of the code does not have this dependency
+        import imgaug.augmenters as iaa
+
+        aug = iaa.MotionBlur(self.k, self.angle, self.direction, 1)
+        img = aug.augment_image(img)
         return img
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
