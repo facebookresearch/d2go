@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import random
 from typing import Dict, List, Tuple
 
+import cv2
 import detectron2.data.transforms.augmentation as aug
 
 import numpy as np
@@ -185,3 +187,67 @@ def RandomMotionBlurOp(cfg: CfgNode, arg_str: str, is_train: bool) -> List[Trans
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [RandomMotionBlur(**kwargs)]
+
+
+class GaussianBlurTransform(Transform):
+    def __init__(
+        self,
+        k: int = 3,
+        sigma_range: Tuple[float, float] = (0.3, 0.3),
+    ):
+        """
+        Args:
+           will apply the specified blur to the image
+        """
+
+        super().__init__()
+        self._set_attributes(locals())
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        sigma = random.uniform(*self.sigma_range)
+        img_out = cv2.GaussianBlur(img, (self.k, self.k), sigma)
+        return img_out
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        return segmentation
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        return coords
+
+
+class RandomGaussianBlur(aug.Augmentation):
+    """
+    Apply random motion blur.
+    """
+
+    def __init__(
+        self,
+        prob: float = 0.5,
+        k: int = 3,
+        sigma_range: Tuple[float, float] = (0.3, 0.3),
+    ):
+        """
+        Args:
+            prob (float): probability of applying transform
+            k (int): kernel size
+            sigma_range (tuple): min, max of sigma gaussian filter used
+        """
+        super().__init__()
+        # Turn all locals into member variables.
+        self._init(locals())
+
+    def get_transform(self, img: np.ndarray) -> Transform:
+        do = self._rand_range() < self.prob
+        if do:
+            return GaussianBlurTransform(self.k, self.sigma_range)
+        else:
+            return NoOpTransform()
+
+
+# example repr: "RandomGaussianBlurOp::{'prob': 0.5, 'k': 5, 'sigma': [0.1, 2]}"
+@TRANSFORM_OP_REGISTRY.register()
+def RandomGaussianBlurOp(cfg: CfgNode, arg_str: str, is_train: bool) -> List[Transform]:
+    assert is_train
+    kwargs = _json_load(arg_str) if arg_str is not None else {}
+    assert isinstance(kwargs, dict)
+    return [RandomGaussianBlur(**kwargs)]
