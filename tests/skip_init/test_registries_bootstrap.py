@@ -47,10 +47,10 @@ class TestRegistryBootstrap(unittest.TestCase):
 
     def test_bootstrap_core_lib(self):
         self.assertFalse(bootstrap._IS_BOOTSTRAPPED)
-        bootstrap.bootstrap_registries(enable_cache=False, catch_exception=True)
+        bootstrap.bootstrap_registries(enable_cache=False, catch_exception=False)
         self.assertTrue(bootstrap._IS_BOOTSTRAPPED)
 
     def test_bootstrap_with_cache(self):
         self.assertFalse(bootstrap._IS_BOOTSTRAPPED)
-        bootstrap.bootstrap_registries(enable_cache=True, catch_exception=True)
+        bootstrap.bootstrap_registries(enable_cache=True, catch_exception=False)
         self.assertTrue(bootstrap._IS_BOOTSTRAPPED)
