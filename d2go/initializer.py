@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+
+from d2go.registry.bootstrap import bootstrap_registries
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 _INITIALIZED = False
 
 
-def initialize_all():
+def initialize_all(boostrap_registries: bool = False) -> None:
     global _INITIALIZED
     if _INITIALIZED:
         return
     _INITIALIZED = True
 
-    _initialize_all()
+    _initialize_all(boostrap_registries=boostrap_registries)
 
 
-def _initialize_all():
+def _initialize_all(boostrap_registries: bool) -> None:
     _setup_env()
     _register_builtin_datasets()
+
     _populate_registries()
+    if boostrap_registries:
+        bootstrap_registries(enable_cache=True, catch_exception=True)
 
 
 # fmt: off
