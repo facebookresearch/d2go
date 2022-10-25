@@ -31,12 +31,16 @@ jobs:
           pip install git+https://github.com/facebookresearch/detectron2.git
           pip install git+https://github.com/facebookresearch/mobile-vision
           pip install scikit-learn
-          pip install pytest nbval
+          pip install pytest pytest-xdist nbval
           pip install -e .
 
       - name: Run pytest
         run: |
-          python -m unittest discover -v -s tests
+          python -m pytest -n 4 --durations=15 -sv tests/ --ignore=tests/skip_init/
+
+      - name: Run pytest (skip initializer)
+        run: |
+          D2GO_IMPORT_SKIP_INITIALIZATION=1 python -m pytest -n 4 --durations=15 -sv tests/skip_init/
 
       - name: Test Notebooks
         run: |
