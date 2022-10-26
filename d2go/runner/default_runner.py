@@ -216,10 +216,6 @@ class Detectron2GoRunner(BaseRunner):
         model = build_d2go_model(cfg).model
         model_ema.may_build_model_ema(cfg, model)
 
-        if cfg.MODEL.FROZEN_LAYER_REG_EXP:
-            set_requires_grad(model, cfg.MODEL.FROZEN_LAYER_REG_EXP, False)
-            model = freeze_matched_bn(model, cfg.MODEL.FROZEN_LAYER_REG_EXP)
-
         if cfg.QUANTIZATION.QAT.ENABLED:
             # Disable fake_quant and observer so that the model will be trained normally
             # before QAT being turned on (controlled by QUANTIZATION.QAT.START_ITER).
@@ -242,6 +238,10 @@ class Detectron2GoRunner(BaseRunner):
                     enable_fake_quant=eval_only,
                     enable_observer=False,
                 )
+
+        if cfg.MODEL.FROZEN_LAYER_REG_EXP:
+            set_requires_grad(model, cfg.MODEL.FROZEN_LAYER_REG_EXP, False)
+            model = freeze_matched_bn(model, cfg.MODEL.FROZEN_LAYER_REG_EXP)
 
         if eval_only:
             checkpointer = self.build_checkpointer(cfg, model, save_dir=cfg.OUTPUT_DIR)
