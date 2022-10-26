@@ -54,6 +54,7 @@ def _get_cache_dir() -> str:
     except (OSError, AssertionError):
         tmp_dir = os.path.join(tempfile.gettempdir(), "d2go_cache")
         logger.warning(f"{cache_dir} is not accessible! Using {tmp_dir} instead!")
+        os.makedirs(tmp_dir, exist_ok=True)
         cache_dir = tmp_dir
     return cache_dir
 
@@ -363,8 +364,9 @@ def lazy_on_bootstrap(f: Callable) -> Callable:
 
 def _load_cached_results(filename: str) -> Dict[str, CachedResult]:
     with open(filename) as f:
-        loaded = yaml.safe_load(f)
-    assert isinstance(loaded, dict), f"Wrong format: {filename}"
+        content = f.read()
+        loaded = yaml.safe_load(content)
+    assert isinstance(loaded, dict), f"Wrong format: {content}"
     results = {
         filename: CachedResult(**result_dic) for filename, result_dic in loaded.items()
     }
