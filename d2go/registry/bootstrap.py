@@ -278,11 +278,15 @@ def _bootstrap_file(
         # HACK: convert multiple inheritance to single inheritance, this is needed
         # because current implementation of MoreMagicMock can't handle this well.
         # eg. `class MyClass(MyMixin, nn.Module)` -> `class MyClass(MyMixin)`
-        for stmt in tree.body:
-            if isinstance(stmt, ast.ClassDef):
-                if len(stmt.bases) > 1:
-                    stmt.bases = stmt.bases[:1]
-                stmt.keywords.clear()
+        def _truncate_multiple_inheritance(ast_tree):
+            for stmt in ast_tree.body:
+                if isinstance(stmt, ast.ClassDef):
+                    if len(stmt.bases) > 1:
+                        stmt.bases = stmt.bases[:1]
+                    stmt.keywords.clear()
+                    _truncate_multiple_inheritance(stmt)
+
+        _truncate_multiple_inheritance(tree)
 
     _log(2, f"Parsing AST takes {t.time} sec")
 
