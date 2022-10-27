@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Type, Union
 
 import mobile_cv.lut.lib.pt.flops_utils as flops_utils
 from d2go.config import CfgNode, temp_defrost
+from d2go.distributed import set_shared_context
 from d2go.export.exporter import convert_and_export_predictor
 from d2go.runner import BaseRunner
 from d2go.setup import (
@@ -21,6 +22,7 @@ from d2go.setup import (
     post_mortem_if_fail_for_main,
     prepare_for_launch,
     setup_after_launch,
+    setup_before_launch,
 )
 
 
@@ -95,6 +97,10 @@ def main(
 
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
+    shared_context = setup_before_launch(cfg, output_dir, runner_name)
+    if shared_context is not None:
+        set_shared_context(shared_context)
+
     main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
     return main_func(
         cfg,
