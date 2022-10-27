@@ -328,6 +328,8 @@ def build_optimizer_mapper(cfg, model):
             ret += f"Param group {idx}: {_param_group_str(group)}\n"
         return ret
 
+    logger.info(f"Using optimizer:\n{optimizer}")
+
     logger.info(
         f"optimizer parameter groups:\n{_param_groups_str(optimizer.param_groups)}"
     )
