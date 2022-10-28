@@ -118,41 +118,39 @@ class RandomAffine(TransformGen):
         translation_range: Tuple[float, float] = (0, 0),
         scale_range: Tuple[float, float] = (1.0, 1.0),
         shear_range: Tuple[float, float] = (0, 0),
+        fit_in_frame: bool = True,
+        keep_aspect_ratio: bool = False,
     ):
         """
         Args:
             prob (float): probability of applying transform.
             angle_range (tuple of integers): min/max rotation angle in degrees
-            between -180 and 180.
+                between -180 and 180.
             translation_range (tuple of integers): min/max translation
-            (post re-centered rotation).
+                (post re-centered rotation).
             scale_range (tuple of floats): min/max scale (post re-centered rotation).
             shear_range (tuple of intgers): min/max shear angle value in degrees
-            between -180 to 180.
+                between -180 to 180.
+            fit_in_frame: warped image is scaled into the output frame
+            keep_aspect_ratio: aspect ratio is kept instead of creating a squared image
+                with dimension of max dimension
         """
         super().__init__()
         # Turn all locals into member variables.
         self._init(locals())
 
-    def get_transform(self, img: np.ndarray) -> Transform:
-        im_h, im_w = img.shape[:2]
-        max_size = max(im_w, im_h)
-        center = [im_w / 2, im_h / 2]
-        angle = random.uniform(self.angle_range[0], self.angle_range[1])
-        translation = [
-            random.uniform(self.translation_range[0], self.translation_range[1]),
-            random.uniform(self.translation_range[0], self.translation_range[1]),
-        ]
-        scale = random.uniform(self.scale_range[0], self.scale_range[1])
-        shear = [
-            random.uniform(self.shear_range[0], self.shear_range[1]),
-            random.uniform(self.shear_range[0], self.shear_range[1]),
-        ]
-
-        dummy_translation = [0.0, 0.0]
-        dummy_scale = 1.0
+    def _compute_scale_adjustment(
+        self,
+        im_w: float,
+        im_h: float,
+        out_w: float,
+        out_h: float,
+        center: Tuple[float, float],
+        angle: float,
+        shear: Tuple[float, float],
+    ) -> float:
         M_inv = T.functional._get_inverse_affine_matrix(
-            center, angle, dummy_translation, dummy_scale, shear
+            center, angle, [0.0, 0.0], 1.0, shear
         )
         M_inv.extend([0.0, 0.0, 1.0])
         M_inv = np.array(M_inv).reshape((3, 3))
@@ -166,41 +164,62 @@ class RandomAffine(TransformGen):
                 [1, 1, 1, 1],
             ]
         )
-        transformed_corners = M @ img_corners
-        x_min = np.amin(transformed_corners[0])
-        x_max = np.amax(transformed_corners[0])
-        x_range = np.ceil(x_max - x_min)
-        y_min = np.amin(transformed_corners[1])
-        y_max = np.amax(transformed_corners[1])
-        y_range = np.ceil(y_max - y_min)
+        new_corners = M @ img_corners
+        x_range = np.ceil(np.amax(new_corners[0]) - np.amin(new_corners[0]))
+        y_range = np.ceil(np.amax(new_corners[1]) - np.amin(new_corners[1]))
 
         # Apply translation and scale after centering in output patch
-        translation_adjustment = [(max_size - im_w) / 2, (max_size - im_h) / 2]
+        scale_adjustment = min(out_w / x_range, out_h / y_range)
+        return scale_adjustment
+
+    def get_transform(self, img: np.ndarray) -> Transform:
+        do = self._rand_range() < self.prob
+        if not do:
+            return NoOpTransform()
+
+        im_h, im_w = img.shape[:2]
+        center = [im_w / 2, im_h / 2]
+        angle = random.uniform(self.angle_range[0], self.angle_range[1])
+        translation = [
+            random.uniform(self.translation_range[0], self.translation_range[1]),
+            random.uniform(self.translation_range[0], self.translation_range[1]),
+        ]
+        scale = random.uniform(self.scale_range[0], self.scale_range[1])
+        shear = [
+            random.uniform(self.shear_range[0], self.shear_range[1]),
+            random.uniform(self.shear_range[0], self.shear_range[1]),
+        ]
+
+        # Determine output image size
+        max_size = max(im_w, im_h)
+        out_w, out_h = (im_w, im_h) if self.keep_aspect_ratio else (max_size, max_size)
+
+        # Apply translation adjustment
+        translation_adjustment = [(out_w - im_w) / 2, (out_h - im_h) / 2]
         translation[0] += translation_adjustment[0]
         translation[1] += translation_adjustment[1]
-        scale_adjustment = min(max_size / x_range, max_size / y_range)
-        scale *= scale_adjustment
 
+        # Apply scale adjustment
+        if self.fit_in_frame:
+            scale_adjustment = self._compute_scale_adjustment(
+                im_w, im_h, out_w, out_h, center, angle, shear
+            )
+            scale *= scale_adjustment
+
+        # Compute the affine transform
         M_inv = T.functional._get_inverse_affine_matrix(
             center, angle, translation, scale, shear
         )
-        # Convert to Numpy matrix so it can be inverted
-        M_inv.extend([0.0, 0.0, 1.0])
-        M_inv = np.array(M_inv).reshape((3, 3))
-        M = np.linalg.inv(M_inv)
+        M_inv = np.array(M_inv).reshape((2, 3))
 
-        do = self._rand_range() < self.prob
-        if do:
-            return AffineTransform(
-                M_inv,
-                max_size,
-                max_size,
-                flags=cv2.WARP_INVERSE_MAP + cv2.INTER_LINEAR,
-                border_mode=cv2.BORDER_REPLICATE,
-                is_inversed_M=True,
-            )
-        else:
-            return NoOpTransform()
+        return AffineTransform(
+            M_inv,
+            out_w,
+            out_h,
+            flags=cv2.WARP_INVERSE_MAP + cv2.INTER_LINEAR,
+            border_mode=cv2.BORDER_REPLICATE,
+            is_inversed_M=True,
+        )
 
 
 # example repr: "RandomPivotScalingOp::[1.0, 0.75, 0.5]"
