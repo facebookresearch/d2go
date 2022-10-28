@@ -25,7 +25,7 @@ class TestRPNHeads(unittest.TestCase):
 
         for name, builder in rpn.RPN_HEAD_REGISTRY._obj_map.items():
             logger.info("Testing {}...".format(name))
-            cfg = GeneralizedRCNNRunner().get_default_cfg()
+            cfg = GeneralizedRCNNRunner.get_default_cfg()
             if name in RPN_CFGS:
                 cfg.merge_from_file(RPN_CFGS[name])
 
@@ -71,7 +71,7 @@ class TestRPNHeads(unittest.TestCase):
 
         for name, builder in rpn.RPN_HEAD_REGISTRY._obj_map.items():
             logger.info("Testing {}...".format(name))
-            cfg = GeneralizedRCNNRunner().get_default_cfg()
+            cfg = GeneralizedRCNNRunner.get_default_cfg()
             if name in RPN_CFGS:
                 cfg.merge_from_file(RPN_CFGS[name])
 

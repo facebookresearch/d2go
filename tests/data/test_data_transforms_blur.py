@@ -12,7 +12,7 @@ from detectron2.data.transforms import apply_augmentations
 
 class TestDataTransformsBlur(unittest.TestCase):
     def test_gaussian_blur_transforms(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         img = np.zeros((80, 60, 3)).astype(np.uint8)
 
         img[40, 30, :] = 255

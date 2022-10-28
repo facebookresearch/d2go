@@ -12,7 +12,7 @@ from detectron2.data.transforms import apply_transform_gens
 
 class TestDataTransforms(unittest.TestCase):
     def test_build_transform_gen(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         default_cfg.INPUT.MIN_SIZE_TRAIN = (30,)
         default_cfg.INPUT.MIN_SIZE_TEST = 30
 
@@ -27,7 +27,7 @@ class TestDataTransforms(unittest.TestCase):
         self.assertEqual(trans_img_test.shape, (40, 30, 3))
 
     def test_build_transform_gen_resize_square(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         default_cfg.INPUT.MIN_SIZE_TRAIN = (30,)
         default_cfg.INPUT.MIN_SIZE_TEST = 40
         default_cfg.D2GO_DATA.AUG_OPS.TRAIN = ["ResizeShortestEdgeSquareOp"]

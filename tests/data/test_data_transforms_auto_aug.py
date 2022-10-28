@@ -12,7 +12,7 @@ from detectron2.data.transforms import apply_augmentations
 
 class TestDataTransformsAutoAug(unittest.TestCase):
     def test_rand_aug_transforms(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         img = np.concatenate(
             [
                 (np.random.uniform(0, 1, size=(80, 60, 1)) * 255).astype(np.uint8),
@@ -30,7 +30,7 @@ class TestDataTransformsAutoAug(unittest.TestCase):
         self.assertEqual(img.dtype, trans_img.dtype)
 
     def test_trivial_aug_transforms(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         img = np.concatenate(
             [
                 (np.random.uniform(0, 1, size=(80, 60, 1)) * 255).astype(np.uint8),
@@ -46,7 +46,7 @@ class TestDataTransformsAutoAug(unittest.TestCase):
         self.assertEqual(img.dtype, trans_img.dtype)
 
     def test_aug_mix_transforms(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         img = np.concatenate(
             [
                 (np.random.uniform(0, 1, size=(80, 60, 1)) * 255).astype(np.uint8),

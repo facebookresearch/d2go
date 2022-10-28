@@ -40,11 +40,11 @@ class TestConfig(unittest.TestCase):
             self.assertGreater(len(files), 0)
             for fn in sorted(files):
                 logger.info("Loading {}...".format(fn))
-                GeneralizedRCNNRunner().get_default_cfg().merge_from_file(fn)
+                GeneralizedRCNNRunner.get_default_cfg().merge_from_file(fn)
 
     def test_load_arch_defs(self):
         """Test arch def str-to-dict conversion compatible with merging"""
-        default_cfg = GeneralizedRCNNRunner().get_default_cfg()
+        default_cfg = GeneralizedRCNNRunner.get_default_cfg()
         cfg = default_cfg.clone()
         cfg.merge_from_file(get_resource_path("arch_def_merging.yaml"))
 
@@ -59,7 +59,7 @@ class TestConfig(unittest.TestCase):
             another_cfg.merge_from_file(file_name)
 
     def test_base_reroute(self):
-        default_cfg = GeneralizedRCNNRunner().get_default_cfg()
+        default_cfg = GeneralizedRCNNRunner.get_default_cfg()
 
         # use rerouted file as base
         cfg = default_cfg.clone()
@@ -75,7 +75,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg.OUTPUT_DIR, "test")  # non-base is loaded
 
     def test_default_cfg_dump_and_load(self):
-        default_cfg = GeneralizedRCNNRunner().get_default_cfg()
+        default_cfg = GeneralizedRCNNRunner.get_default_cfg()
 
         cfg = default_cfg.clone()
         with make_temp_directory("detectron2go_tmp") as tmp_dir:
@@ -88,7 +88,7 @@ class TestConfig(unittest.TestCase):
             cfg.merge_from_file(file_name)
 
     def test_default_cfg_deprecated_keys(self):
-        default_cfg = GeneralizedRCNNRunner().get_default_cfg()
+        default_cfg = GeneralizedRCNNRunner.get_default_cfg()
 
         # a warning will be printed for deprecated keys
         default_cfg.merge_from_list(["QUANTIZATION.QAT.LOAD_PRETRAINED", True])
@@ -222,7 +222,7 @@ class TestAutoScaleWorldSize(unittest.TestCase):
         """
         when scaling a 8-gpu config to 1-gpu one, the batch size will be reduced by 8x
         """
-        cfg = GeneralizedRCNNRunner().get_default_cfg()
+        cfg = GeneralizedRCNNRunner.get_default_cfg()
         self.assertEqual(cfg.SOLVER.REFERENCE_WORLD_SIZE, 8)
         batch_size_x8 = cfg.SOLVER.IMS_PER_BATCH
         assert batch_size_x8 % 8 == 0, "default batch size is not multiple of 8"
@@ -234,7 +234,7 @@ class TestAutoScaleWorldSize(unittest.TestCase):
         """
         when reference world size is 0, no scaling should happen
         """
-        cfg = GeneralizedRCNNRunner().get_default_cfg()
+        cfg = GeneralizedRCNNRunner.get_default_cfg()
         self.assertEqual(cfg.SOLVER.REFERENCE_WORLD_SIZE, 8)
         cfg.SOLVER.REFERENCE_WORLD_SIZE = 0
         batch_size_x8 = cfg.SOLVER.IMS_PER_BATCH

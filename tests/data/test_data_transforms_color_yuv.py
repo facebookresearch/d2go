@@ -13,7 +13,7 @@ from detectron2.data.transforms import apply_augmentations
 
 class TestDataTransformsColorYUV(unittest.TestCase):
     def test_yuv_color_transforms(self):
-        default_cfg = Detectron2GoRunner().get_default_cfg()
+        default_cfg = Detectron2GoRunner.get_default_cfg()
         img = np.concatenate(
             [
                 np.random.uniform(0, 1, size=(80, 60, 1)),
