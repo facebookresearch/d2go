@@ -613,6 +613,7 @@ class QATHook(HookBase):
 
         if (
             self._applied["enable_fake_quant"]
+            and not self._applied["disable_observer"]
             and cfg.QUANTIZATION.QAT.UPDATE_OBSERVER_STATS_PERIODICALLY
             and cur_iter % cfg.QUANTIZATION.QAT.UPDATE_OBSERVER_STATS_PERIOD == 0
         ):
