@@ -467,6 +467,12 @@ class Detectron2GoRunner(BaseRunner):
         trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(
             _get_model_with_abnormal_checker(model), data_loader, optimizer
         )
+        if cfg.SOLVER.AMP.ENABLED and torch.cuda.is_available():
+            # Allow to use the TensorFloat32 (TF32) tensor cores, available on A100 GPUs.
+            # For more details https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere.
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+
         trainer_hooks = self._get_trainer_hooks(
             cfg, model, optimizer, scheduler, periodic_checkpointer, trainer
         )
