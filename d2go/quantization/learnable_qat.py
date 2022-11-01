@@ -35,7 +35,7 @@ def _has_module(model, module_type):
 
 def check_for_learnable_fake_quant_ops(qat_method, model):
     """Make sure learnable observers are used if qat method is `learnable`"""
-    if qat_method == "learnable":
+    if qat_method.startswith("learnable"):
         if not _has_module(model, _LearnableFakeQuantize):
             raise Exception(
                 "No learnable fake quant is used for learnable quantzation, please use d2go.quantization.learnable_qat.get_learnable_qat_qconfig() to get proper qconfig"
@@ -187,7 +187,7 @@ def setup_qat_get_optimizer_param_groups(model, qat_method):
     """Add a function `get_optimizer_param_groups` to the model so that it could
     return proper weight decay for learnable qat
     """
-    if qat_method != "learnable":
+    if not qat_method.startswith("learnable"):
         return model
 
     assert _is_q_state_dict(model.state_dict())
