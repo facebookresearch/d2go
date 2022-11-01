@@ -437,7 +437,11 @@ def setup_qat_model(
     enable_observer: bool = False,
     enable_learnable_observer: bool = False,
 ):
-    assert cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD in ["default", "learnable"]
+    assert cfg.QUANTIZATION.QAT.FAKE_QUANT_METHOD in [
+        "default",
+        "learnable",
+        "learnable_act",
+    ]
 
     if hasattr(model_fp32, "_non_qat_to_qat_state_dict_map"):
         raise RuntimeError("The model is already setup to be QAT, cannot setup again!")
@@ -467,7 +471,7 @@ def setup_qat_model(
         logger.info("Disabling static observer ...")
         model.apply(torch.ao.quantization.disable_observer)
         model.apply(learnable_qat.disable_lqat_static_observer)
-    if not enable_learnable_observer and qat_method == "learnable":
+    if not enable_learnable_observer and qat_method.startswith("learnable"):
         logger.info("Disabling learnable observer ...")
         model.apply(learnable_qat.disable_lqat_learnable_observer)
 
