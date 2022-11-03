@@ -174,7 +174,7 @@ class MultiTensorInSingleTensorOut(nn.Module):
 
     @staticmethod
     def check_outputs(new_output, original_output):
-        torch.testing.assert_allclose(new_output, torch.tensor([5]))
+        torch.testing.assert_close(new_output, torch.tensor([5]))
 
 
 # NOTE: caffe2 wrapper assumes tensors are fp32
@@ -191,7 +191,7 @@ class SingleListInSingleListOut(nn.Module):
     @staticmethod
     def check_outputs(new_output, original_output):
         assert len(new_output) == 1
-        torch.testing.assert_allclose(new_output[0], torch.tensor([5.0]))
+        torch.testing.assert_close(new_output[0], torch.tensor([5.0]))
 
 
 class MultiDictInMultiDictOut(nn.Module):
@@ -210,10 +210,10 @@ class MultiDictInMultiDictOut(nn.Module):
     @staticmethod
     def check_outputs(new_output, original_output):
         first, second = original_output
-        torch.testing.assert_allclose(first["add"], torch.tensor([4]))
-        torch.testing.assert_allclose(first["sub"], torch.tensor([-2]))
-        torch.testing.assert_allclose(second["add"], torch.tensor([6]))
-        torch.testing.assert_allclose(second["sub"], torch.tensor([-2]))
+        torch.testing.assert_close(first["add"], torch.tensor([4]))
+        torch.testing.assert_close(first["sub"], torch.tensor([-2]))
+        torch.testing.assert_close(second["add"], torch.tensor([6]))
+        torch.testing.assert_close(second["sub"], torch.tensor([-2]))
 
 
 MODEL_EXPORT_METHOD_TEST_CASES = [

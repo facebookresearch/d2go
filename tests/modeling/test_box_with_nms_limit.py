@@ -47,7 +47,7 @@ class TestBoxWithNMSLimit(unittest.TestCase):
             topk_per_image=detections_per_im,
         )
         for result, kept_index, score in zip(ref_results, ref_kept_indices, scores):
-            torch.testing.assert_allclose(
+            torch.testing.assert_close(
                 score[kept_index, result.pred_classes],
                 result.scores,
             )
@@ -99,7 +99,7 @@ class TestBoxWithNMSLimit(unittest.TestCase):
         for _score_nms, _class_nms, _keeps_nms, _score in zip(
             roi_score_nms, roi_class_nms, roi_keeps_nms, scores
         ):
-            torch.testing.assert_allclose(
+            torch.testing.assert_close(
                 _score[_keeps_nms.to(torch.int64), _class_nms.to(torch.int64)],
                 _score_nms,
             )
@@ -109,9 +109,9 @@ class TestBoxWithNMSLimit(unittest.TestCase):
         ):
             s1, i1 = s.sort()
             s2, i2 = ref.scores.sort()
-            torch.testing.assert_allclose(s1, s2)
-            torch.testing.assert_allclose(b[i1], ref.pred_boxes.tensor[i2])
-            torch.testing.assert_allclose(c.to(torch.int64)[i1], ref.pred_classes[i2])
+            torch.testing.assert_close(s1, s2)
+            torch.testing.assert_close(b[i1], ref.pred_boxes.tensor[i2])
+            torch.testing.assert_close(c.to(torch.int64)[i1], ref.pred_classes[i2])
 
         for ref, k in zip(ref_kept_indices, roi_keeps_nms):
             # NOTE: order might be different due to implementation
