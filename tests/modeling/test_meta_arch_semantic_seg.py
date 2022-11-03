@@ -97,7 +97,7 @@ class BaseSemanticSegTestCase:
                 for predictor_output, pytorch_output in zip(
                     predicotr_outputs, pytorch_outputs
                 ):
-                    torch.testing.assert_allclose(
+                    torch.testing.assert_close(
                         predictor_output["sem_seg"], pytorch_output["sem_seg"]
                     )
 
