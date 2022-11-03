@@ -18,7 +18,7 @@ from d2go.data.dataset_mappers import build_dataset_mapper
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.transforms.build import build_transform_gen
 from d2go.data.utils import (
-    enable_disk_cached_dataset,
+    configure_dataset_creation,
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
@@ -508,14 +508,14 @@ class Detectron2GoRunner(BaseRunner):
         logger.info(
             "Building detection test loader for dataset: {} ...".format(dataset_name)
         )
-        with enable_disk_cached_dataset(cfg):
+        with configure_dataset_creation(cfg):
             mapper = mapper or cls.get_mapper(cfg, is_train=False)
             logger.info("Using dataset mapper:\n{}".format(mapper))
             return d2_build_detection_test_loader(cfg, dataset_name, mapper=mapper)
 
     @classmethod
     def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
-        with enable_disk_cached_dataset(cfg):
+        with configure_dataset_creation(cfg):
             mapper = mapper or cls.get_mapper(cfg, is_train=True)
             data_loader = build_d2go_train_loader(cfg, mapper)
             return cls._attach_visualizer_to_data_loader(cfg, data_loader)
