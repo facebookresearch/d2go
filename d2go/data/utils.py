@@ -26,8 +26,10 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.data.build import (
     get_detection_dataset_dicts as d2_get_detection_dataset_dicts,
 )
+from detectron2.data.common import set_default_dataset_from_list_serialize_method
 from detectron2.utils import comm
 from detectron2.utils.file_io import PathManager
+from mobile_cv.torch.utils_pytorch.shareables import SharedList
 
 logger = logging.getLogger(__name__)
 
@@ -433,49 +435,37 @@ def local_master_get_detection_dataset_dicts(*args, **kwargs):
 
 
 @contextlib.contextmanager
-def enable_disk_cached_dataset(cfg):
+def configure_dataset_creation(cfg):
     """
-    Context manager for enabling disk cache datasets, this is a experimental feature.
-
-    - Replace D2's DatasetFromList with DiskCachedDatasetFromList, needs to patch all
-        call sites.
-    - Replace D2's get_detection_dataset_dicts with a local-master-only version.
+    Context manager for configure settings used during dataset creating. It supports:
+        - offload the dataset to shared memory to reduce RAM usage.
+        - (experimental) offload the dataset to disk cache to further reduce RAM usage.
+        - Replace D2's get_detection_dataset_dicts with a local-master-only version.
     """
 
-    if not cfg.D2GO_DATA.DATASETS.DISK_CACHE.ENABLED:
-        yield
-        return
+    dataset_from_list_offload_method = SharedList  # use SharedList by default
+    if cfg.D2GO_DATA.DATASETS.DISK_CACHE.ENABLED:
+        # delay the import to avoid atexit cleanup
+        from d2go.data.disk_cache import DiskCachedList
 
-    def _patched_dataset_from_list(lst, **kwargs):
-        from d2go.data.disk_cache import DiskCachedDatasetFromList
+        dataset_from_list_offload_method = DiskCachedList
 
-        logger.info("Patch DatasetFromList with DiskCachedDatasetFromList")
-        return DiskCachedDatasetFromList(lst)
-
-    dataset_from_list_patch_locations = []
-
-    def _maybe_add_dataset_from_list_patch_location(module_name):
-        try:
-            __import__(module_name)
-            dataset_from_list_patch_locations.append(f"{module_name}.DatasetFromList")
-        except ImportError:
-            pass
-
-    _maybe_add_dataset_from_list_patch_location("detectron2.data.build")
-    _maybe_add_dataset_from_list_patch_location("d2go.data.build")
-    _maybe_add_dataset_from_list_patch_location("d2go.data.build_fb")
-    _maybe_add_dataset_from_list_patch_location("d2go.data.build_oss")
+    load_dataset_from_local_master = cfg.D2GO_DATA.DATASETS.DISK_CACHE.ENABLED
 
     with contextlib.ExitStack() as stack:
-        for ctx in [
-            mock.patch(
-                "detectron2.data.build.get_detection_dataset_dicts",
-                side_effect=local_master_get_detection_dataset_dicts,
-            ),
-            *[
-                mock.patch(m, side_effect=_patched_dataset_from_list)
-                for m in dataset_from_list_patch_locations
-            ],
-        ]:
+        ctx_managers = [
+            set_default_dataset_from_list_serialize_method(
+                dataset_from_list_offload_method
+            )
+        ]
+        if load_dataset_from_local_master:
+            ctx_managers.append(
+                mock.patch(
+                    "detectron2.data.build.get_detection_dataset_dicts",
+                    side_effect=local_master_get_detection_dataset_dicts,
+                )
+            )
+
+        for ctx in ctx_managers:
             stack.enter_context(ctx)
         yield

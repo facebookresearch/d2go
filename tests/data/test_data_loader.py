@@ -8,8 +8,8 @@ import tempfile
 import unittest
 
 import torch
-from d2go.data.disk_cache import DiskCachedDatasetFromList, ROOT_CACHE_DIR
-from d2go.data.utils import enable_disk_cached_dataset
+from d2go.data.disk_cache import DiskCachedList, ROOT_CACHE_DIR
+from d2go.data.utils import configure_dataset_creation
 from d2go.runner import create_runner
 from d2go.utils.testing.data_loader_helper import (
     create_detection_data_loader_on_toy_dataset,
@@ -76,10 +76,10 @@ class TestDiskCachedDataLoader(unittest.TestCase):
         return len(os.listdir(ROOT_CACHE_DIR))
 
     def test_disk_cached_dataset_from_list(self):
-        """Test the class of DiskCachedDatasetFromList"""
+        """Test the class of DiskCachedList"""
         # check the discache can handel different data types
         lst = [1, torch.tensor(2), _MyClass(3)]
-        disk_cached_lst = DiskCachedDatasetFromList(lst)
+        disk_cached_lst = DiskCachedList(lst)
         self.assertEqual(len(disk_cached_lst), 3)
         self.assertEqual(disk_cached_lst[0], 1)
         self.assertEqual(disk_cached_lst[1].item(), 2)
@@ -109,7 +109,7 @@ class TestDiskCachedDataLoader(unittest.TestCase):
 
         # enable the disk cache
         cfg.merge_from_list(["D2GO_DATA.DATASETS.DISK_CACHE.ENABLED", "True"])
-        with enable_disk_cached_dataset(cfg):
+        with configure_dataset_creation(cfg):
             # no cache dir in the beginning
             self.assertEqual(self._count_cache_dirs(), 0)
 

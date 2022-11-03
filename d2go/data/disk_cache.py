@@ -8,7 +8,6 @@ import shutil
 import uuid
 
 import numpy as np
-import torch.utils.data as data
 from detectron2.utils import comm
 from detectron2.utils.logger import log_every_n_seconds
 
@@ -41,10 +40,9 @@ def _local_master_gather(func, check_equal=False):
     return x_local_master
 
 
-class DiskCachedDatasetFromList(data.Dataset):
+class DiskCachedList(object):
     """
-    Wrap a list to a torch Dataset, the underlying storage is off-loaded to disk to
-    save RAM usage.
+    Wrap a list, the underlying storage is off-loaded to disk to save RAM usage.
     """
 
     def __init__(self, lst, strategy="batched_static"):
