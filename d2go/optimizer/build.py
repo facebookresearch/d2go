@@ -251,6 +251,7 @@ def sgd(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         cfg.SOLVER.BASE_LR,
         momentum=cfg.SOLVER.MOMENTUM,
         nesterov=cfg.SOLVER.NESTEROV,
+        foreach=True,
     )
 
 
