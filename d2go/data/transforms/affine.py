@@ -60,6 +60,9 @@ class AffineTransform(Transform):
         coords = (M @ coords)[:2, :].T
         return coords
 
+    def apply_segmentation(self, img: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+
 
 class RandomPivotScaling(TransformGen):
     """
@@ -211,6 +214,7 @@ class RandomAffine(TransformGen):
             center, angle, translation, scale, shear
         )
         M_inv = np.array(M_inv).reshape((2, 3))
+        M_inv = np.vstack([M_inv, [0.0, 0.0, 1.0]])
 
         return AffineTransform(
             M_inv,
