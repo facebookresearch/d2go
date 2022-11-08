@@ -86,9 +86,25 @@ def generate_test_data(
         borderMode=cv2.BORDER_REPLICATE,
     )
 
-    # Create test boxes
-    M_inv = np.vstack([M_inv, [0.0, 0.0, 1.0]])
+    # Create annotations
     test_bbox = [0.25 * img_w, 0.25 * img_h, 0.75 * img_h, 0.75 * img_h]
+
+    # Generate segmentation test data
+    segm_mask = np.zeros_like(source_img)
+    segm_mask[
+        int(test_bbox[0]) : int(test_bbox[2]), int(test_bbox[1]) : int(test_bbox[3])
+    ] = 255
+
+    exp_out_segm = cv2.warpAffine(
+        segm_mask,
+        M_inv,
+        (out_w, out_h),
+        flags=cv2.WARP_INVERSE_MAP + cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+
+    # Generate bounding box test data
+    M_inv = np.vstack([M_inv, [0.0, 0.0, 1.0]])
     points = np.array(
         [
             [test_bbox[0], test_bbox[0], test_bbox[2], test_bbox[2]],
@@ -97,7 +113,12 @@ def generate_test_data(
     ).T
     _xp = warp_points(points, M_inv)
     out_bbox = [min(_xp[:, 0]), min(_xp[:, 1]), max(_xp[:, 0]), max(_xp[:, 1])]
-    return aug_str, AugInput(source_img, boxes=[test_bbox]), (exp_out_img, [out_bbox])
+
+    return (
+        aug_str,
+        AugInput(source_img, boxes=[test_bbox], sem_seg=segm_mask),
+        (exp_out_img, [out_bbox], exp_out_segm),
+    )
 
 
 def warp_points(coords: np.array, xfm_M: np.array):
@@ -110,15 +131,23 @@ def warp_points(coords: np.array, xfm_M: np.array):
 
 
 class TestDataTransformsAffine(unittest.TestCase):
-    def _check_array_close(self, aug_output, exp_img, exp_bboxes):
+    def _validate_results(self, aug_output, exp_outputs):
+        exp_img = exp_outputs[0]
         self.assertTrue(
             np.allclose(exp_img, aug_output.image),
             f"Augmented image not the same, expecting\n{exp_img[:,:,0]} \n   got\n{aug_output.image[:,:,0]} ",
         )
 
+        exp_bboxes = exp_outputs[1]
         self.assertTrue(
             np.allclose(exp_bboxes, aug_output.boxes, atol=0.000001),
             f"Augmented bbox not the same, expecting\n{exp_img[:,:,0]} \n   got\n{aug_output.image[:,:,0]} ",
+        )
+
+        exp_segm = exp_outputs[2]
+        self.assertTrue(
+            np.allclose(exp_segm, aug_output.sem_seg),
+            f"Augmented segm not the same, expecting\n{exp_segm} \n   got\n{aug_output.sem_seg[:,:]} ",
         )
 
     def test_affine_transforms_angle(self):
@@ -129,15 +158,13 @@ class TestDataTransformsAffine(unittest.TestCase):
         img[((img_sz + 1) // 2) - 1, :, :] = 255
 
         for angle in [45, 90]:
-            aug_str, aug_input, (exp_out_img, exp_out_bboxes) = generate_test_data(
-                img, angle=angle
-            )
+            aug_str, aug_input, exp_outputs = generate_test_data(img, angle=angle)
             default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [aug_str]
             tfm = build_transform_gen(default_cfg, is_train=True)
 
             # Test augmentation
             aug_output, _ = apply_augmentations(tfm, aug_input)
-            self._check_array_close(aug_output, exp_out_img, exp_out_bboxes)
+            self._validate_results(aug_output, exp_outputs)
 
     def test_affine_transforms_translation(self):
         default_cfg = Detectron2GoRunner.get_default_cfg()
@@ -148,7 +175,7 @@ class TestDataTransformsAffine(unittest.TestCase):
 
         for translation in [0, 1, 2]:
             # Test image
-            aug_str, aug_input, (exp_out_img, exp_out_bboxes) = generate_test_data(
+            aug_str, aug_input, exp_outputs = generate_test_data(
                 img, translation=translation
             )
             default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [aug_str]
@@ -156,7 +183,7 @@ class TestDataTransformsAffine(unittest.TestCase):
 
             # Test augmentation
             aug_output, _ = apply_augmentations(tfm, aug_input)
-            self._check_array_close(aug_output, exp_out_img, exp_out_bboxes)
+            self._validate_results(aug_output, exp_outputs)
 
     def test_affine_transforms_shear(self):
         default_cfg = Detectron2GoRunner.get_default_cfg()
@@ -166,15 +193,13 @@ class TestDataTransformsAffine(unittest.TestCase):
         img[((img_sz + 1) // 2) - 1, :, :] = 255
 
         for shear in [0, 1, 2]:
-            aug_str, aug_input, (exp_out_img, exp_out_bboxes) = generate_test_data(
-                img, shear=shear
-            )
+            aug_str, aug_input, exp_outputs = generate_test_data(img, shear=shear)
             default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [aug_str]
             tfm = build_transform_gen(default_cfg, is_train=True)
 
             # Test augmentation
             aug_output, _ = apply_augmentations(tfm, aug_input)
-            self._check_array_close(aug_output, exp_out_img, exp_out_bboxes)
+            self._validate_results(aug_output, exp_outputs)
 
     def test_affine_transforms_scale(self):
         default_cfg = Detectron2GoRunner.get_default_cfg()
@@ -184,15 +209,13 @@ class TestDataTransformsAffine(unittest.TestCase):
         img[((img_sz + 1) // 2) - 1, :, :] = 255
 
         for scale in [0.9, 1, 1.1]:
-            aug_str, aug_input, (exp_out_img, exp_out_bboxes) = generate_test_data(
-                img, scale=scale
-            )
+            aug_str, aug_input, exp_outputs = generate_test_data(img, scale=scale)
             default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [aug_str]
             tfm = build_transform_gen(default_cfg, is_train=True)
 
             # Test augmentation
             aug_output, _ = apply_augmentations(tfm, aug_input)
-            self._check_array_close(aug_output, exp_out_img, exp_out_bboxes)
+            self._validate_results(aug_output, exp_outputs)
 
     def test_affine_transforms_angle_non_square(self):
         default_cfg = Detectron2GoRunner.get_default_cfg()
@@ -202,7 +225,7 @@ class TestDataTransformsAffine(unittest.TestCase):
         img[((img_sz + 1) // 2) - 1, :, :] = 255
 
         for keep_aspect_ratio in [False, True]:
-            aug_str, aug_input, (exp_out_img, exp_out_bboxes) = generate_test_data(
+            aug_str, aug_input, exp_outputs = generate_test_data(
                 img, angle=45, keep_aspect_ratio=keep_aspect_ratio
             )
             default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [aug_str]
@@ -210,7 +233,7 @@ class TestDataTransformsAffine(unittest.TestCase):
 
             # Test augmentation
             aug_output, _ = apply_augmentations(tfm, aug_input)
-            self._check_array_close(aug_output, exp_out_img, exp_out_bboxes)
+            self._validate_results(aug_output, exp_outputs)
 
     def test_affine_transforms_angle_no_fit_to_frame(self):
         default_cfg = Detectron2GoRunner.get_default_cfg()
@@ -219,7 +242,7 @@ class TestDataTransformsAffine(unittest.TestCase):
         img = np.zeros((img_sz, img_sz, 3)).astype(np.uint8)
         img[((img_sz + 1) // 2) - 1, :, :] = 255
 
-        aug_str, aug_input, (exp_out_img, exp_out_bboxes) = generate_test_data(
+        aug_str, aug_input, exp_outputs = generate_test_data(
             img, angle=45, fit_in_frame=False
         )
         default_cfg.D2GO_DATA.AUG_OPS.TRAIN = [aug_str]
@@ -227,4 +250,4 @@ class TestDataTransformsAffine(unittest.TestCase):
 
         # Test augmentation
         aug_output, _ = apply_augmentations(tfm, aug_input)
-        self._check_array_close(aug_output, exp_out_img, exp_out_bboxes)
+        self._validate_results(aug_output, exp_outputs)
