@@ -8,6 +8,9 @@ import json
 import math
 import os
 import uuid
+import mobile_cv.torch.utils_pytorch.comm as comm
+
+from typing import Dict, Tuple
 
 from d2go.data.datasets import register_dataset_split
 from d2go.runner import create_runner
@@ -144,7 +147,7 @@ def register_toy_coco_dataset(
             yield
 
 
-def create_local_dataset(
+def create_local_dataset_no_register(
     out_dir,
     num_images,
     image_width,
@@ -152,7 +155,11 @@ def create_local_dataset(
     num_classes=-1,
     num_keypoints=0,
     is_rotated=False,
-):
+) -> Tuple[str, Dict]:
+    """
+    Create a local dataset without registering and return the split_dict needed for registration.
+    This is useful when multiple processes need to access the same local dataset, so all processes need to manually register
+    """
     dataset_name = "_test_ds_" + str(uuid.uuid4())
 
     img_gen = LocalImageGenerator(out_dir, image_width, image_height)
@@ -173,6 +180,28 @@ def create_local_dataset(
     }
     if is_rotated:
         split_dict["evaluator_type"] = "rotated_coco"
+
+    return dataset_name, split_dict
+
+
+def create_local_dataset(
+    out_dir,
+    num_images,
+    image_width,
+    image_height,
+    num_classes=-1,
+    num_keypoints=0,
+    is_rotated=False,
+) -> str:
+    dataset_name, split_dict = create_local_dataset_no_register(
+        out_dir,
+        num_images,
+        image_width,
+        image_height,
+        num_classes,
+        num_keypoints,
+        is_rotated,
+    )
     register_dataset_split(dataset_name, split_dict)
 
     return dataset_name

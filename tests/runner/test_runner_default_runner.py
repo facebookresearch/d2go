@@ -3,23 +3,49 @@
 
 
 import copy
+
+import logging
 import os
+import shutil
 import tempfile
 import unittest
 
+import d2go.distributed as dd
+
 import d2go.runner.default_runner as default_runner
+
+import detectron2.utils.comm as comm
 import torch
+from d2go.checkpoint.fsdp_checkpoint import (
+    gather_ema_state_dict,
+    scatter_ema_state_dict,
+)
+from d2go.data.datasets import register_dataset_split
 from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.runner import create_runner
 from d2go.runner.training_hooks import TRAINER_HOOKS_REGISTRY
+from d2go.trainer.fsdp import (
+    create_ddp_model_with_sharding,
+    get_grad_scaler,
+    ShardingAlgorithm,
+)
 from d2go.utils.testing import helper
-from d2go.utils.testing.data_loader_helper import create_local_dataset
+from d2go.utils.testing.data_loader_helper import (
+    create_local_dataset,
+    create_local_dataset_no_register,
+)
 from detectron2.evaluation import COCOEvaluator, RotatedCOCOEvaluator
 from detectron2.structures import Boxes, ImageList, Instances
 from mobile_cv.arch.quantization.qconfig import (
     updateable_symmetric_moving_avg_minmax_config,
 )
+from torch.cuda.amp import GradScaler
+from torch.distributed.fsdp.sharded_grad_scaler import ShardedGradScaler
 from torch.nn.parallel import DistributedDataParallel
+
+logger = logging.getLogger(__name__)
+
+TEST_CUDA = torch.cuda.is_available()
 
 
 @META_ARCH_REGISTRY.register()
@@ -93,6 +119,7 @@ def _get_cfg(runner, output_dir, dataset_name):
 
     cfg.DATASETS.TRAIN = (dataset_name,)
     cfg.DATASETS.TEST = (dataset_name,)
+    cfg.DATALOADER.NUM_WORKERS = 0
 
     cfg.INPUT.MIN_SIZE_TRAIN = (10,)
     cfg.INPUT.MIN_SIZE_TEST = (10,)
@@ -370,6 +397,114 @@ class TestDefaultRunner(unittest.TestCase):
             default_runner._close_all_tbx_writers()
 
         self.assertGreater(counts, 0)
+
+    @dd.launch_deco(num_processes=2, backend="NCCL")
+    def launch_d2go_runner_multiple_gpu(self, cfg_overwrite_list=None):
+        def _run_train(cfg):
+            cfg = copy.deepcopy(cfg)
+            model = runner.build_model(cfg)
+            model = create_ddp_model_with_sharding(cfg, model)
+
+            # Test training
+            runner.do_train(cfg, model, resume=True)
+            comm.synchronize()
+
+            # Gather model state dict
+            final_ckpt_file = os.path.join(tmp_dir, "model_final.pth")
+            self.assertTrue(os.path.isfile(final_ckpt_file))
+            if isinstance(model, DistributedDataParallel):
+                model = model.module
+            model_sd = model.state_dict()
+
+            # Test EMA
+            ema_sd = gather_ema_state_dict(model.ema_state, model)
+            self.assertTrue(_compare_state_dict(model_sd, ema_sd))
+            test_ema_sd = {}
+            for key in ema_sd:
+                test_ema_sd[key] = torch.zeros_like(ema_sd[key])
+            scatter_ema_state_dict(test_ema_sd, model)
+            for local_key in model.ema_state.state:
+                self.assertFalse(model.ema_state.state[local_key].any().item())
+            gathered_ema_sd = gather_ema_state_dict(model.ema_state, model)
+            self.assertTrue(_compare_state_dict(test_ema_sd, gathered_ema_sd))
+
+            return final_ckpt_file, model_sd
+
+        def _run_test(cfg, final_path, gt_msd):
+            cfg = copy.deepcopy(cfg)
+            cfg.MODEL.WEIGHTS = final_path
+            model = runner.build_model(cfg, eval_only=True)
+
+            msd = model.state_dict()
+            self.assertTrue(_compare_state_dict(gt_msd, msd))
+            results = runner.do_test(cfg, model)
+            if comm.is_main_process():
+                self.assertEqual(results["default"][ds_name]["bbox"]["AP"], 10.0)
+
+        tmp_dir, ds_name, split_dict = None, None, None
+        if comm.is_main_process():
+            tmp_dir = tempfile.mkdtemp()
+            ds_name, split_dict = create_local_dataset_no_register(tmp_dir, 5, 10, 10)
+
+        tmp_dir = comm.all_gather(tmp_dir)[0]
+        ds_name = comm.all_gather(ds_name)[0]
+        split_dict = comm.all_gather(split_dict)[0]
+        register_dataset_split(ds_name, split_dict)
+
+        runner = default_runner.Detectron2GoRunner()
+        cfg = _get_cfg(runner, tmp_dir, ds_name)
+        cfg = copy.deepcopy(cfg)
+        cfg.MODEL.DEVICE = "cuda"
+        cfg.MODEL_EMA.ENABLED = True
+        cfg.MODEL_EMA.DECAY = 0.0
+        if cfg_overwrite_list:
+            cfg.merge_from_list(cfg_overwrite_list)
+
+        final_ckpt_file, gt_msd = _run_train(cfg)
+        _run_test(cfg, final_ckpt_file, gt_msd)
+        default_runner._close_all_tbx_writers()
+        if comm.is_main_process():
+            shutil.rmtree(tmp_dir)
+
+    @unittest.skipIf(not TEST_CUDA, "no CUDA detected")
+    def test_d2go_runner_multi_gpu(self):
+        self.launch_d2go_runner_multiple_gpu()
+
+    @unittest.skipIf(not TEST_CUDA, "no CUDA detected")
+    def test_d2go_runner_fsdp_multi_gpu(self):
+        fsdp_settings = [
+            "FSDP.ALGORITHM",
+            "full",
+            "SOLVER.AMP.ENABLED",
+            True,
+            "SOLVER.AMP.PRECISION",
+            "float16",
+            "FSDP.STATE_DICT_CPU_OFFLOAD",
+            False,
+            "FSDP.STATE_DICT_RANK0_ONLY",
+            False,
+        ]
+        self.launch_d2go_runner_multiple_gpu(cfg_overwrite_list=fsdp_settings)
+
+    def test_d2go_runner_fsdp_basics(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ds_name = create_local_dataset(tmp_dir, 5, 10, 10)
+            runner = default_runner.Detectron2GoRunner()
+            cfg = _get_cfg(runner, tmp_dir, ds_name)
+            cfg.MODEL.META_ARCHITECTURE = "MetaArchForTestSingleValue"
+
+            # Test Misc
+            self.assertFalse(ShardingAlgorithm.is_valid("foo"))
+            self.assertTrue(ShardingAlgorithm.is_valid(""))
+            self.assertFalse(ShardingAlgorithm.use_sharding(""))
+            self.assertTrue(ShardingAlgorithm.use_sharding("full"))
+
+            cfg.FSDP.ALGORITHM = "grad_optim"
+            self.assertTrue(
+                isinstance(get_grad_scaler(cfg.FSDP.ALGORITHM), ShardedGradScaler)
+            )
+            cfg.FSDP.ALGORITHM = ""
+            self.assertTrue(isinstance(get_grad_scaler(cfg.FSDP.ALGORITHM), GradScaler))
 
 
 def _compare_state_dict(sd1, sd2, abs_error=1e-3):
