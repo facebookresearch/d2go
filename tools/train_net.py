@@ -22,12 +22,12 @@ from d2go.setup import (
     setup_before_launch,
 )
 from d2go.trainer.api import TrainNetOutput
+from d2go.trainer.fsdp import create_ddp_model_with_sharding
 from d2go.utils.misc import (
     dump_trained_model_configs,
     print_metrics_table,
     save_binary_outputs,
 )
-from detectron2.engine.defaults import create_ddp_model
 
 
 logger = logging.getLogger("d2go.tools.train_net")
@@ -63,20 +63,14 @@ def main(
             metrics=metrics,
         )
 
-    model = create_ddp_model(
-        model,
-        fp16_compression=cfg.MODEL.DDP_FP16_GRAD_COMPRESS,
-        device_ids=None if cfg.MODEL.DEVICE == "cpu" else [comm.get_local_rank()],
-        broadcast_buffers=False,
-        find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS,
-    )
+    wrapped_model = create_ddp_model_with_sharding(cfg, model)
 
-    trained_cfgs = runner.do_train(cfg, model, resume=resume)
+    trained_cfgs = runner.do_train(cfg, wrapped_model, resume=resume)
 
     final_eval = cfg.TEST.FINAL_EVAL
     if final_eval:
         # run evaluation after training in the same processes
-        metrics = runner.do_test(cfg, model)
+        metrics = runner.do_test(cfg, wrapped_model)
         print_metrics_table(metrics)
     else:
         metrics = {}

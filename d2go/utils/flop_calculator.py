@@ -121,6 +121,14 @@ def add_flop_printing_hook(
 
 @PROFILER_REGISTRY.register()
 def default_flop_counter(model, cfg):
+    from d2go.trainer.fsdp import FSDP
+
+    # TODO: deepcopy() not supported for FSDP yet (https://github.com/pytorch/pytorch/issues/82070), so we disable flop counter for now
+    if isinstance(model, FSDP):
+        logger.warn(
+            "Default flop counter is disabled because it's not supported for FSDP yet. "
+        )
+        return
 
     return add_flop_printing_hook(model, cfg.OUTPUT_DIR)
 

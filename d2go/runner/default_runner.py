@@ -11,6 +11,7 @@ from typing import List, Optional, Type, Union
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
 import torch
+from d2go.checkpoint import FSDPCheckpointer
 from d2go.config import CfgNode, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost
 from d2go.config.utils import get_cfg_diff_table
 from d2go.data.build import build_d2go_train_loader
@@ -28,13 +29,14 @@ from d2go.modeling import kmeans_anchors, model_ema
 from d2go.modeling.api import build_d2go_model
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
-from d2go.quantization.modeling import QATCheckpointer, QATHook, setup_qat_model
+from d2go.quantization.modeling import QATHook, setup_qat_model
 from d2go.runner.config_defaults import (
     get_base_runner_default_cfg,
     get_detectron2go_runner_default_cfg,
     get_generalized_rcnn_runner_default_cfg,
 )
 from d2go.runner.training_hooks import update_hooks_from_registry
+from d2go.trainer.fsdp import get_grad_scaler, ShardingAlgorithm
 from d2go.trainer.helper import parse_precision_from_string
 from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
@@ -269,7 +271,7 @@ class Detectron2GoRunner(BaseRunner):
 
     def build_checkpointer(self, cfg, model, save_dir, **kwargs):
         kwargs.update(model_ema.may_get_ema_checkpointer(cfg, model))
-        checkpointer = QATCheckpointer(model, save_dir=save_dir, **kwargs)
+        checkpointer = FSDPCheckpointer(model, save_dir=save_dir, **kwargs)
         return checkpointer
 
     def build_optimizer(self, cfg, model):
@@ -470,6 +472,7 @@ class Detectron2GoRunner(BaseRunner):
                 _get_model_with_abnormal_checker(model),
                 data_loader,
                 optimizer,
+                get_grad_scaler(cfg.FSDP.ALGORITHM),
                 dtype=parse_precision_from_string(
                     cfg.SOLVER.AMP.PRECISION, lightning=False
                 ),
@@ -608,8 +611,7 @@ class Detectron2GoRunner(BaseRunner):
                 scheduler.step()
             # Note: when precise BN is enabled, some checkpoints will have more precise
             # statistics than others, if they are saved immediately after eval.
-            if comm.is_main_process():
-                periodic_checkpointer.step(trainer.iter)
+            periodic_checkpointer.step(trainer.iter)
 
         return hooks.CallbackHook(after_step=after_step_callback)
 
