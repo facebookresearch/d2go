@@ -35,6 +35,7 @@ from d2go.runner.config_defaults import (
     get_generalized_rcnn_runner_default_cfg,
 )
 from d2go.runner.training_hooks import update_hooks_from_registry
+from d2go.trainer.helper import parse_precision_from_string
 from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
@@ -464,9 +465,20 @@ class Detectron2GoRunner(BaseRunner):
             ret = abnormal_checker.AbnormalLossCheckerWrapper(model, checker)
             return ret
 
-        trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(
-            _get_model_with_abnormal_checker(model), data_loader, optimizer
-        )
+        if cfg.SOLVER.AMP.ENABLED:
+            trainer = AMPTrainer(
+                _get_model_with_abnormal_checker(model),
+                data_loader,
+                optimizer,
+                dtype=parse_precision_from_string(
+                    cfg.SOLVER.AMP.PRECISION, lightning=False
+                ),
+            )
+        else:
+            trainer = SimpleTrainer(
+                _get_model_with_abnormal_checker(model), data_loader, optimizer
+            )
+
         if cfg.SOLVER.AMP.ENABLED and torch.cuda.is_available():
             # Allow to use the TensorFloat32 (TF32) tensor cores, available on A100 GPUs.
             # For more details https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere.
