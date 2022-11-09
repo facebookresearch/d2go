@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-
+import copy
 import json
 import random
 from typing import List, Optional, Tuple
@@ -37,17 +37,28 @@ class AffineTransform(Transform):
         if border_mode is not None:
             self.warp_kwargs["borderMode"] = border_mode
 
-    def apply_image(self, img: np.ndarray) -> np.ndarray:
+    def _warp_array(self, input_data: np.array, interp_flag: Optional[int] = None):
+        warp_kwargs = copy.deepcopy(self.warp_kwargs)
+
+        if interp_flag is not None:
+            flags = warp_kwargs.get("flags", 0)
+            # remove previous interp and add the new one
+            flags = (flags - (flags & cv2.INTER_MAX)) + interp_flag
+            warp_kwargs["flags"] = flags
+
         M = self.M
         if self.is_inversed_M:
             M = M[:2]
         img = cv2.warpAffine(
-            img,
+            input_data,
             M,
             (int(self.img_w), (self.img_h)),
-            **self.warp_kwargs,
+            **warp_kwargs,
         )
         return img
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        return self._warp_array(img)
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         # Add row of ones to enable matrix multiplication
@@ -61,7 +72,7 @@ class AffineTransform(Transform):
         return coords
 
     def apply_segmentation(self, img: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
+        return self._warp_array(img, interp_flag=cv2.INTER_NEAREST)
 
 
 class RandomPivotScaling(TransformGen):
