@@ -23,6 +23,7 @@ from d2go.setup import (
     prepare_for_launch,
     setup_after_launch,
     setup_before_launch,
+    setup_root_logger,
 )
 
 
@@ -147,4 +148,5 @@ def cli(args=None):
 
 
 if __name__ == "__main__":
+    setup_root_logger()
     cli()
