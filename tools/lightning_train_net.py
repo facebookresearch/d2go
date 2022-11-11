@@ -13,6 +13,7 @@ from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import DefaultTask
 from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
 from d2go.trainer.api import TrainNetOutput
+from d2go.trainer.helper import parse_precision_from_string
 from d2go.trainer.lightning.training_loop import _do_test, _do_train
 from detectron2.utils.file_io import PathManager
 from pytorch_lightning.callbacks import Callback, LearningRateMonitor, TQDMProgressBar
@@ -58,18 +59,6 @@ def _get_accelerator(use_cpu: bool) -> str:
     return "cpu" if use_cpu else "gpu"
 
 
-def _get_lightning_precision(precision: str) -> Union[str, int]:
-    """
-    Convert our string format for precision to what lightning Trainer expects
-    """
-    if precision == "float16":
-        return 16
-    elif precision == "bfloat16":
-        return "bf16"
-    else:
-        return precision
-
-
 def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
     use_cpu = cfg.MODEL.DEVICE.lower() == "cpu"
     strategy = _get_strategy(cfg)
@@ -89,7 +78,9 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
         "replace_sampler_ddp": False,
-        "precision": _get_lightning_precision(cfg.SOLVER.AMP.PRECISION)
+        "precision": parse_precision_from_string(
+            cfg.SOLVER.AMP.PRECISION, lightning=True
+        )
         if cfg.SOLVER.AMP.ENABLED
         else 32,
     }
