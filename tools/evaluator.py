@@ -24,7 +24,9 @@ from d2go.setup import (
     prepare_for_launch,
     setup_after_launch,
     setup_before_launch,
+    setup_root_logger,
 )
+
 from d2go.utils.misc import print_metrics_table
 from mobile_cv.predictor.api import create_predictor
 
@@ -119,4 +121,5 @@ def cli(args=None):
 
 
 if __name__ == "__main__":
+    setup_root_logger()
     cli()
