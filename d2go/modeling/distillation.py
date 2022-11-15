@@ -15,7 +15,7 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Set
+from typing import Callable, Dict, List, Optional, Set
 
 import torch
 import torch.nn as nn
@@ -150,6 +150,61 @@ class BaseDistillationHelper:
         """
         return NoopPseudoLabeler()
 
+    def get_teacher(self) -> nn.Module:
+        """Return a teacher that can be run by the algorithm"""
+        return self.teacher
+
+    def get_layer_losses(
+        self, model: Optional[nn.Module] = None
+    ) -> List[LayerLossMetadata]:
+        """Return losses that are run on layers
+
+        Layer parameters may be dependent on model parameters so option to pass
+        in a model
+        """
+        return []
+
+    def get_preprocess_student_input(self) -> Callable:
+        """Return a function that allows user to modify the dataloader output
+        before passing to the student
+
+        The output of this function will be directly passed to the student model.
+        Example use cases include:
+            * dataloader returns a large image used by the teacher model but the
+              student model needs a lower resolution version
+            * dataloader returns both labeled and unlabeled data and the student
+              requires labeled data
+        """
+        return lambda x: x
+
+    def get_preprocess_teacher_input(self) -> Callable:
+        """Return a function that allows user to modify dataloader output before
+        passing to teacher
+
+        The output of this function will be directly passed to the teacher model.
+        """
+        return lambda x: x
+
+    def get_combine_losses(self) -> Callable:
+        """Return a function that takes as input a dictionary of losses and
+        modifies the loss as required
+
+        The default trainer sums the losses at the end so typically this
+        function is used to change the relative contribution of losses
+
+        Example:
+            def combine_losses(losses)
+              alpha = 0.1
+              losses["nll"] *= alpha
+              losses["kd_loss"] *= (1 - alpha)
+              return losses
+
+            student_losses = {"nll": ...}
+            student_losses.update({"kl_loss": ...})
+            losses = combine_losses(student_losses)
+        """
+        return lambda x: x
+
 
 @DISTILLATION_HELPER_REGISTRY.register()
 class ExampleDistillationHelper(BaseDistillationHelper):
@@ -242,6 +297,66 @@ class LabelDistillation(BaseDistillationAlgorithm):
 
         new_batched_inputs = self.pseudo_labeler.label(batched_inputs)
         return super().forward(new_batched_inputs)
+
+
+@DISTILLATION_ALGORITHM_REGISTRY.register()
+class KnowledgeDistillation(BaseDistillationAlgorithm):
+    """Knowledge distillation applies loss over the outputs of the student
+    and teacher models
+    """
+
+    def dynamic_mixin_init(self, distillation_helper: BaseDistillationHelper):
+        """Note all variables use _ to avoid name conflicts with existing
+        variable names in the model
+
+        Consider adding a check to avoid variable name reuse
+        """
+        super().dynamic_mixin_init(distillation_helper)
+        self._teacher = WrappedTeacher(self.distillation_helper.get_teacher())
+        self._student_preprocess_input = (
+            self.distillation_helper.get_preprocess_student_input()
+        )
+        self._teacher_preprocess_input = (
+            self.distillation_helper.get_preprocess_teacher_input()
+        )
+        self._layer_losses = self.distillation_helper.get_layer_losses(self)
+        self._student_cache = record_layers(
+            self, [ll.layer0 for ll in self._layer_losses]
+        )
+        self._teacher_cache = record_layers(
+            self._teacher.model, [ll.layer1 for ll in self._layer_losses]
+        )
+        self._combine_losses = self.distillation_helper.get_combine_losses()
+
+    def remove_dynamic_mixin(self):
+        super().remove_dynamic_mixin()
+        unrecord_layers(self, [ll.layer0 for ll in self._layer_losses])
+        unrecord_layers(self._teacher.model, [ll.layer1 for ll in self._layer_losses])
+        del self._teacher
+        del self._layer_losses
+        del self._student_cache
+        del self._teacher_cache
+        del self._student_preprocess_input
+        del self._teacher_preprocess_input
+        del self._combine_losses
+
+    def forward(self, batched_inputs: List):
+        """Run teacher, then student and compute losses"""
+        student_input = self._student_preprocess_input(batched_inputs)
+        if not self.training:
+            return super().forward(student_input)
+
+        teacher_input = self._teacher_preprocess_input(batched_inputs)
+        with torch.no_grad():
+            self._teacher(teacher_input)
+
+        student_losses = super().forward(student_input)
+        distillation_losses = compute_layer_losses(
+            self._layer_losses, self._student_cache, self._teacher_cache
+        )
+        student_losses.update(distillation_losses)
+        losses = self._combine_losses(student_losses)
+        return losses
 
 
 @MODELING_HOOK_REGISTRY.register()
@@ -483,3 +598,17 @@ def compute_layer_losses(
 
         losses[ll.name] = ll.loss(layer0_cache[ll.layer0], layer1_cache[ll.layer1])
     return losses
+
+
+class WrappedTeacher:
+    """Used to remove the teacher model from the student module list
+
+    See: DistillationMiscTests.test_teacher_outside_updated_parameters to get
+    more details on avoiding adding the teacher as a module
+    """
+
+    def __init__(self, model: nn.Module):
+        self.model = model
+
+    def __call__(self, *args, **kwargs):
+        return self.model(*args, **kwargs)

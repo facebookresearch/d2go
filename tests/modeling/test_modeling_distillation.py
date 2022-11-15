@@ -19,6 +19,7 @@ from d2go.modeling.distillation import (
     compute_layer_losses,
     DistillationModelingHook,
     ExampleDistillationHelper,
+    KnowledgeDistillation,
     LabelDistillation,
     LayerLossMetadata,
     NoopPseudoLabeler,
@@ -89,7 +90,9 @@ class AddLayers(nn.Module):
         x = self.layer0(x)
         x = self.layer1(x)
         x = self.layer2(x)
-        return x
+        if not self.training:
+            return x
+        return {"output": x}
 
 
 class TestLabeler(PseudoLabeler):
@@ -115,6 +118,35 @@ class TestHelper(BaseDistillationHelper):
     def get_pseudo_labeler(self):
         """Run teacher model on inputs"""
         return TestLabeler(self.teacher)
+
+    def get_preprocess_student_input(self):
+        return lambda x: x + 1
+
+    def get_preprocess_teacher_input(self):
+        return lambda x: x + 2
+
+    def get_layer_losses(self, model=None):
+        return [
+            LayerLossMetadata(
+                loss=lambda x, y: x + y,
+                name="add",
+                layer0="layer0",
+                layer1="layer0",
+            ),
+            LayerLossMetadata(
+                loss=lambda x, y: x * y,
+                name="mul",
+                layer0="layer1",
+                layer1="layer1",
+            ),
+        ]
+
+    def get_combine_losses(self):
+        return lambda d: {
+            "output": d["output"] * 0.1,
+            "add": d["add"] * 0.5,
+            "mul": d["mul"] * 10.0,
+        }
 
 
 class Noop(nn.Module):
@@ -363,8 +395,8 @@ class TestDistillationHelper(unittest.TestCase):
         pseudo_labeler = dh.get_pseudo_labeler()
         self.assertTrue(isinstance(pseudo_labeler, NoopPseudoLabeler))
 
-    def test_default_distillation_helper(self):
-        """Default distillation uses teacher to relabel targets"""
+    def test_example_distillation_helper(self):
+        """Example distillation uses teacher to relabel targets"""
         teacher = Noop()
         dh = ExampleDistillationHelper(cfg=None, teacher=teacher)
         pseudo_labeler = dh.get_pseudo_labeler()
@@ -381,7 +413,8 @@ class TestDistillationAlgorithm(unittest.TestCase):
 
     def test_registry(self):
         """Check distillation teacher in registry"""
-        self.assertTrue("LabelDistillation" in DISTILLATION_ALGORITHM_REGISTRY)
+        for algorithm in ["LabelDistillation", "KnowledgeDistillation"]:
+            self.assertTrue(algorithm in DISTILLATION_ALGORITHM_REGISTRY)
 
     def test_label_distillation_inference(self):
         """Check inference defaults to student
@@ -416,6 +449,54 @@ class TestDistillationAlgorithm(unittest.TestCase):
 
         sum(output).backward()
         torch.testing.assert_close(batched_inputs.grad, torch.Tensor([0.5, 0.5]))
+
+    def test_kd_inference(self):
+        """Check inference defaults to student (and preprocessing)"""
+        distillation_helper = TestHelper(cfg=CfgNode(), teacher=AddLayers())
+        model = AddLayers()
+        dynamic_mixin(
+            model,
+            KnowledgeDistillation,
+            init_dict={"distillation_helper": distillation_helper},
+        )
+        model.eval()
+        input = torch.randn(1)
+        output = model(input)
+        self.assertEqual(output, input + 4.0)
+
+    def test_kd_train(self):
+        """Check train pass results in updated loss output"""
+        distillation_helper = TestHelper(cfg=CfgNode(), teacher=AddLayers())
+        model = AddLayers()
+        dynamic_mixin(
+            model,
+            KnowledgeDistillation,
+            init_dict={"distillation_helper": distillation_helper},
+        )
+        model.train()
+        input = torch.randn(1)
+        output = model(input)
+        self.assertEqual(
+            output,
+            {
+                "output": (input + 4.0) * 0.1,
+                "add": ((input + 2.0) + (input + 3.0)) * 0.5,
+                "mul": (input + 3.0) * (input + 4.0) * 10.0,
+            },
+        )
+
+    def test_kd_remove_dynamic_mixin(self):
+        """Check removing dynamic mixin removes cached layers"""
+        distillation_helper = TestHelper(cfg=CfgNode(), teacher=AddLayers())
+        model = AddLayers()
+        dynamic_mixin(
+            model,
+            KnowledgeDistillation,
+            init_dict={"distillation_helper": distillation_helper},
+        )
+        remove_dynamic_mixin(model)
+        for module in model.modules():
+            self.assertFalse(hasattr(module, "cache"))
 
 
 class TestDistillationModelingHook(unittest.TestCase):
