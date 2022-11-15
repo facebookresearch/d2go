@@ -187,6 +187,29 @@ class TestDistillation(unittest.TestCase):
             model = _build_teacher(cfg)
             self.assertEqual(gt_model.weight, model.weight)
 
+    def test_override_teacher_config_gpu_on_cpu(self):
+        """Teacher cuda model can be run on cpu if specified in config"""
+        # build model where teacher is specified on gpu but user overrides cpu
+        cfg = _get_default_cfg()
+        cfg.MODEL.META_ARCHITECTURE = "TestMetaArchAddRand"
+        gt_model = BaseRunner().build_model(cfg)
+        with make_temp_directory("tmp") as output_dir:
+            # save model
+            checkpointer = DetectionCheckpointer(gt_model, save_dir=output_dir)
+            checkpointer.save("checkpoint")
+            cfg.MODEL.WEIGHTS = f"{output_dir}/checkpoint.pth"
+            cfg.MODEL.DEVICE = "cuda"
+            config_fname = f"{output_dir}/config.yaml"
+            with PathManager.open(config_fname, "w") as f:
+                f.write(cfg.dump())
+
+            # load model and compare to gt
+            cfg.DISTILLATION.TEACHER.TYPE = "config"
+            cfg.DISTILLATION.TEACHER.CONFIG_FNAME = config_fname
+            cfg.DISTILLATION.TEACHER.DEVICE = "cpu"
+            model = _build_teacher(cfg)
+            self.assertEqual(gt_model.weight, model.weight)
+
 
 class TestPseudoLabeler(unittest.TestCase):
     def test_noop(self):
