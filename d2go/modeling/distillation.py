@@ -14,7 +14,7 @@
 # distillation algorithms in configs: DISILLATION_ALAGORITHM, DISTILLATION_HELPER
 
 from abc import abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Set
 
 import torch
 import torch.nn as nn
@@ -429,3 +429,27 @@ class CachedLayer(nn.Module):
         else:
             raise ValueError(f"Unexpected type to save: {type(output)}")
         return output
+
+
+def record_layers(model: nn.Module, layer_names: Set[str]) -> Dict[str, torch.Tensor]:
+    """Save the outputs of layer_names in model
+
+    Iterates over all named layers in model, applies cached layer to layers in
+    layer_names. Returns dict which is used by the cached layers.
+    """
+    cache = {}
+    for name, module in model.named_modules():
+        if name in layer_names:
+            dynamic_mixin(
+                module,
+                CachedLayer,
+                init_dict={"label": name, "cache": cache},
+            )
+    return cache
+
+
+def unrecord_layers(model: nn.Module, layer_names: Set[str]) -> None:
+    """Remove cached layers based on the layer_names"""
+    for name, module in model.named_modules():
+        if name in layer_names:
+            remove_dynamic_mixin(module)
