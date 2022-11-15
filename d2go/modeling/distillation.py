@@ -14,7 +14,7 @@
 # distillation algorithms in configs: DISILLATION_ALAGORITHM, DISTILLATION_HELPER
 
 from abc import abstractmethod
-from typing import List
+from typing import Dict, List
 
 import torch
 import torch.nn as nn
@@ -376,3 +376,56 @@ def _validate_teacher_config(cfg: CN) -> None:
         raise ValueError(
             f"Unrecognized DISTILLATION.TEACHER.TYPE: {cfg.DISTILLATION.TEACHER.TYPE}"
         )
+
+
+class CachedLayer(nn.Module):
+    """Cached layer records the output of a layer
+
+    This is meant to be used with dynamic mixin. The layer overrides the forward
+    of the original layer such that the input and the output is the same but
+    the output of the layer is saved to a dict that can be retrieved later
+    """
+
+    def dynamic_mixin_init(self, label: str, cache: Dict[str, torch.Tensor]):
+        self.label = label
+        self.cache = cache
+
+    def remove_dynamic_mixin(self):
+        del self.label
+        del self.cache
+
+    def forward(self, *args, **kwargs):
+        """Run the original layer and save the output
+
+        We clone the output to avoid the case where a subsequent module
+        runs an inplace operation. However, this limits what the cache
+        can support as we can only run clone on a tensor so we need to
+        check the type of the output.
+
+        Support of the output type is limited to:
+          * tensor
+          * List[tensor]
+          * Dict[str, tensor]
+        """
+        output = super().forward(*args, **kwargs)
+        if isinstance(output, torch.Tensor):
+            self.cache[self.label] = output.clone()
+        elif isinstance(output, List):
+            cloned_output = []
+            for x in output:
+                if isinstance(x, torch.Tensor):
+                    cloned_output.append(x.clone())
+                else:
+                    raise ValueError(f"Unexpected type to save: {type(x)}")
+            self.cache[self.label] = cloned_output
+        elif isinstance(output, Dict):
+            cloned_output = {}
+            for k, v in output.items():
+                if isinstance(v, torch.Tensor):
+                    cloned_output[k] = v.clone()
+                else:
+                    raise ValueError(f"Unexpected type to save: {type(v)}")
+            self.cache[self.label] = cloned_output
+        else:
+            raise ValueError(f"Unexpected type to save: {type(output)}")
+        return output
