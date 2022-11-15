@@ -21,7 +21,9 @@ from d2go.modeling.distillation import (
     LabelDistillation,
     NoopPseudoLabeler,
     PseudoLabeler,
+    record_layers,
     RelabelTargetInBatch,
+    unrecord_layers,
 )
 from d2go.registry.builtin import (
     DISTILLATION_ALGORITHM_REGISTRY,
@@ -33,7 +35,7 @@ from d2go.utils.testing import helper
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory
-from mobile_cv.common.misc.mixin import dynamic_mixin
+from mobile_cv.common.misc.mixin import dynamic_mixin, remove_dynamic_mixin
 
 
 class DivideInputBy2(nn.Module):
@@ -72,6 +74,20 @@ class AddOne(nn.Module):
     @property
     def device(self):
         return self.weight.device
+
+
+class AddLayers(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer0 = AddOne()
+        self.layer1 = AddOne()
+        self.layer2 = AddOne()
+
+    def forward(self, x):
+        x = self.layer0(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        return x
 
 
 class TestLabeler(PseudoLabeler):
@@ -277,6 +293,25 @@ class TestDistillation(unittest.TestCase):
         input = [torch.randn(1) for _ in range(2)]
         output = model(input)
         self.assertEqual(output, cache["test_layer"])
+
+    def test_record_layers(self):
+        """Check we can record specified layer"""
+        model = AddLayers()
+        cache = record_layers(model, ["", "layer0", "layer1", "layer2"])
+
+        input = torch.Tensor([0])
+        output = model(input)
+        self.assertEqual(cache["layer0"], torch.Tensor([1]))
+        self.assertEqual(cache["layer1"], torch.Tensor([2]))
+        self.assertEqual(cache["layer2"], torch.Tensor([3]))
+        self.assertEqual(cache[""], output)
+
+    def test_unrecord_layers(self):
+        """Check we can remove a recorded layer"""
+        model = AddLayers()
+        _ = record_layers(model, ["", "layer0", "layer1", "layer2"])
+        unrecord_layers(model, ["", "layer0"])
+        self.assertFalse(hasattr(model.layer0, "cache"))
 
 
 class TestPseudoLabeler(unittest.TestCase):
