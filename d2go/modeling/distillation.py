@@ -335,9 +335,24 @@ def _build_teacher(cfg) -> nn.Module:
 
     # move teacher to same device as student unless specified
     device = torch.device(cfg.DISTILLATION.TEACHER.DEVICE or cfg.MODEL.DEVICE)
-    model = model.to(device)
-    model.device = device
+    model = _set_device(model, device)
     model.eval()
+    return model
+
+
+def _set_device(model: nn.Module, device: torch.device) -> nn.Module:
+    """Set the device of the model
+
+    Some D2Go models have device as a property of the model (e.g., GeneralizedRCNN)
+    whereas others are missing this attribute which is assumed by distillation
+    to exist (e.g., we may call teacher.device to move inputs)
+
+    This helper function guarantees that the model.device attribute exists
+    and runs model.to(device)
+    """
+    model = model.to(device)
+    if not hasattr(model, "device"):
+        model.device = device
     return model
 
 

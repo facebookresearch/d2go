@@ -12,6 +12,7 @@ from d2go.config import CfgNode
 from d2go.modeling import modeling_hook as mh
 from d2go.modeling.distillation import (
     _build_teacher,
+    _set_device,
     add_distillation_configs,
     BaseDistillationHelper,
     DistillationModelingHook,
@@ -59,6 +60,10 @@ class AddOne(nn.Module):
 
     def forward(self, x):
         return x + self.weight
+
+    @property
+    def device(self):
+        return self.weight.device
 
 
 class TestLabeler(PseudoLabeler):
@@ -209,6 +214,22 @@ class TestDistillation(unittest.TestCase):
             cfg.DISTILLATION.TEACHER.DEVICE = "cpu"
             model = _build_teacher(cfg)
             self.assertEqual(gt_model.weight, model.weight)
+
+    def test_set_device(self):
+        """Check teacher device is set"""
+        # without attr
+        model = Noop()
+        self.assertFalse(hasattr(model, "device"))
+        device = torch.device("cpu")
+
+        # without property
+        model = _set_device(model, device)
+        self.assertEqual(model.device, device)
+
+        # with property
+        model = AddOne()
+        model = _set_device(model, device)
+        self.assertEqual(model.device, device)
 
 
 class TestPseudoLabeler(unittest.TestCase):
