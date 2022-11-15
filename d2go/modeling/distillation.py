@@ -315,6 +315,14 @@ def _build_teacher(cfg) -> nn.Module:
         from d2go.runner import import_runner
         from d2go.setup import create_cfg_from_cli
 
+        # teacher config may be set to cuda
+        # if user wants to run teacher on cpu only machine by specifying teacher.device,
+        # need to override device to cpu before building model
+        if cfg.DISTILLATION.TEACHER.DEVICE:
+            cfg.DISTILLATION.TEACHER.OVERWRITE_OPTS.extend(
+                ["MODEL.DEVICE", cfg.DISTILLATION.TEACHER.DEVICE]
+            )
+
         teacher_cfg = create_cfg_from_cli(
             cfg.DISTILLATION.TEACHER.CONFIG_FNAME,
             cfg.DISTILLATION.TEACHER.OVERWRITE_OPTS,
