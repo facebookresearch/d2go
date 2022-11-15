@@ -14,7 +14,7 @@
 # distillation algorithms in configs: DISILLATION_ALAGORITHM, DISTILLATION_HELPER
 
 from abc import abstractmethod
-
+from dataclasses import dataclass
 from typing import Dict, List, Set, Union
 
 import torch
@@ -47,6 +47,14 @@ def add_distillation_configs(_C: CN) -> None:
     _C.DISTILLATION.TEACHER.CONFIG_FNAME = ""
     _C.DISTILLATION.TEACHER.RUNNER_NAME = "d2go.runner.GeneralizedRCNNRunner"
     _C.DISTILLATION.TEACHER.OVERWRITE_OPTS = []
+
+
+@dataclass
+class LayerLossMetadata:
+    loss: nn.Module
+    name: str
+    layer0: str
+    layer1: str
 
 
 class PseudoLabeler:
@@ -460,3 +468,24 @@ def unrecord_layers(model: nn.Module, layer_names: Set[str]) -> None:
     for name, module in model.named_modules():
         if name in layer_names:
             remove_dynamic_mixin(module)
+
+
+def compute_layer_losses(
+    layer_losses: List[LayerLossMetadata],
+    layer0_cache: Dict[str, torch.Tensor],
+    layer1_cache: Dict[str, torch.Tensor],
+) -> Dict[str, torch.Tensor]:
+    """Compute loss over layers specified in layer_loss
+
+    layer0_cache and layer1_cache should contain the data required to compute
+    the losses specified in layer_loss
+    """
+    losses = {}
+    for ll in layer_losses:
+        if ll.layer0 not in layer0_cache:
+            raise ValueError(f"Missing saved layer {ll.layer0} in layer0_cache")
+        if ll.layer1 not in layer1_cache:
+            raise ValueError(f"Missing saved layer {ll.layer1} in layer1_cache")
+
+        losses[ll.name] = ll.loss(layer0_cache[ll.layer0], layer1_cache[ll.layer1])
+    return losses

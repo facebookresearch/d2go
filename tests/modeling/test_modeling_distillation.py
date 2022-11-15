@@ -16,9 +16,11 @@ from d2go.modeling.distillation import (
     add_distillation_configs,
     BaseDistillationHelper,
     CachedLayer,
+    compute_layer_losses,
     DistillationModelingHook,
     ExampleDistillationHelper,
     LabelDistillation,
+    LayerLossMetadata,
     NoopPseudoLabeler,
     PseudoLabeler,
     record_layers,
@@ -312,6 +314,22 @@ class TestDistillation(unittest.TestCase):
         _ = record_layers(model, ["", "layer0", "layer1", "layer2"])
         unrecord_layers(model, ["", "layer0"])
         self.assertFalse(hasattr(model.layer0, "cache"))
+
+    def test_compute_layer_losses(self):
+        """Check iterating over loss dicts"""
+        layer_losses = [
+            LayerLossMetadata(
+                loss=lambda x, y: x + y, name="add", layer0="l00", layer1="l10"
+            ),
+            LayerLossMetadata(
+                loss=lambda x, y: x / y, name="div", layer0="l01", layer1="l11"
+            ),
+        ]
+        layer0_cache = {"l00": torch.randn(1), "l01": torch.randn(1)}
+        layer1_cache = {"l10": torch.randn(1), "l11": torch.randn(1)}
+        output = compute_layer_losses(layer_losses, layer0_cache, layer1_cache)
+        self.assertEqual(output["add"], layer0_cache["l00"] + layer1_cache["l10"])
+        self.assertEqual(output["div"], layer0_cache["l01"] / layer1_cache["l11"])
 
 
 class TestPseudoLabeler(unittest.TestCase):
