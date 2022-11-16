@@ -407,9 +407,9 @@ class DefaultTask(pl.LightningModule):
 
     @classmethod
     def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
-        mapper = mapper or cls.get_mapper(cfg, is_train=True)
-        data_loader = build_d2go_train_loader(cfg, mapper)
-        return cls._attach_visualizer_to_data_loader(cfg, data_loader)
+        return Detectron2GoRunner.build_detection_train_loader(
+            cfg, *args, mapper=mapper, **kwargs
+        )
 
     @staticmethod
     def build_detection_test_loader(cfg, dataset_name, mapper=None):
@@ -417,12 +417,7 @@ class DefaultTask(pl.LightningModule):
 
     @classmethod
     def _attach_visualizer_to_data_loader(cls, cfg, data_loader):
-        if comm.is_main_process():
-            data_loader_type = cls.get_data_loader_vis_wrapper()
-            if data_loader_type is not None:
-                tbx_writer = Detectron2GoRunner.get_tbx_writer(cfg)
-                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
-        return data_loader
+        return Detectron2GoRunner._attach_visualizer_to_data_loader(cfg, data_loader)
 
     # ---------------------------------------------------------------------------
     # Hooks
