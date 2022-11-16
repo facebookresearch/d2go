@@ -15,6 +15,7 @@ from d2go.modeling.distillation import (
     _set_device,
     add_distillation_configs,
     BaseDistillationHelper,
+    CachedLayer,
     DistillationModelingHook,
     ExampleDistillationHelper,
     LabelDistillation,
@@ -32,6 +33,7 @@ from d2go.utils.testing import helper
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.file_utils import make_temp_directory
+from mobile_cv.common.misc.mixin import dynamic_mixin
 
 
 class DivideInputBy2(nn.Module):
@@ -51,6 +53,12 @@ class DivideInputDictBy2(nn.Module):
         for d in batched_inputs:
             output.append(d["input"] / 2.0)
         return torch.stack(output)
+
+
+class DivideInputBy2OutputDict(nn.Module):
+    def forward(self, batched_inputs: List):
+        """Divide all targets by 2 and return dict output"""
+        return {i: x / 2.0 for i, x in enumerate(batched_inputs)}
 
 
 class AddOne(nn.Module):
@@ -230,6 +238,45 @@ class TestDistillation(unittest.TestCase):
         model = AddOne()
         model = _set_device(model, device)
         self.assertEqual(model.device, device)
+
+    def test_cached_layer_tensor(self):
+        """Check cached layer saves layer output"""
+        model = AddOne()
+        cache = {}
+        dynamic_mixin(
+            model,
+            CachedLayer,
+            init_dict={"label": "test_layer", "cache": cache},
+        )
+        input = torch.randn(1)
+        output = model(input)
+        self.assertEqual(output, cache["test_layer"])
+
+    def test_cached_layer_list(self):
+        """Check cached layer saves list"""
+        model = DivideInputBy2()
+        cache = {}
+        dynamic_mixin(
+            model,
+            CachedLayer,
+            init_dict={"label": "test_layer", "cache": cache},
+        )
+        input = [torch.randn(1) for _ in range(2)]
+        output = model(input)
+        self.assertEqual(output, cache["test_layer"])
+
+    def test_cached_layer_dict(self):
+        """Check cached layer saves dict"""
+        model = DivideInputBy2OutputDict()
+        cache = {}
+        dynamic_mixin(
+            model,
+            CachedLayer,
+            init_dict={"label": "test_layer", "cache": cache},
+        )
+        input = [torch.randn(1) for _ in range(2)]
+        output = model(input)
+        self.assertEqual(output, cache["test_layer"])
 
 
 class TestPseudoLabeler(unittest.TestCase):
