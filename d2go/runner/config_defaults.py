@@ -15,6 +15,7 @@ from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
+from d2go.trainer.fsdp import add_fsdp_configs
 from d2go.utils.visualization import add_tensorboard_default_configs
 from detectron2.config import get_cfg as get_d2_cfg
 from mobile_cv.common.misc.oss_utils import fb_overwritable
@@ -58,6 +59,8 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     add_fcos_configs(_C)
     # _C.DISTILLATION
     add_distillation_configs(_C)
+    # _C.FSDP
+    add_fsdp_configs(_C)
 
     # Set find_unused_parameters for DistributedDataParallel.
     _C.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
