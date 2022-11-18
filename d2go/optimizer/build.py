@@ -264,7 +264,7 @@ def adam(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     params = get_optimizer_param_groups(model, cfg)
 
     return maybe_add_gradient_clipping(cfg, torch.optim.Adam)(
-        params=params, lr=cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS
+        params=params, lr=cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS, eps=cfg.SOLVER.EPS
     )
 
 
@@ -276,7 +276,7 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     params = get_optimizer_param_groups(model, cfg)
 
     return maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
-        params=params, lr=cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS
+        params=params, lr=cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS, eps=cfg.SOLVER.EPS
     )
 
 
@@ -307,7 +307,7 @@ def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     """
     params = get_optimizer_param_groups(model, cfg)
     return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.AdamW)(
-        params=params, lr=cfg.SOLVER.BASE_LR
+        params=params, lr=cfg.SOLVER.BASE_LR, eps=cfg.SOLVER.EPS
     )
 
 

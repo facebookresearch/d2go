@@ -78,6 +78,7 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
 
     # Betas are used in the AdamW optimizer
     _C.SOLVER.BETAS = (0.9, 0.999)
+    _C.SOLVER.EPS = 1e-08
 
     # RECOMPUTE_BOXES for LSJ Training
     _C.INPUT.RECOMPUTE_BOXES = False
