@@ -17,8 +17,10 @@ from d2go.modeling.distillation import (
     BaseDistillationHelper,
     CachedLayer,
     compute_layer_losses,
+    DefaultLossCombiner,
     DistillationModelingHook,
     ExampleDistillationHelper,
+    get_default_kd_image_classification_layer_losses,
     KnowledgeDistillation,
     LabelDistillation,
     LayerLossMetadata,
@@ -563,7 +565,7 @@ class TestDistillationModelingHook(unittest.TestCase):
         torch.testing.assert_close(output, gt)
 
 
-class DistillationMiscTests(unittest.TestCase):
+class TestDistillationMiscTests(unittest.TestCase):
     def test_teacher_outside_updated_parameters(self):
         """
         Check that teacher values are ignored when updating student
@@ -605,3 +607,20 @@ class DistillationMiscTests(unittest.TestCase):
             cfg.MODEL.MODELING_HOOKS = ["DistillationModelingHook"]
             distilled_model = BaseRunner().build_model(cfg)
             self.assertEqual(len(list(distilled_model.parameters())), 1)
+
+
+class TestDistillationDefaults(unittest.TestCase):
+    def test_kd_image_classification_layer_losses(self):
+        """Check the default returns a list of layerlossmetadata"""
+        layer_losses = get_default_kd_image_classification_layer_losses()
+        self.assertTrue(isinstance(layer_losses, List))
+        self.assertTrue(isinstance(layer_losses[0], LayerLossMetadata))
+
+    def test_default_loss_combiner(self):
+        """Check combiner multiplies loss by weights"""
+        weights = {"a": torch.randn(1), "b": torch.randn(1)}
+        combiner = DefaultLossCombiner(weights)
+        input = {"a": 1.0, "b": 10.0}
+        output = combiner(input)
+        torch.testing.assert_close(output["a"], input["a"] * weights["a"])
+        torch.testing.assert_close(output["b"], input["b"] * weights["b"])
