@@ -618,3 +618,41 @@ class WrappedTeacher:
 
     def __call__(self, *args, **kwargs):
         return self.model(*args, **kwargs)
+
+
+def get_default_kd_image_classification_layer_losses() -> List[LayerLossMetadata]:
+    """Return some typical values used in knowledge distillation
+
+    Assumes student model is ImageClassificationMetaArch and teacher model is the same
+    or a wrapped torchscript model with the same output layer name
+    """
+    return [
+        LayerLossMetadata(
+            loss=nn.CrossEntropyLoss(),
+            name="kd",
+            layer0="classifier",
+            layer1="",  # use empty layer name to indicate last layer
+        )
+    ]
+
+
+class DefaultLossCombiner:
+    """Returns a weighted sum of the losses based on the name_weight
+
+    name_weight is a dictionary indicating the name of the loss and the
+    weight associated with that loss
+
+    Example:
+        name_weight = {"nll": 0.1, "kd": 0.9}
+    """
+
+    def __init__(self, name_weight: Dict[str, float]):
+        self.name_weight = name_weight
+
+    def __call__(self, losses: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        output = {}
+        for k, v in losses.items():
+            if k not in self.name_weight:
+                raise ValueError(f"Unexpected weight in loss dict: {k}")
+            output[k] = v * self.name_weight[k]
+        return output
