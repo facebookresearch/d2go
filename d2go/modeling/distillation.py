@@ -13,6 +13,7 @@
 # We use two additional registries so that users can select their
 # distillation algorithms in configs: DISILLATION_ALAGORITHM, DISTILLATION_HELPER
 
+import logging
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Set, Union
@@ -28,6 +29,9 @@ from d2go.registry.builtin import (
 )
 from detectron2.utils.file_io import PathManager
 from mobile_cv.common.misc.mixin import dynamic_mixin, remove_dynamic_mixin
+
+
+logger = logging.getLogger(__name__)
 
 
 def add_distillation_configs(_C: CN) -> None:
@@ -411,6 +415,7 @@ class DistillationModelingHook(mh.ModelingHook):
                     super().forward(...)  # call MyModel.forward
                     ...
         """
+        logger.info("Applying distillation")
         dynamic_mixin(
             model,
             self.distillation_algorithm_class,
