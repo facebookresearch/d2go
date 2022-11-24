@@ -5,13 +5,11 @@ import logging
 import os
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple
 
-import detectron2.utils.comm as comm
 import pytorch_lightning as pl
 import torch
 from d2go.config import CfgNode
-from d2go.data.build import build_d2go_train_loader
 from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import update_cfg_if_using_adhoc_dataset
 from d2go.modeling.api import build_meta_arch
@@ -20,16 +18,13 @@ from d2go.optimizer import build_optimizer_mapper
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
     _get_tbx_writer,
+    D2GoDataAPIMixIn,
     Detectron2GoRunner,
     GeneralizedRCNNRunner,
 )
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
-from d2go.utils.visualization import VisualizationEvaluator
-from detectron2.solver import (
-    build_lr_scheduler as d2_build_lr_scheduler,
-    build_optimizer as d2_build_optimizer,
-)
+from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.logger import _flatten_dict
 
@@ -127,7 +122,7 @@ class ModelTag(str, Enum):
     EMA = "ema"
 
 
-class DefaultTask(pl.LightningModule):
+class DefaultTask(D2GoDataAPIMixIn, pl.LightningModule):
     def __init__(self, cfg: CfgNode):
         super().__init__()
         self.register(cfg)
@@ -392,37 +387,6 @@ class DefaultTask(pl.LightningModule):
         return Detectron2GoRunner.get_evaluator(
             cfg=cfg, dataset_name=dataset_name, output_folder=output_folder
         )
-
-    @staticmethod
-    def get_mapper(cfg, is_train):
-        return Detectron2GoRunner.get_mapper(cfg, is_train)
-
-    @staticmethod
-    def get_visualization_evaluator() -> Optional[Type[VisualizationEvaluator]]:
-        return Detectron2GoRunner.get_visualization_evaluator()
-
-    @staticmethod
-    def get_data_loader_vis_wrapper():
-        return Detectron2GoRunner.get_data_loader_vis_wrapper()
-
-    @classmethod
-    def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
-        mapper = mapper or cls.get_mapper(cfg, is_train=True)
-        data_loader = build_d2go_train_loader(cfg, mapper)
-        return cls._attach_visualizer_to_data_loader(cfg, data_loader)
-
-    @staticmethod
-    def build_detection_test_loader(cfg, dataset_name, mapper=None):
-        return Detectron2GoRunner.build_detection_test_loader(cfg, dataset_name, mapper)
-
-    @classmethod
-    def _attach_visualizer_to_data_loader(cls, cfg, data_loader):
-        if comm.is_main_process():
-            data_loader_type = cls.get_data_loader_vis_wrapper()
-            if data_loader_type is not None:
-                tbx_writer = Detectron2GoRunner.get_tbx_writer(cfg)
-                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
-        return data_loader
 
     # ---------------------------------------------------------------------------
     # Hooks

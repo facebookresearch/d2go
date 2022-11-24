@@ -199,7 +199,55 @@ class BaseRunner(object):
         return d2_build_detection_train_loader(*args, **kwargs)
 
 
-class Detectron2GoRunner(BaseRunner):
+class D2GoDataAPIMixIn:
+    @staticmethod
+    def get_mapper(cfg, is_train):
+        tfm_gens = build_transform_gen(cfg, is_train)
+        mapper = build_dataset_mapper(cfg, is_train, tfm_gens=tfm_gens)
+        return mapper
+
+    @classmethod
+    def build_detection_test_loader(
+        cls, cfg, dataset_name: Union[str, List[str]], mapper=None
+    ):
+        logger.info(
+            "Building detection test loader for dataset: {} ...".format(dataset_name)
+        )
+        with configure_dataset_creation(cfg):
+            mapper = mapper or cls.get_mapper(cfg, is_train=False)
+            logger.info("Using dataset mapper:\n{}".format(mapper))
+            return d2_build_detection_test_loader(cfg, dataset_name, mapper=mapper)
+
+    @classmethod
+    def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
+        with configure_dataset_creation(cfg):
+            mapper = mapper or cls.get_mapper(cfg, is_train=True)
+            data_loader = build_d2go_train_loader(cfg, mapper)
+            return cls._attach_visualizer_to_data_loader(cfg, data_loader)
+
+    @classmethod
+    def _attach_visualizer_to_data_loader(cls, cfg, data_loader):
+        if comm.is_main_process():
+            data_loader_type = cls.get_data_loader_vis_wrapper()
+            if data_loader_type is not None:
+                tbx_writer = cls.get_tbx_writer(cfg)
+                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
+        return data_loader
+
+    @classmethod
+    def get_tbx_writer(cls, cfg):
+        return _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+
+    @staticmethod
+    def get_data_loader_vis_wrapper() -> Optional[Type[DataLoaderVisWrapper]]:
+        return DataLoaderVisWrapper
+
+    @staticmethod
+    def get_visualization_evaluator() -> Optional[Type[VisualizationEvaluator]]:
+        return VisualizationEvaluator
+
+
+class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
     def register(self, cfg):
         super().register(cfg)
         self.original_cfg = cfg.clone()
@@ -279,10 +327,6 @@ class Detectron2GoRunner(BaseRunner):
 
     def build_lr_scheduler(self, cfg, optimizer):
         return d2_build_lr_scheduler(cfg, optimizer)
-
-    @classmethod
-    def get_tbx_writer(cls, cfg):
-        return _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
 
     def _do_test(self, cfg, model, train_iter=None, model_tag="default"):
         """train_iter: Current iteration of the model, None means final iteration"""
@@ -516,29 +560,6 @@ class Detectron2GoRunner(BaseRunner):
             trained_cfg.MODEL.WEIGHTS = checkpointer.get_checkpoint_file()
         return {"model_final": trained_cfg}
 
-    @classmethod
-    def build_detection_test_loader(
-        cls, cfg, dataset_name: Union[str, List[str]], mapper=None
-    ):
-        logger.info(
-            "Building detection test loader for dataset: {} ...".format(dataset_name)
-        )
-        with configure_dataset_creation(cfg):
-            mapper = mapper or cls.get_mapper(cfg, is_train=False)
-            logger.info("Using dataset mapper:\n{}".format(mapper))
-            return d2_build_detection_test_loader(cfg, dataset_name, mapper=mapper)
-
-    @classmethod
-    def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
-        with configure_dataset_creation(cfg):
-            mapper = mapper or cls.get_mapper(cfg, is_train=True)
-            data_loader = build_d2go_train_loader(cfg, mapper)
-            return cls._attach_visualizer_to_data_loader(cfg, data_loader)
-
-    @staticmethod
-    def get_data_loader_vis_wrapper() -> Optional[Type[DataLoaderVisWrapper]]:
-        return DataLoaderVisWrapper
-
     @staticmethod
     def get_evaluator(cfg, dataset_name, output_folder):
         evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
@@ -569,27 +590,8 @@ class Detectron2GoRunner(BaseRunner):
         return dataset_evaluators
 
     @staticmethod
-    def get_mapper(cfg, is_train):
-        tfm_gens = build_transform_gen(cfg, is_train)
-        mapper = build_dataset_mapper(cfg, is_train, tfm_gens=tfm_gens)
-        return mapper
-
-    @staticmethod
-    def get_visualization_evaluator() -> Optional[Type[VisualizationEvaluator]]:
-        return VisualizationEvaluator
-
-    @staticmethod
     def final_model_name():
         return "model_final"
-
-    @classmethod
-    def _attach_visualizer_to_data_loader(cls, cfg, data_loader):
-        if comm.is_main_process():
-            data_loader_type = cls.get_data_loader_vis_wrapper()
-            if data_loader_type is not None:
-                tbx_writer = cls.get_tbx_writer(cfg)
-                data_loader = data_loader_type(cfg, tbx_writer, data_loader)
-        return data_loader
 
     def _create_after_step_hook(
         self, cfg, model, optimizer, scheduler, periodic_checkpointer
