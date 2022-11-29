@@ -27,6 +27,7 @@ from d2go.modeling.distillation import (
     NoopPseudoLabeler,
     PseudoLabeler,
     record_layers,
+    register_layer_losses_and_to_device,
     RelabelTargetInBatch,
     set_cache_dict,
     unrecord_layers,
@@ -97,6 +98,20 @@ class AddLayers(nn.Module):
             return x
         return {"output": x}
 
+    @property
+    def device(self):
+        return self.layer0.weight.device
+
+
+class SimpleAdd(nn.Module):
+    def forward(self, x, y):
+        return x + y
+
+
+class SimpleMul(nn.Module):
+    def forward(self, x, y):
+        return x * y
+
 
 class TestLabeler(PseudoLabeler):
     def __init__(self, teacher):
@@ -131,13 +146,13 @@ class TestHelper(BaseDistillationHelper):
     def get_layer_losses(self, model=None):
         return [
             LayerLossMetadata(
-                loss=lambda x, y: x + y,
+                loss=SimpleAdd(),
                 name="add",
                 layer0="layer0",
                 layer1="layer0",
             ),
             LayerLossMetadata(
-                loss=lambda x, y: x * y,
+                loss=SimpleMul(),
                 name="mul",
                 layer0="layer1",
                 layer1="layer1",
@@ -388,6 +403,37 @@ class TestDistillation(unittest.TestCase):
         torch.testing.assert_close(new_cache["layer1"], torch.Tensor([2]))
         torch.testing.assert_close(new_cache["layer2"], torch.Tensor([3]))
         torch.testing.assert_close(new_cache[""], output)
+
+    def test_register_layer_losses(self):
+        """Check losses can be registered to model"""
+        model = AddOne()
+        ll = [
+            LayerLossMetadata(
+                loss=SimpleAdd(),
+                name="mul",
+                layer0="layer1",
+                layer1="layer1",
+            ),
+        ]
+        registered_losses = register_layer_losses_and_to_device(ll, model)
+        self.assertTrue(hasattr(model, "mul"))
+        self.assertEqual(model.mul, registered_losses[0].loss)
+
+    @helper.skip_if_no_gpu
+    def test_register_layer_losses_and_to_device(self):
+        """Check losses can be registered to model"""
+        model = AddOne()
+        model = model.to("cuda")
+        ll = [
+            LayerLossMetadata(
+                loss=AddOne(),
+                name="mul",
+                layer0="layer1",
+                layer1="layer1",
+            ),
+        ]
+        register_layer_losses_and_to_device(ll, model)
+        self.assertEqual(model.mul.device, model.device)
 
 
 class TestPseudoLabeler(unittest.TestCase):
