@@ -323,7 +323,8 @@ class KnowledgeDistillation(BaseDistillationAlgorithm):
         self._teacher_preprocess_input = (
             self.distillation_helper.get_preprocess_teacher_input()
         )
-        self._layer_losses = self.distillation_helper.get_layer_losses(self)
+        ll = self.distillation_helper.get_layer_losses(self)
+        self._layer_losses = register_layer_losses_and_to_device(ll, self)
         self._student_cache = record_layers(
             self, [ll.layer0 for ll in self._layer_losses]
         )
@@ -676,3 +677,22 @@ class DefaultLossCombiner:
                 raise ValueError(f"Unexpected weight in loss dict: {k}")
             output[k] = v * self.name_weight[k]
         return output
+
+
+def register_layer_losses_and_to_device(
+    layer_losses: List[LayerLossMetadata], model: nn.Module
+) -> List[LayerLossMetadata]:
+    """Register loss modules in layerlossemtadata to model and move to device"""
+    registered_losses = []
+    for ll in layer_losses:
+        loss_on_device = ll.loss.to(model.device)
+        model.add_module(ll.name, loss_on_device)
+        registered_losses.append(
+            LayerLossMetadata(
+                loss_on_device,
+                ll.name,
+                ll.layer0,
+                ll.layer1,
+            )
+        )
+    return registered_losses
