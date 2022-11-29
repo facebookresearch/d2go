@@ -19,6 +19,7 @@ from d2go.modeling.distillation import (
     compute_layer_losses,
     DefaultLossCombiner,
     DistillationModelingHook,
+    DomainAdaptation,
     ExampleDistillationHelper,
     get_default_kd_image_classification_layer_losses,
     KnowledgeDistillation,
@@ -164,6 +165,31 @@ class TestHelper(BaseDistillationHelper):
             "output": d["output"] * 0.1,
             "add": d["add"] * 0.5,
             "mul": d["mul"] * 10.0,
+        }
+
+
+class TestDAHelper(BaseDistillationHelper):
+    def get_preprocess_domain0_input(self):
+        return lambda x: x["real"]
+
+    def get_preprocess_domain1_input(self):
+        return lambda x: x["synthetic"]
+
+    def get_layer_losses(self, model=None):
+        return [
+            LayerLossMetadata(
+                loss=SimpleAdd(),
+                name="add",
+                layer0="layer0",
+                layer1="layer0",
+            )
+        ]
+
+    def get_combine_losses(self):
+        return lambda d0, d1, da, ta: {
+            "real": d0["output"] * 0.1,
+            "synthetic": d1["output"] * 0.5,
+            "add": da["add"] * 10.0,
         }
 
 
@@ -485,7 +511,11 @@ class TestDistillationAlgorithm(unittest.TestCase):
 
     def test_registry(self):
         """Check distillation teacher in registry"""
-        for algorithm in ["LabelDistillation", "KnowledgeDistillation"]:
+        for algorithm in [
+            "LabelDistillation",
+            "KnowledgeDistillation",
+            "DomainAdaptation",
+        ]:
             self.assertTrue(algorithm in DISTILLATION_ALGORITHM_REGISTRY)
 
     def test_label_distillation_inference(self):
@@ -559,6 +589,54 @@ class TestDistillationAlgorithm(unittest.TestCase):
         dynamic_mixin(
             model,
             KnowledgeDistillation,
+            init_dict={"distillation_helper": distillation_helper},
+        )
+        remove_dynamic_mixin(model)
+        for module in model.modules():
+            self.assertFalse(hasattr(module, "cache"))
+
+    def test_da_inference(self):
+        """Check inference defaults to student (and preprocessing)"""
+        distillation_helper = TestDAHelper(cfg=CfgNode(), teacher=nn.Identity())
+        model = AddLayers()
+        dynamic_mixin(
+            model,
+            DomainAdaptation,
+            init_dict={"distillation_helper": distillation_helper},
+        )
+        model.eval()
+        input = {"real": torch.randn(1), "synthetic": torch.randn(1)}
+        output = model(input)
+        self.assertEqual(output, input["real"] + 3.0)
+
+    def test_da_train(self):
+        """Check train pass results in updated loss output"""
+        distillation_helper = TestDAHelper(cfg=CfgNode(), teacher=nn.Identity())
+        model = AddLayers()
+        dynamic_mixin(
+            model,
+            DomainAdaptation,
+            init_dict={"distillation_helper": distillation_helper},
+        )
+        model.train()
+        input = {"real": torch.randn(1), "synthetic": torch.randn(1)}
+        output = model(input)
+        self.assertEqual(
+            output,
+            {
+                "real": (input["real"] + 3.0) * 0.1,
+                "synthetic": (input["synthetic"] + 3.0) * 0.5,
+                "add": ((input["real"] + 1.0) + (input["synthetic"] + 1.0)) * 10.0,
+            },
+        )
+
+    def test_da_remove_dynamic_mixin(self):
+        """Check removing dynamic mixin removes cached layers"""
+        distillation_helper = TestHelper(cfg=CfgNode(), teacher=nn.Identity())
+        model = AddLayers()
+        dynamic_mixin(
+            model,
+            DomainAdaptation,
             init_dict={"distillation_helper": distillation_helper},
         )
         remove_dynamic_mixin(model)
