@@ -368,6 +368,19 @@ class TestDistillation(unittest.TestCase):
         output = model(input)
         self.assertEqual(output, cache["test_layer"])
 
+    def test_cached_layer_tuple(self):
+        """Check cached layer saves list"""
+        model = DivideInputBy2()
+        cache = {}
+        dynamic_mixin(
+            model,
+            CachedLayer,
+            init_dict={"label": "test_layer", "cache": cache},
+        )
+        input = (torch.randn(1) for _ in range(2))
+        output = model(input)
+        self.assertEqual(output, cache["test_layer"])
+
     def test_cached_layer_dict(self):
         """Check cached layer saves dict"""
         model = DivideInputBy2OutputDict()
