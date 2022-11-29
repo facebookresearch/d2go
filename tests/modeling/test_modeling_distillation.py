@@ -253,6 +253,15 @@ class TestDistillation(unittest.TestCase):
             model = _build_teacher(cfg)
             self.assertEqual(gt_model.weight, model.weight)
 
+    def test_build_teacher_none(self):
+        """Check that we can ignore building the teacher"""
+        # build model
+        cfg = _get_default_cfg()
+        cfg.MODEL.META_ARCHITECTURE = "TestMetaArchAddRand"
+        cfg.DISTILLATION.TEACHER.TYPE = "no_teacher"
+        model = _build_teacher(cfg)
+        self.assertTrue(isinstance(model, nn.Module))
+
     def test_override_teacher_config_gpu_on_cpu(self):
         """Teacher cuda model can be run on cpu if specified in config"""
         # build model where teacher is specified on gpu but user overrides cpu
