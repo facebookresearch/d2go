@@ -459,6 +459,8 @@ def _build_teacher(cfg) -> nn.Module:
         )
         runner = import_runner(cfg.DISTILLATION.TEACHER.RUNNER_NAME)()
         model = runner.build_model(teacher_cfg, eval_only=True)
+    elif cfg.DISTILLATION.TEACHER.TYPE == "no_teacher":
+        model = nn.Identity()
     else:
         raise ValueError(f"Unexpected teacher type: {cfg.DISTILLATION.TEACHER.TYPE}")
 
@@ -492,6 +494,10 @@ def _validate_teacher_config(cfg: CN) -> None:
         * torchscript_filename
     If config, needs:
         * config_fname
+
+    Bypass allowed if setting teacher.type = "no_teacher". This can be
+    useful in cases where we only have the student model
+    (e.g., domain adaptation)
     """
     if cfg.DISTILLATION.TEACHER.TYPE == "torchscript":
         assert (
@@ -501,6 +507,8 @@ def _validate_teacher_config(cfg: CN) -> None:
         assert (
             cfg.DISTILLATION.TEACHER.CONFIG_FNAME
         ), "Trying to load D2Go teacher model without config"
+    elif cfg.DISTILLATION.TEACHER.TYPE == "no_teacher":
+        pass
     else:
         raise ValueError(
             f"Unrecognized DISTILLATION.TEACHER.TYPE: {cfg.DISTILLATION.TEACHER.TYPE}"
