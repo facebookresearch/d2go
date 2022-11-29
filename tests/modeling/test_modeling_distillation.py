@@ -28,6 +28,7 @@ from d2go.modeling.distillation import (
     PseudoLabeler,
     record_layers,
     RelabelTargetInBatch,
+    set_cache_dict,
     unrecord_layers,
 )
 from d2go.registry.builtin import (
@@ -364,6 +365,20 @@ class TestDistillation(unittest.TestCase):
         output = compute_layer_losses(layer_losses, layer0_cache, layer1_cache)
         self.assertEqual(output["add"], layer0_cache["l00"] + layer1_cache["l10"])
         self.assertEqual(output["div"], layer0_cache["l01"] / layer1_cache["l11"])
+
+    def test_set_cache_dict(self):
+        """Check we can swap the cache dict used when recording layers"""
+        model = AddLayers()
+        cache = record_layers(model, ["", "layer0", "layer1", "layer2"])
+        new_cache = {}
+        set_cache_dict(model, new_cache)
+        input = torch.Tensor([0])
+        output = model(input)
+        self.assertEqual(cache, {})
+        torch.testing.assert_close(new_cache["layer0"], torch.Tensor([1]))
+        torch.testing.assert_close(new_cache["layer1"], torch.Tensor([2]))
+        torch.testing.assert_close(new_cache["layer2"], torch.Tensor([3]))
+        torch.testing.assert_close(new_cache[""], output)
 
 
 class TestPseudoLabeler(unittest.TestCase):
