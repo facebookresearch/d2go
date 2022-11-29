@@ -566,6 +566,13 @@ class CachedLayer(nn.Module):
         return output
 
 
+def set_cache_dict(model: nn.Module, cache: Dict) -> None:
+    """Sets the cache in all CachedLayers to input cache"""
+    for module in model.modules():
+        if isinstance(module, CachedLayer):
+            module.cache = cache
+
+
 def record_layers(model: nn.Module, layer_names: Set[str]) -> Dict[str, torch.Tensor]:
     """Save the outputs of layer_names in model
 
