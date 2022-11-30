@@ -139,7 +139,7 @@ class TestDataTransformsCrop(unittest.TestCase):
             trans.inverse().inverse().apply_image(full_img_gt), crop_img_gt
         )
 
-    def test_pad_transform(self):
+    def test_pad_border_divisible_transform(self):
         img_h, img_w = 10, 7
         divisibility = 8
 
@@ -159,6 +159,16 @@ class TestDataTransformsCrop(unittest.TestCase):
         inverse_mask = trans.inverse().apply_segmentation(pad_mask)
         self.assertEqual(inverse_mask.shape, (10, 7))
         self.assertArrayEqual(mask, inverse_mask)
+
+    def test_pad_to_square_augmentation(self):
+        img_h, img_w = 5, 3
+
+        aug = tf_crop.PadToSquare(pad_value=255)
+
+        img = np.ones([img_h, img_w, 3])
+        trans = aug.get_transform(img)
+        pad_img = trans.apply_image(img)
+        self.assertEqual(pad_img.shape, (5, 5, 3))
 
     def test_random_instance_crop(self):
         from detectron2.data import detection_utils as du
