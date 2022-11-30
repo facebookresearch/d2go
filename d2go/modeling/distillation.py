@@ -16,7 +16,7 @@
 import logging
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Set, Union
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -635,12 +635,13 @@ class CachedLayer(nn.Module):
         Support of the output type is limited to:
           * tensor
           * List[tensor]
+          * Tuple[tensor]
           * Dict[str, tensor]
         """
         output = super().forward(*args, **kwargs)
         if isinstance(output, torch.Tensor):
             self.cache[self.label] = output.clone()
-        elif isinstance(output, List):
+        elif isinstance(output, List) or isinstance(output, Tuple):
             cloned_output = []
             for x in output:
                 if isinstance(x, torch.Tensor):
