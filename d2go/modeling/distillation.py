@@ -209,6 +209,26 @@ class BaseDistillationHelper:
         """
         return lambda x: x
 
+    def get_preprocess_domain0_input(self) -> Callable:
+        """Return a function that allows user to modify the dataloader output
+        before passing to the model
+
+        The output of this function will be directly passed to the model.
+        Example use cases include:
+          * dataloader returns a dictionary of real and synthetic images. use
+          this function to return only the real data (domain0) to the model
+        """
+        return lambda x: x
+
+    def get_preprocess_domain1_input(self) -> Callable:
+        """Same as get_preprocess_domain0_input but returns domain1 inputs
+
+        Example:
+          * dataloader returns a dictionary of real and synthetic images. use
+          this function to return only synthetic data (domain1) to the model
+        """
+        return lambda x: x
+
 
 @DISTILLATION_HELPER_REGISTRY.register()
 class ExampleDistillationHelper(BaseDistillationHelper):
@@ -361,6 +381,72 @@ class KnowledgeDistillation(BaseDistillationAlgorithm):
         )
         student_losses.update(distillation_losses)
         losses = self._combine_losses(student_losses)
+        return losses
+
+
+@DISTILLATION_ALGORITHM_REGISTRY.register()
+class DomainAdaptation(BaseDistillationAlgorithm):
+    """Domain adaptation applies loss over the inputs of domain0 and domain1"""
+
+    def dynamic_mixin_init(self, distillation_helper: BaseDistillationHelper):
+        super().dynamic_mixin_init(distillation_helper)
+        self._domain0_preprocess_input = (
+            self.distillation_helper.get_preprocess_domain0_input()
+        )
+        self._domain1_preprocess_input = (
+            self.distillation_helper.get_preprocess_domain1_input()
+        )
+        ll = self.distillation_helper.get_layer_losses(self)
+        self._layer_losses = register_layer_losses_and_to_device(ll, self)
+
+        # we ignore the cache dict returned by record_layers as we need to
+        # manually set the dict at every iteration in the forward
+        self._domain0_cache = {}
+        self._domain1_cache = {}
+
+        # since domain adaptation uses the same model in both domains, we
+        # only need to add CachedLayers once
+        record_layers(self, [ll.layer0 for ll in self._layer_losses])
+        self._combine_losses = self.distillation_helper.get_combine_losses()
+
+    def remove_dynamic_mixin(self):
+        super().remove_dynamic_mixin()
+        unrecord_layers(self, [ll.layer0 for ll in self._layer_losses])
+        del self._layer_losses
+        del self._domain0_cache
+        del self._domain1_cache
+        del self._domain0_preprocess_input
+        del self._domain1_preprocess_input
+        del self._combine_losses
+
+    def forward(self, batched_inputs: List):
+        """Run domain0 input, domain1 input and compute losses"""
+        domain0_input = self._domain0_preprocess_input(batched_inputs)
+        if not self.training:
+            return super().forward(domain0_input)
+
+        # run domain0
+        set_cache_dict(self, self._domain0_cache)
+        domain0_losses = super().forward(domain0_input)
+
+        # run domain1
+        domain1_input = self._domain1_preprocess_input(batched_inputs)
+        set_cache_dict(self, self._domain1_cache)
+        domain1_losses = super().forward(domain1_input)
+
+        # calculate losses
+        domain_adaptation_losses = compute_layer_losses(
+            self._layer_losses, self._domain0_cache, self._domain1_cache
+        )
+
+        # combine losses
+        # note we currently assume that the loss combiner uses training iteration
+        losses = self._combine_losses(
+            domain0_losses,
+            domain1_losses,
+            domain_adaptation_losses,
+            getattr(self, "_training_iteration", -1),
+        )
         return losses
 
 
