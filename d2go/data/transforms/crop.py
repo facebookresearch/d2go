@@ -42,6 +42,7 @@ class PadTransform(Transform):
         org_w: int,
         org_h: int,
         pad_mode: str = "constant",
+        pad_value: float = 0.0,
     ):
         super().__init__()
         assert x0 + w <= org_w
@@ -59,7 +60,7 @@ class PadTransform(Transform):
         ]
         pad_args = {"mode": self.pad_mode}
         if self.pad_mode == "constant":
-            pad_args["constant_values"] = 0
+            pad_args["constant_values"] = self.pad_value
         ret = np.pad(img, pad_width=tuple(pad_width), **pad_args)
         return ret
 
@@ -86,6 +87,35 @@ class PadBorderDivisible(aug.Augmentation):
         new_h = int(math.ceil(H / self.size_divisibility) * self.size_divisibility)
         new_w = int(math.ceil(W / self.size_divisibility) * self.size_divisibility)
         return PadTransform(0, 0, W, H, new_w, new_h, pad_mode=self.pad_mode)
+
+
+class PadToSquare(aug.Augmentation):
+    """Pad the image to square"""
+
+    def __init__(
+        self,
+        pad_mode: str = "constant",
+        pad_value: float = 0.0,
+    ):
+        super().__init__()
+        self.pad_mode = pad_mode
+        self.pad_value = pad_value
+
+    def get_transform(self, image: np.ndarray) -> Transform:
+        """image: HxWxC"""
+        assert len(image.shape) == 3 and image.shape[2] in [1, 3]
+        H, W = image.shape[:2]
+        new_h = new_w = max(H, W)
+        return PadTransform(
+            0,
+            0,
+            W,
+            H,
+            new_w,
+            new_h,
+            pad_mode=self.pad_mode,
+            pad_value=self.pad_value,
+        )
 
 
 class RandomCropFixedAspectRatio(aug.Augmentation):
@@ -168,6 +198,16 @@ def CropBoundaryOp(
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [CropBoundary(**kwargs)]
+
+
+# example repr: 'PadToSquareOp::{"pad_value": 255.0}'
+@TRANSFORM_OP_REGISTRY.register()
+def PadToSquareOp(
+    cfg: CfgNode, arg_str: str, is_train: bool
+) -> List[Union[aug.Augmentation, Transform]]:
+    kwargs = _json_load(arg_str) if arg_str is not None else {}
+    assert isinstance(kwargs, dict)
+    return [PadToSquare(**kwargs)]
 
 
 # example repr: "RandomCropFixedAspectRatioOp::{'crop_aspect_ratios_list': [0.5], 'scale_range': [0.8, 1.2], 'offset_scale_range': [-0.3, 0.3]}"
