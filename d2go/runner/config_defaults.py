@@ -74,6 +74,7 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     _C.SOLVER.WEIGHT_DECAY_OVERWRITE = []
     assert not _C.SOLVER.AMP.ENABLED
     # AMP precision is used by both D2 and lightning backend. Can be "float16" or "bfloat16".
+    _C.SOLVER.AMP.CAST_ENTIRE_MODEL = True
     _C.SOLVER.AMP.PRECISION = "float16"
 
     # Betas are used in the AdamW optimizer

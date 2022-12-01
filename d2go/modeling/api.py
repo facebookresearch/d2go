@@ -10,6 +10,7 @@ import torch.nn as nn
 from d2go.config import CfgNode
 from d2go.modeling import modeling_hook as mh
 from d2go.registry.builtin import META_ARCH_REGISTRY
+from d2go.trainer.helper import parse_precision_from_string
 from d2go.utils.misc import _log_api_usage
 from detectron2.modeling import META_ARCH_REGISTRY as D2_META_ARCH_REGISTRY
 
@@ -56,6 +57,14 @@ def build_d2go_model(
 ) -> D2GoModelBuildResult:
     model = build_meta_arch(cfg)
     modeling_hooks: List[mh.ModelingHook] = []
+
+    # Cast entire model if needed
+    if cfg.SOLVER.AMP.CAST_ENTIRE_MODEL:
+        precision = parse_precision_from_string(
+            cfg.SOLVER.AMP.PRECISION, lightning=False
+        )
+        model = model.type(precision)
+
     # apply modeling hooks
     # some custom projects bypass d2go's default config so may not have the
     # MODELING_HOOKS key

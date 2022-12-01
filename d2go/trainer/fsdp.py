@@ -216,9 +216,10 @@ class FSDPModelingHook(mh.ModelingHook):
 
     def apply(self, model: nn.Module) -> FSDPWrapper:
         # SOLVER.AMP.ENABLED and SOLVER.AMP.PRECISION controls mixed precision for all parameters, buffers and reduce in FSDP
+        # FSDP mixed precision dtype has to be different from its original dtype; otherwise mixed precision should be disabled
         precision_dtype = (
             parse_precision_from_string(self.cfg.SOLVER.AMP.PRECISION, lightning=False)
-            if self.cfg.SOLVER.AMP.ENABLED
+            if self.cfg.SOLVER.AMP.ENABLED and not self.cfg.SOLVER.AMP.CAST_ENTIRE_MODEL
             else None
         )
         wrapped_model = build_fsdp(
