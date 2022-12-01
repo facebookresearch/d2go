@@ -434,12 +434,6 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         """
         results = OrderedDict()
         with maybe_subsample_n_images(cfg) as new_cfg:
-            # default model
-            cur_results = self._do_test(
-                new_cfg, model, train_iter=train_iter, model_tag="default"
-            )
-            results.update(cur_results)
-
             # model with ema weights
             if cfg.MODEL_EMA.ENABLED and not isinstance(model, PredictorWrapper):
                 logger.info("Run evaluation with EMA.")
@@ -448,6 +442,12 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                         new_cfg, model, train_iter=train_iter, model_tag="ema"
                     )
                     results.update(cur_results)
+
+            # default model
+            cur_results = self._do_test(
+                new_cfg, model, train_iter=train_iter, model_tag="default"
+            )
+            results.update(cur_results)
 
         return results
 
