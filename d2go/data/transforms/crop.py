@@ -82,7 +82,7 @@ class PadBorderDivisible(aug.Augmentation):
 
     def get_transform(self, image: np.ndarray) -> Transform:
         """image: HxWxC"""
-        assert len(image.shape) == 3 and image.shape[2] in [1, 3]
+        assert len(image.shape) == 3 and image.shape[2] in [1, 3, 4], f"{image.shape}"
         H, W = image.shape[:2]
         new_h = int(math.ceil(H / self.size_divisibility) * self.size_divisibility)
         new_w = int(math.ceil(W / self.size_divisibility) * self.size_divisibility)
@@ -103,7 +103,7 @@ class PadToSquare(aug.Augmentation):
 
     def get_transform(self, image: np.ndarray) -> Transform:
         """image: HxWxC"""
-        assert len(image.shape) == 3 and image.shape[2] in [1, 3]
+        assert len(image.shape) == 3 and image.shape[2] in [1, 3, 4], f"{image.shape}"
         H, W = image.shape[:2]
         new_h = new_w = max(H, W)
         return PadTransform(
@@ -115,6 +115,38 @@ class PadToSquare(aug.Augmentation):
             new_h,
             pad_mode=self.pad_mode,
             pad_value=self.pad_value,
+        )
+
+
+class CenterCrop(aug.Augmentation):
+    def __init__(
+        self,
+        crop_size: Tuple[int],
+    ):
+        super().__init__()
+        assert isinstance(crop_size, (list, tuple))
+        self.crop_size = crop_size
+
+    def get_transform(self, image: np.ndarray) -> Transform:
+        """image: HxWxC"""
+        assert len(image.shape) == 3 and image.shape[2] in [1, 3, 4], f"{image.shape}"
+
+        # Compute the image scale and scaled size.
+        input_size = image.shape[:2]
+        output_size = self.crop_size
+
+        # Add center crop if the image is scaled up.
+        max_offset = np.subtract(input_size, output_size)
+        max_offset = np.maximum(max_offset, 0)
+        offset = np.multiply(max_offset, 0.5)
+        offset = np.round(offset).astype(int)
+        return CropTransform(
+            offset[1],
+            offset[0],
+            output_size[1],
+            output_size[0],
+            input_size[1],
+            input_size[0],
         )
 
 
@@ -208,6 +240,14 @@ def PadToSquareOp(
     kwargs = _json_load(arg_str) if arg_str is not None else {}
     assert isinstance(kwargs, dict)
     return [PadToSquare(**kwargs)]
+
+
+# example repr: 'CenterCropOp::{"crop_size": [256, 256]}'
+@TRANSFORM_OP_REGISTRY.register()
+def CenterCropOp(cfg: CfgNode, arg_str: str, is_train: bool):
+    kwargs = _json_load(arg_str) if arg_str is not None else {}
+    assert isinstance(kwargs, dict)
+    return [CenterCrop(**kwargs)]
 
 
 # example repr: "RandomCropFixedAspectRatioOp::{'crop_aspect_ratios_list': [0.5], 'scale_range': [0.8, 1.2], 'offset_scale_range': [-0.3, 0.3]}"
