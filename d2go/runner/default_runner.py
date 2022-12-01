@@ -482,6 +482,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             cfg,
             model,
             save_dir=cfg.OUTPUT_DIR,
+            load_ckpt_to_gpu=cfg.LOAD_CKPT_TO_GPU,
             optimizer=optimizer,
             scheduler=scheduler,
         )
