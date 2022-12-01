@@ -104,10 +104,8 @@ class FSDPWrapper(FSDP):
 
     def forward(self, *args, **kwargs):
         # Wrap forward() in autocast if mixed precision is enabled
-        if (
-            self._mixed_precision_enabled_for_params()
-            and not torch.is_autocast_enabled()
-        ):
+        # FIXME: turn off autocast if needed
+        if not torch.is_autocast_enabled():
             from torch.cuda.amp import autocast
 
             with autocast(dtype=self.precision):
