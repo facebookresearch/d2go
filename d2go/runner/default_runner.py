@@ -11,7 +11,7 @@ from typing import List, Optional, Type, Union
 import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
 import torch
-from d2go.checkpoint import FSDPCheckpointer
+from d2go.checkpoint import FSDPCheckpointer, FSDPPeriodicCheckpointer
 from d2go.config import CfgNode, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost
 from d2go.config.utils import get_cfg_diff_table
 from d2go.data.build import build_d2go_train_loader
@@ -496,7 +496,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         # at the next iteration (or iter zero if there's no checkpoint).
         start_iter += 1
         max_iter = cfg.SOLVER.MAX_ITER
-        periodic_checkpointer = PeriodicCheckpointer(
+        periodic_checkpointer = FSDPPeriodicCheckpointer(
             checkpointer, cfg.SOLVER.CHECKPOINT_PERIOD, max_iter=max_iter
         )
 

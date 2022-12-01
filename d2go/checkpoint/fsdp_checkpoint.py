@@ -4,12 +4,42 @@ import os
 import detectron2.utils.comm as comm
 import torch
 from d2go.modeling.model_ema import EMAState
-
 from d2go.quantization.modeling import QATCheckpointer
 from d2go.trainer.fsdp import FSDPWrapper
+
+from fvcore.common.checkpoint import PeriodicCheckpointer
 from torch.distributed.fsdp.fully_sharded_data_parallel import (
     FullyShardedDataParallel as FSDP,
 )
+
+
+class FSDPPeriodicCheckpointer(PeriodicCheckpointer):
+    """
+    Extend PeiodicCheckpointer to support re-saving local checkpoints as full global checkpoints at the end of training
+    """
+
+    def step(self, iteration: int, **kwargs):
+        super().step(iteration, **kwargs)
+
+        if isinstance(self.checkpointer.model, FSDPWrapper):
+            if self.checkpointer.model.use_local_state_dict:
+                if self.max_iter is not None:
+                    if iteration >= self.max_iter - 1:
+                        iteration = int(iteration)
+                        additional_state = {"iteration": iteration}
+                        additional_state.update(kwargs)
+                        try:
+                            self.checkpointer.model.use_local_state_dict = False
+                            self.checkpointer.save(
+                                f"{self.file_prefix}_final", **additional_state
+                            )
+                            self.checkpointer.logger.info(
+                                "Successfully saved full model checkpoint in FSDP local mode"
+                            )
+                        except RuntimeError:
+                            self.checkpointer.logger.warning(
+                                "Failed to save full model checkpoint. Only local sharded checkpoint is saved"
+                            )
 
 
 # TODO: replace FSDPCheckpointer with central D2GoCheckpointer
@@ -23,9 +53,17 @@ class FSDPCheckpointer(QATCheckpointer):
         Add support for loading sharded optimizer states in FSDP.
 
         .. note:: Loading optimizer states from regular checkpoints into FSDP models is currently not supported.
-            In general users should not resume regular training with FSDP.
+            In general users should not resume non-FSDP training with FSDP.
         """
         if isinstance(self.model, FSDPWrapper):
+            if path is not None:
+                # loading path is a directory: sharded local state dict is used
+                if self.path_manager.isdir(path):
+                    self.model.load_local_state_dict = True
+                    path = os.path.join(path, f"rank{comm.get_rank()}.pth")
+                # loading path is a file: full global state dict is used
+                else:
+                    self.model.load_local_state_dict = False
             checkpointables_iter = (
                 self.checkpointables.keys()
                 if checkpointables is None
@@ -40,9 +78,9 @@ class FSDPCheckpointer(QATCheckpointer):
             checkpoint = super().load(path, checkpointables=checkpointables_filtered)
             if "optimizer" in checkpointables_iter:
                 self.logger.info("Loading optimizer from {} ...".format(path))
+                optimizer = self.checkpointables["optimizer"]
                 osd = checkpoint.pop("optimizer")
-                sharded_osd = FSDP.shard_full_optim_state_dict(osd, self.model)
-                self.checkpointables["optimizer"].load_state_dict(sharded_osd)
+                scatter_optimizer_state_dict(optimizer, osd, self.model)
             if "ema_state" in checkpointables_iter:
                 self.logger.info("Loading ema_state from {} ...".format(path))
                 ema_state = checkpoint.pop("ema_state")
@@ -59,8 +97,9 @@ class FSDPCheckpointer(QATCheckpointer):
         """
         # If no sharding, only the main process enters the saving codepath;
         # otherwise, all processes need to call state_dict() to enable state broadcasting among ranks
-        if not isinstance(self.model, FSDPWrapper) and not comm.is_main_process():
-            return
+        if not isinstance(self.model, FSDPWrapper):
+            if comm.is_main_process():
+                return super().save(name, **kwargs)
 
         data = {}
         # FSDP: model.state_dict() needs to be called by all ranks before saving
@@ -74,32 +113,64 @@ class FSDPCheckpointer(QATCheckpointer):
                 data[key] = obj.state_dict()
         data.update(kwargs)
 
-        # Only the main process does checkpoint saving; code copied from vision/fair/fvcore/fvcore/common/checkpoint.py
-        if comm.is_main_process():
+        # If using full state dict, only the main process does checkpoint saving; Otherwise, all processes do
+        if self.model.use_local_state_dict:
+            # Main process creates directory for local saves
+            new_save_dir = os.path.join(self.save_dir, name)
+            if comm.is_main_process():
+                if not self.path_manager.exists(new_save_dir):
+                    self.path_manager.mkdirs(new_save_dir)
+            comm.synchronize()
+            # Saving checkpoints
+            basename = "rank{}.pth".format(comm.get_rank())
+            save_file = os.path.join(new_save_dir, basename)
+            assert os.path.basename(save_file) == basename, basename
+            self._save_file(data, save_file)
+            # Main process tags last checkpoint if no errors in all processes
+            comm.synchronize()
+            if comm.is_main_process():
+                self.tag_last_checkpoint(name)
+        elif comm.is_main_process():
             basename = "{}.pth".format(name)
             save_file = os.path.join(self.save_dir, basename)
             assert os.path.basename(save_file) == basename, basename
-            self.logger.info("Saving checkpoint to {}".format(save_file))
-            with self.path_manager.open(save_file, "wb") as f:
-                # pyre-fixme[6]: For 2nd param expected `Union[PathLike[typing.Any],
-                #  IO[bytes], str, BinaryIO]` but got `Union[IO[bytes], IO[str]]`.
-                torch.save(data, f)
+            self._save_file(data, save_file)
             self.tag_last_checkpoint(basename)
 
+    def _save_file(self, data, filename):
+        self.logger.info("Saving checkpoint to {}".format(filename))
+        with self.path_manager.open(filename, "wb") as f:
+            # pyre-fixme[6]: For 2nd param expected `Union[PathLike[typing.Any],
+            #  IO[bytes], str, BinaryIO]` but got `Union[IO[bytes], IO[str]]`.
+            torch.save(data, f)
 
-def gather_optimizer_state_dict(optimizer, model=None):
+
+def gather_optimizer_state_dict(optimizer, model: FSDPWrapper):
+    """
+    Get full/local optimizer state dict from an FSDP model.
+    """
     # FSDP: full_optim_state_dict() needs to be called by all ranks
-    if isinstance(model, FSDPWrapper):
+    if not model.use_local_state_dict:
         return FSDP.full_optim_state_dict(model, optimizer, rank0_only=model.rank0_only)
     return optimizer.state_dict()
 
 
-def gather_ema_state_dict(ema_state, model):
+def scatter_optimizer_state_dict(optimizer, optim_state_dict, model: FSDPWrapper):
     """
-    Get EMA state dict.
-    For FSDP, gather local sharded EMA states from all FSDP processes and aggregate them into a FULL GLOBAL state dict
+    Load a full/local optimizer state dict to a FSDP model.
+    If using full state dict, shard and scatter the optimizer state dict before loading
     """
-    if isinstance(model, FSDPWrapper):
+    if not model.load_local_state_dict:
+        optim_state_dict = FSDP.shard_full_optim_state_dict(optim_state_dict, model)
+    optimizer.load_state_dict(optim_state_dict)
+
+
+def gather_ema_state_dict(ema_state, model: FSDPWrapper):
+    """
+    Get full/local EMA state dict from an FSDP model.
+    If using full state dict, gather local sharded EMA states from all FSDP processes and aggregate them into a full EMA state dict
+    """
+    if not model.use_local_state_dict:
         # Apply local ema states to the model and unshard them
         with ema_state.apply_and_restore(model):
             with FSDP.summon_full_params(
@@ -110,16 +181,15 @@ def gather_ema_state_dict(ema_state, model):
             ):
                 state = EMAState.FromModel(model)
             return state.state
-    else:
-        return ema_state.state_dict()
+    return ema_state.state_dict()
 
 
-def scatter_ema_state_dict(ema_state_dict, model):
+def scatter_ema_state_dict(ema_state_dict, model: FSDPWrapper):
     """
-    Load an EMA state dict to the model.
-    EMA state represents a FULL GLOBAL state dict and needs to be properly sharded for each FSDP process to store locally
+    Load a full/local EMA state dict to a FSDP model.
+    If loading full state dict, ema_state_dict needs to be properly sharded for each FSDP process to store locally
     """
-    if isinstance(model, FSDPWrapper):
+    if not model.load_local_state_dict:
         # Store the current model state.
         old_local_state = EMAState.FromModel(model)
 

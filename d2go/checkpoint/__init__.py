@@ -1,3 +1,3 @@
-from .fsdp_checkpoint import FSDPCheckpointer
+from .fsdp_checkpoint import FSDPCheckpointer, FSDPPeriodicCheckpointer
 
-__all__ = ["FSDPCheckpointer"]
+__all__ = ["FSDPCheckpointer", "FSDPPeriodicCheckpointer"]
