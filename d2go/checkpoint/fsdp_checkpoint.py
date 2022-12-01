@@ -59,7 +59,7 @@ class FSDPCheckpointer(QATCheckpointer):
         """
         # If no sharding, only the main process enters the saving codepath;
         # otherwise, all processes need to call state_dict() to enable state broadcasting among ranks
-        if not isinstance(self.model, FSDP) and not comm.is_main_process():
+        if not isinstance(self.model, FSDPWrapper) and not comm.is_main_process():
             return
 
         data = {}
