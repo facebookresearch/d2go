@@ -49,7 +49,7 @@ def add_fsdp_configs(_C: CN):
     _C.FSDP.CPU_OFFLOAD = False
     _C.FSDP.BACKWARD_PREFETCH = True
     # Find autowrap policy at D2GO_FSDP_WRAP_POLICY_REGISTRY, or use '' to disable autowrap
-    _C.FSDP.AUTO_WRAP_POLICY = ""
+    _C.FSDP.AUTO_WRAP_POLICY = "never_wrap_policy"
     _C.FSDP.AUTO_WRAP_MIN_PARAMS = int(1e4)
     # A list of layer cls names to wrap, case sensitive
     _C.FSDP.AUTO_WRAP_LAYER_CLS = []
@@ -95,7 +95,25 @@ class FSDPWrapper(FSDP):
         self.load_local_state_dict = load_local_state_dict
         self.offload_to_cpu = state_dict_cpu_offload
         self.rank0_only = state_dict_rank0_only
+        self.precision = (
+            fsdp_kwargs["mixed_precision"].param_dtype
+            if fsdp_kwargs.get("mixed_precision", None)
+            else None
+        )
         super().__init__(model, **fsdp_kwargs)
+
+    def forward(self, *args, **kwargs):
+        # Wrap forward() in autocast if mixed precision is enabled
+        if (
+            self._mixed_precision_enabled_for_params()
+            and not torch.is_autocast_enabled()
+        ):
+            from torch.cuda.amp import autocast
+
+            with autocast(dtype=self.precision):
+                return super().forward(*args, **kwargs)
+        else:
+            return super().forward(*args, **kwargs)
 
     @staticmethod
     @contextlib.contextmanager
@@ -247,6 +265,18 @@ def get_module_class_from_name(module, name):
             module_class = get_module_class_from_name(child_module, name)
             if module_class is not None:
                 return module_class
+
+
+@D2GO_FSDP_WRAP_POLICY_REGISTRY.register()
+def never_wrap_policy(model, **kwargs) -> Optional[Callable]:
+    """
+    Don't wrap any child module, only wrap the root
+    """
+
+    def never_wrap(*args, **kwargs):
+        return False
+
+    return never_wrap
 
 
 @D2GO_FSDP_WRAP_POLICY_REGISTRY.register()
