@@ -11,6 +11,7 @@ from .config import (
     load_full_config_from_file,
     reroute_config_path,
     temp_defrost,
+    temp_new_allowed,
 )
 
 
@@ -22,4 +23,5 @@ __all__ = [
     "load_full_config_from_file",
     "reroute_config_path",
     "temp_defrost",
+    "temp_new_allowed",
 ]
