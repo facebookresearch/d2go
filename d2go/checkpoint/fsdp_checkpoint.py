@@ -3,7 +3,7 @@ import os
 
 import detectron2.utils.comm as comm
 import torch
-from d2go.modeling.model_ema import EMAState
+from d2go.modeling.ema import EMAState
 
 from d2go.quantization.modeling import QATCheckpointer
 from d2go.trainer.fsdp import FSDPWrapper
