@@ -16,7 +16,7 @@
 import logging
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -32,6 +32,9 @@ from mobile_cv.common.misc.mixin import dynamic_mixin, remove_dynamic_mixin
 
 
 logger = logging.getLogger(__name__)
+
+
+ModelOutput = Union[None, torch.Tensor, Iterable["ModelOutput"]]
 
 
 def add_distillation_configs(_C: CN) -> None:
@@ -613,9 +616,7 @@ class CachedLayer(nn.Module):
     def dynamic_mixin_init(
         self,
         label: str,
-        cache: Dict[
-            str, Union[torch.Tensor, List[torch.Tensor], Dict[str, torch.Tensor]]
-        ],
+        cache: Dict[str, ModelOutput],
     ):
         self.label = label
         self.cache = cache
@@ -632,44 +633,43 @@ class CachedLayer(nn.Module):
         can support as we can only run clone on a tensor so we need to
         check the type of the output.
 
-        Support of the output type is limited to:
-          * tensor
-          * List[tensor]
-          * Tuple[tensor]
-          * Dict[str, tensor]
+        Support of the output type is limited to None type and arbitrary nested
+        collections of List, Tuple and Dict of tensor.
         """
         output = super().forward(*args, **kwargs)
-        if isinstance(output, torch.Tensor):
-            self.cache[self.label] = output.clone()
+        self.cache[self.label] = CachedLayer._clone(output)
+        return output
+
+    @staticmethod
+    def _clone(output: ModelOutput) -> ModelOutput:
+        if output is None:
+            return None
+        elif isinstance(output, torch.Tensor):
+            return output.clone()
         elif isinstance(output, List) or isinstance(output, Tuple):
             cloned_output = []
             for x in output:
-                if isinstance(x, torch.Tensor):
-                    cloned_output.append(x.clone())
-                else:
-                    raise ValueError(f"Unexpected type to save: {type(x)}")
-            self.cache[self.label] = cloned_output
+                cloned_output.append(CachedLayer._clone(x))
+            if isinstance(output, Tuple):
+                return tuple(cloned_output)
+            return cloned_output
         elif isinstance(output, Dict):
             cloned_output = {}
             for k, v in output.items():
-                if isinstance(v, torch.Tensor):
-                    cloned_output[k] = v.clone()
-                else:
-                    raise ValueError(f"Unexpected type to save: {type(v)}")
-            self.cache[self.label] = cloned_output
+                cloned_output[k] = CachedLayer._clone(v)
+            return cloned_output
         else:
             raise ValueError(f"Unexpected type to save: {type(output)}")
-        return output
 
 
-def set_cache_dict(model: nn.Module, cache: Dict) -> None:
+def set_cache_dict(model: nn.Module, cache: ModelOutput) -> None:
     """Sets the cache in all CachedLayers to input cache"""
     for module in model.modules():
         if isinstance(module, CachedLayer):
             module.cache = cache
 
 
-def record_layers(model: nn.Module, layer_names: Set[str]) -> Dict[str, torch.Tensor]:
+def record_layers(model: nn.Module, layer_names: Set[str]) -> ModelOutput:
     """Save the outputs of layer_names in model
 
     Iterates over all named layers in model, applies cached layer to layers in
@@ -695,8 +695,8 @@ def unrecord_layers(model: nn.Module, layer_names: Set[str]) -> None:
 
 def compute_layer_losses(
     layer_losses: List[LayerLossMetadata],
-    layer0_cache: Dict[str, torch.Tensor],
-    layer1_cache: Dict[str, torch.Tensor],
+    layer0_cache: ModelOutput,
+    layer1_cache: ModelOutput,
 ) -> Dict[str, torch.Tensor]:
     """Compute loss over layers specified in layer_loss
 

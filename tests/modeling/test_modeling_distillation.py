@@ -71,6 +71,18 @@ class DivideInputBy2OutputDict(nn.Module):
         return {i: x / 2.0 for i, x in enumerate(batched_inputs)}
 
 
+class TimesTable5OutputDict(nn.Module):
+    def forward(self, batched_inputs: List):
+        """Return first five entries of times table for each input with a dict output"""
+        return {i: [x * i for i in range(1, 6)] for i, x in enumerate(batched_inputs)}
+
+
+class ConstantStrOutput(nn.Module):
+    def forward(self, batched_inputs: List):
+        """Return some string"""
+        return "Testing!"
+
+
 class AddOne(nn.Module):
     def __init__(self):
         super().__init__()
@@ -393,6 +405,31 @@ class TestDistillation(unittest.TestCase):
         input = [torch.randn(1) for _ in range(2)]
         output = model(input)
         self.assertEqual(output, cache["test_layer"])
+
+    def test_cached_layer_arbitrary(self):
+        """Check cached layer saves arbitrary nested data structure"""
+        model = TimesTable5OutputDict()
+        cache = {}
+        dynamic_mixin(
+            model,
+            CachedLayer,
+            init_dict={"label": "test_layer", "cache": cache},
+        )
+        input = [torch.randn(1) for _ in range(2)]
+        output = model(input)
+        self.assertEqual(output, cache["test_layer"])
+
+    def test_cached_layer_unsupported(self):
+        """Check cached layer doesn't save unsupported data type like strings"""
+        model = ConstantStrOutput()
+        cache = {}
+        dynamic_mixin(
+            model,
+            CachedLayer,
+            init_dict={"label": "test_layer", "cache": cache},
+        )
+        input = [torch.randn(1) for _ in range(2)]
+        self.assertRaises(ValueError, model, input)
 
     def test_record_layers(self):
         """Check we can record specified layer"""
