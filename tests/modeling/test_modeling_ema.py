@@ -8,7 +8,7 @@ import unittest
 
 import d2go.runner.default_runner as default_runner
 import torch
-from d2go.modeling import model_ema
+from d2go.modeling import ema
 from d2go.utils.testing import helper
 
 
@@ -58,7 +58,7 @@ def _compare_state_dict(model1, model2, abs_error=1e-3):
 class TestModelingModelEMA(unittest.TestCase):
     def test_emastate(self):
         model = TestArch()
-        state = model_ema.EMAState.FromModel(model)
+        state = ema.EMAState.FromModel(model)
         # two for conv (conv.weight, conv.bias),
         # five for bn (bn.weight, bn.bias, bn.running_mean, bn.running_var, bn.num_batches_tracked)
         self.assertEqual(len(state.state), 7)
@@ -74,12 +74,12 @@ class TestModelingModelEMA(unittest.TestCase):
 
     def test_emastate_saveload(self):
         model = TestArch()
-        state = model_ema.EMAState.FromModel(model)
+        state = ema.EMAState.FromModel(model)
 
         model1 = TestArch()
         self.assertFalse(_compare_state_dict(model, model1))
 
-        state1 = model_ema.EMAState()
+        state1 = ema.EMAState()
         state1.load_state_dict(state.state_dict())
         state1.apply_to(model1)
         self.assertTrue(_compare_state_dict(model, model1))
@@ -89,7 +89,7 @@ class TestModelingModelEMA(unittest.TestCase):
         model = TestArch()
         model.cuda()
         # state on gpu
-        state = model_ema.EMAState.FromModel(model)
+        state = ema.EMAState.FromModel(model)
         self.assertEqual(state.device, torch.device("cuda:0"))
         # target model on cpu
         model1 = TestArch()
@@ -98,7 +98,7 @@ class TestModelingModelEMA(unittest.TestCase):
         self.assertTrue(_compare_state_dict(copy.deepcopy(model).cpu(), model1))
 
         # state on cpu
-        state1 = model_ema.EMAState.FromModel(model, device="cpu")
+        state1 = ema.EMAState.FromModel(model, device="cpu")
         self.assertEqual(state1.device, torch.device("cpu"))
         # target model on gpu
         model2 = TestArch()
@@ -109,11 +109,11 @@ class TestModelingModelEMA(unittest.TestCase):
 
     def test_ema_updater(self):
         model = TestArch()
-        state = model_ema.EMAState()
+        state = ema.EMAState()
 
         updated_model = TestArch()
 
-        updater = model_ema.EMAUpdater(state, decay=0.0)
+        updater = ema.EMAUpdater(state, decay=0.0)
         updater.init_state(model)
         for _ in range(3):
             cur = TestArch()
@@ -122,7 +122,7 @@ class TestModelingModelEMA(unittest.TestCase):
             # weight decay == 0.0, always use new model
             self.assertTrue(_compare_state_dict(updated_model, cur))
 
-        updater = model_ema.EMAUpdater(state, decay=1.0)
+        updater = ema.EMAUpdater(state, decay=1.0)
         updater.init_state(model)
         for _ in range(3):
             cur = TestArch()
@@ -132,9 +132,9 @@ class TestModelingModelEMA(unittest.TestCase):
             self.assertTrue(_compare_state_dict(updated_model, model))
 
     def test_ema_updater_decay(self):
-        state = model_ema.EMAState()
+        state = ema.EMAState()
 
-        updater = model_ema.EMAUpdater(state, decay=0.7)
+        updater = ema.EMAUpdater(state, decay=0.7)
         updater.init_state(TestArch(1.0))
         gt_val = 1.0
         gt_val_int = 1
@@ -158,17 +158,17 @@ class TestModelingModelEMAHook(unittest.TestCase):
         cfg.MODEL_EMA.DECAY = 0.0
 
         model = TestArch()
-        model_ema.may_build_model_ema(cfg, model)
+        ema.may_build_model_ema(cfg, model)
         self.assertTrue(hasattr(model, "ema_state"))
 
-        ema_hook = model_ema.EMAHook(cfg, model)
+        ema_hook = ema.EMAHook(cfg, model)
         ema_hook.before_train()
         ema_hook.before_step()
         model.set_const_weights(2.0)
         ema_hook.after_step()
         ema_hook.after_train()
 
-        ema_checkpointers = model_ema.may_get_ema_checkpointer(cfg, model)
+        ema_checkpointers = ema.may_get_ema_checkpointer(cfg, model)
         self.assertEqual(len(ema_checkpointers), 1)
 
         out_model = TestArch()

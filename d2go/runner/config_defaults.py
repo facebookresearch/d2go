@@ -8,7 +8,7 @@ from d2go.data.build import (
     add_weighted_training_sampler_default_configs,
 )
 from d2go.data.config import add_d2go_data_default_configs
-from d2go.modeling import kmeans_anchors, model_ema
+from d2go.modeling import ema, kmeans_anchors
 from d2go.modeling.backbone.fbnet_cfg import add_fbnet_v2_default_configs
 from d2go.modeling.distillation import add_distillation_configs
 from d2go.modeling.meta_arch.fcos import add_fcos_configs
@@ -38,7 +38,7 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # _C.MODEL.FROZEN_LAYER_REG_EXP
     add_model_freezing_configs(_C)
     # _C.MODEL other models
-    model_ema.add_model_ema_configs(_C)
+    ema.add_model_ema_configs(_C)
     # _C.D2GO_DATA...
     add_d2go_data_default_configs(_C)
     # _C.TENSORBOARD...

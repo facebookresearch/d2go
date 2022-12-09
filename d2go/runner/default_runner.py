@@ -25,7 +25,7 @@ from d2go.data.utils import (
 )
 from d2go.distributed import D2GoSharedContext
 from d2go.evaluation.evaluator import inference_on_dataset
-from d2go.modeling import kmeans_anchors, model_ema
+from d2go.modeling import ema, kmeans_anchors
 from d2go.modeling.api import build_d2go_model
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
@@ -265,7 +265,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         cfg = cfg.clone()
 
         model = build_d2go_model(cfg).model
-        model_ema.may_build_model_ema(cfg, model)
+        ema.may_build_model_ema(cfg, model)
 
         if cfg.QUANTIZATION.QAT.ENABLED:
             # Disable fake_quant and observer so that the model will be trained normally
@@ -300,7 +300,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             model.eval()
 
             if cfg.MODEL_EMA.ENABLED and cfg.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY:
-                model_ema.apply_model_ema(model)
+                ema.apply_model_ema(model)
 
         return model
 
@@ -318,7 +318,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         return model
 
     def build_checkpointer(self, cfg, model, save_dir, **kwargs):
-        kwargs.update(model_ema.may_get_ema_checkpointer(cfg, model))
+        kwargs.update(ema.may_get_ema_checkpointer(cfg, model))
         checkpointer = FSDPCheckpointer(model, save_dir=save_dir, **kwargs)
         return checkpointer
 
@@ -443,7 +443,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             # model with ema weights
             if cfg.MODEL_EMA.ENABLED and not isinstance(model, PredictorWrapper):
                 logger.info("Run evaluation with EMA.")
-                with model_ema.apply_model_ema_and_restore(model):
+                with ema.apply_model_ema_and_restore(model):
                     cur_results = self._do_test(
                         new_cfg, model, train_iter=train_iter, model_tag="ema"
                     )
@@ -456,7 +456,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
     ):
         return [
             hooks.IterationTimer(),
-            model_ema.EMAHook(cfg, model) if cfg.MODEL_EMA.ENABLED else None,
+            ema.EMAHook(cfg, model) if cfg.MODEL_EMA.ENABLED else None,
             self._create_data_loader_hook(cfg),
             self._create_after_step_hook(
                 cfg, model, optimizer, scheduler, periodic_checkpointer
