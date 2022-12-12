@@ -27,6 +27,7 @@ D2_RANDOM_TRANSFORMS = {
     "RandomResize": d2T.RandomResize,
     "FixedSizeCrop": d2T.FixedSizeCrop,
     "ResizeScale": d2T.ResizeScale,
+    "MinIoURandomCrop": d2T.MinIoURandomCrop,
 }
 
 
@@ -116,6 +117,13 @@ def ResizeScaleOp(
     cfg: CfgNode, arg_str: Optional[str], is_train: bool
 ) -> List[aug.Augmentation]:
     return build_func(cfg, arg_str, is_train, name="ResizeScale")
+
+
+@TRANSFORM_OP_REGISTRY.register()
+def MinIoURandomCropOp(
+    cfg: CfgNode, arg_str: Optional[str], is_train: bool
+) -> List[aug.Augmentation]:
+    return build_func(cfg, arg_str, is_train, name="MinIoURandomCrop")
 
 
 # example repr: FixedSizeCropOp::{"crop_size": [1024, 1024]}
