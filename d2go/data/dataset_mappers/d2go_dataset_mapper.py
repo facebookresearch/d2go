@@ -104,6 +104,11 @@ class D2GoDatasetMapper(object):
             # pass additional arguments, will only be used when the Augmentation
             #   takes `annotations` as input
             inputs.annotations = dataset_dict["annotations"]
+            inputs.boxes = [
+                utils.get_bbox(obj)
+                for obj in dataset_dict["annotations"]
+                if obj.get("iscrowd", 0) == 0
+            ]
             # Crop around an instance if there are instances in the image.
             if self.crop_gen:
                 crop_tfm = utils.gen_crop_transform_with_instance(
