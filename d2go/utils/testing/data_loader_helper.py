@@ -74,7 +74,7 @@ def create_toy_dataset(
             {
                 "image_id": i,
                 "category_id": i % num_classes,
-                "id": i,
+                "id": i + 1,
                 "bbox": bbox,
                 "keypoints": keypoints,
                 "area": width * height,
