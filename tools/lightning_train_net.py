@@ -12,7 +12,7 @@ from d2go.config import CfgNode
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import DefaultTask
 from d2go.setup import basic_argument_parser, prepare_for_launch, setup_after_launch
-from d2go.trainer.api import TrainNetOutput
+from d2go.trainer.api import TestNetOutput, TrainNetOutput
 from d2go.trainer.helper import parse_precision_from_string
 from d2go.trainer.lightning.training_loop import _do_test, _do_train
 from detectron2.utils.file_io import PathManager
@@ -103,7 +103,7 @@ def main(
     output_dir: str,
     runner_class: Union[str, Type[DefaultTask]],
     eval_only: bool = False,
-) -> TrainNetOutput:
+) -> Union[TrainNetOutput, TestNetOutput]:
     """Main function for launching a training with lightning trainer
     Args:
         cfg: D2go config node
@@ -123,18 +123,22 @@ def main(
         logger.info(f"Resuming training from checkpoint: {last_checkpoint}.")
 
     trainer = pl.Trainer(**trainer_params)
-    model_configs = None
+
     if eval_only:
         _do_test(trainer, task)
+        return TestNetOutput(
+            tensorboard_log_dir=trainer_params["logger"].log_dir,
+            accuracy=task.eval_res,
+            metrics=task.eval_res,
+        )
     else:
         model_configs = _do_train(cfg, trainer, task)
-
-    return TrainNetOutput(
-        tensorboard_log_dir=trainer_params["logger"].log_dir,
-        accuracy=task.eval_res,
-        metrics=task.eval_res,
-        model_configs=model_configs,
-    )
+        return TrainNetOutput(
+            tensorboard_log_dir=trainer_params["logger"].log_dir,
+            accuracy=task.eval_res,
+            metrics=task.eval_res,
+            model_configs=model_configs,
+        )
 
 
 def argument_parser():

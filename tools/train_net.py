@@ -9,7 +9,6 @@ import logging
 import sys
 from typing import List, Type, Union
 
-import detectron2.utils.comm as comm
 from d2go.config import CfgNode
 from d2go.distributed import launch
 from d2go.runner import BaseRunner
@@ -22,7 +21,7 @@ from d2go.setup import (
     setup_before_launch,
     setup_root_logger,
 )
-from d2go.trainer.api import TrainNetOutput
+from d2go.trainer.api import TestNetOutput, TrainNetOutput
 from d2go.trainer.fsdp import create_ddp_model_with_sharding
 from d2go.utils.misc import (
     dump_trained_model_configs,
@@ -40,7 +39,7 @@ def main(
     runner_class: Union[str, Type[BaseRunner]],
     eval_only: bool = False,
     resume: bool = True,  # NOTE: always enable resume when running on cluster
-) -> TrainNetOutput:
+) -> Union[TrainNetOutput, TestNetOutput]:
     runner = setup_after_launch(cfg, output_dir, runner_class)
 
     model = runner.build_model(cfg)
@@ -58,9 +57,8 @@ def main(
         model.eval()
         metrics = runner.do_test(cfg, model, train_iter=train_iter)
         print_metrics_table(metrics)
-        return TrainNetOutput(
+        return TestNetOutput(
             accuracy=metrics,
-            model_configs={},
             metrics=metrics,
         )
 
