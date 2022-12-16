@@ -276,7 +276,11 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     params = get_optimizer_param_groups(model, cfg)
 
     return maybe_add_gradient_clipping(cfg, torch.optim.AdamW)(
-        params=params, lr=cfg.SOLVER.BASE_LR, betas=cfg.SOLVER.BETAS, eps=cfg.SOLVER.EPS
+        params=params,
+        lr=cfg.SOLVER.BASE_LR,
+        betas=cfg.SOLVER.BETAS,
+        eps=cfg.SOLVER.EPS,
+        foreach=True,
     )
 
 
