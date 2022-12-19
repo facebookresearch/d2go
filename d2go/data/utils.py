@@ -393,6 +393,16 @@ def update_cfg_if_using_adhoc_dataset(cfg):
         with temp_defrost(cfg):
             cfg.DATASETS.TRAIN = tuple(ds.new_ds_name for ds in new_train_datasets)
 
+            # If present, we also need to update the data set names for the WeightedTrainingSampler
+            if cfg.DATASETS.TRAIN_REPEAT_FACTOR:
+                for ds_to_repeat_factor in cfg.DATASETS.TRAIN_REPEAT_FACTOR:
+                    original_ds_name = ds_to_repeat_factor[0]
+                    # Search corresponding data set name, to not rely on the order
+                    for ds in new_train_datasets:
+                        if ds.src_ds_name == original_ds_name:
+                            ds_to_repeat_factor[0] = ds.new_ds_name
+                            break
+
     if cfg.D2GO_DATA.DATASETS.TEST_CATEGORIES:
         new_test_datasets = [
             COCOWithClassesToUse(ds, cfg.D2GO_DATA.DATASETS.TEST_CATEGORIES)
