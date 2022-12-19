@@ -6,6 +6,7 @@ import copy
 import itertools
 import logging
 from contextlib import contextmanager
+from typing import List
 
 import torch
 from detectron2.engine.train_loop import HookBase
@@ -119,11 +120,33 @@ class EMAUpdater(object):
 
     def update(self, model):
         with torch.no_grad():
+            ema_param_list = []
+            param_list = []
             for name, val in self.state.get_model_state_iterator(model):
                 ema_val = self.state.state[name]
                 if self.device:
                     val = val.to(self.device)
-                ema_val.copy_(ema_val * self.decay + val * (1.0 - self.decay))
+                if val.dtype in [torch.float32, torch.float16]:
+                    ema_param_list.append(ema_val)
+                    param_list.append(val)
+                else:
+                    ema_val.copy_(ema_val * self.decay + val * (1.0 - self.decay))
+            self._ema_avg(ema_param_list, param_list, self.decay)
+
+    def _ema_avg(
+        self,
+        averaged_model_parameters: List[torch.Tensor],
+        model_parameters: List[torch.Tensor],
+        decay: float,
+    ) -> None:
+        """
+        Function to perform exponential moving average:
+        x_avg = alpha * x_avg + (1-alpha)* x_t
+        """
+        torch._foreach_mul_(averaged_model_parameters, decay)
+        torch._foreach_add_(
+            averaged_model_parameters, model_parameters, alpha=1 - decay
+        )
 
 
 def add_model_ema_configs(_C):
