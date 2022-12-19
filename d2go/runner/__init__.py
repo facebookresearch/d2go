@@ -40,8 +40,19 @@ def create_runner(
     return runner_class(*args, **kwargs)
 
 
-def import_runner(class_full_name: str) -> Type[Union[BaseRunner, DefaultTask]]:
+def import_runner(
+    class_full_name: str, check: bool = True
+) -> Type[Union[BaseRunner, DefaultTask]]:
     runner_module_name, runner_class_name = class_full_name.rsplit(".", 1)
     runner_module = importlib.import_module(runner_module_name)
     runner_class = getattr(runner_module, runner_class_name)
+
+    if check and not (
+        issubclass(runner_class, BaseRunner) ^ issubclass(runner_class, DefaultTask)
+    ):
+        raise ValueError(
+            f"The runner must be subclass of either `BaseRunner` or `DefaultTaks`,"
+            f" found: {runner_class}"
+        )
+
     return runner_class
