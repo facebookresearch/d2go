@@ -12,6 +12,7 @@ from d2go.config import (
     CfgNode,
     load_full_config_from_file,
     reroute_config_path,
+    temp_new_allowed,
 )
 from d2go.config.utils import (
     config_dict_to_list_str,
@@ -73,6 +74,18 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg.MODEL.MASK_ON, True)  # base is loaded
         self.assertEqual(cfg.MODEL.FBNET_V2.ARCH, "FBNetV3_A")  # second base is loaded
         self.assertEqual(cfg.OUTPUT_DIR, "test")  # non-base is loaded
+
+    def test_temp_new_allowed(self):
+        default_cfg = GeneralizedRCNNRunner.get_default_cfg()
+
+        def set_field(cfg):
+            cfg.THIS_BETTER_BE_A_NEW_CONFIG = 4
+
+        self.assertFalse("THIS_BETTER_BE_A_NEW_CONFIG" in default_cfg)
+        with temp_new_allowed(default_cfg):
+            set_field(default_cfg)
+        self.assertTrue("THIS_BETTER_BE_A_NEW_CONFIG" in default_cfg)
+        self.assertTrue(default_cfg.THIS_BETTER_BE_A_NEW_CONFIG == 4)
 
     def test_default_cfg_dump_and_load(self):
         default_cfg = GeneralizedRCNNRunner.get_default_cfg()

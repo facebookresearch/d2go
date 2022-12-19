@@ -97,6 +97,14 @@ def temp_defrost(cfg):
 
 
 @contextlib.contextmanager
+def temp_new_allowed(cfg: CfgNode):
+    is_new_allowed = cfg.is_new_allowed()
+    cfg.set_new_allowed(True)
+    yield cfg
+    cfg.set_new_allowed(is_new_allowed)
+
+
+@contextlib.contextmanager
 def reroute_load_yaml_with_base():
     BASE_KEY = "_BASE_"
     _safe_load = yaml.safe_load
