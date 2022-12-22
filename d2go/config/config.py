@@ -201,3 +201,16 @@ def add_cfg_nodes(cfg, key: str, cfg_dict: Dict):
             add_cfg_nodes(node, k, v)
         else:
             setattr(node, k, v)
+
+
+def add_cfg_nodes_list(cfg, key: str, cfg_dicts_list: List[Dict]):
+    nodes = []
+    for cfg_dict in cfg_dicts_list:
+        node = CfgNode()
+        for k, v in cfg_dict.items():
+            if isinstance(v, dict):
+                add_cfg_nodes(node, k, v)
+            else:
+                setattr(node, k, v)
+        nodes.append(node)
+    setattr(cfg, key, nodes)
