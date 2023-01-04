@@ -27,7 +27,7 @@ requirements = [
     "Pillow",
     "mock",
     "torch",
-    "pytorch-lightning @ git+https://github.com/PyTorchLightning/pytorch-lightning@9b011606f",
+    "pytorch-lightning==1.8.6",
     "opencv-python",
     "parameterized",
     # Downgrade the protobuf package to 3.20.x or lower, related:
