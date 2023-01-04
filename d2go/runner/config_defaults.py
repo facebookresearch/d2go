@@ -100,6 +100,9 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # Profiler
     _C.PROFILERS = ["default_flop_counter"]
 
+    # Checkpointing-specific config
+    _C.LOAD_CKPT_TO_GPU = False
+
     # Add FB specific configs
     _add_detectron2go_runner_default_fb_cfg(_C)
 
