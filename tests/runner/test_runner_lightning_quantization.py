@@ -131,9 +131,7 @@ class TestQuantizationAwareTraining(unittest.TestCase):
                 f"step={step}",
             )
             trainer.fit_loop.global_step = step
-            qat.on_train_batch_start(
-                trainer, module, batch=None, batch_idx=0, dataloader_idx=0
-            )
+            qat.on_train_batch_start(trainer, module, batch=None, batch_idx=0)
 
             self.assertEqual(
                 len(

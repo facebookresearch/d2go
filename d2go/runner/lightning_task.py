@@ -25,6 +25,7 @@ from d2go.runner.default_runner import (
 from d2go.utils.ema_state import EMAState
 from d2go.utils.misc import get_tensorboard_log_dir
 from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
+from pytorch_lightning.strategies import DDPStrategy, SingleDeviceStrategy
 from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
 from pytorch_lightning.utilities.logger import _flatten_dict
 
@@ -274,10 +275,10 @@ class DefaultTask(D2GoDataAPIMixIn, pl.LightningModule):
 
     def _reset_dataset_evaluators(self):
         """reset validation dataset evaluator to be run in EVAL_PERIOD steps"""
-        assert (
-            len(self.trainer._accelerator_connector.parallel_devices) == 1
-            or self.trainer._accelerator_connector.use_ddp
-        ), "Only DDP and DDP_CPU distributed backend are supported"
+        assert isinstance(self.trainer.strategy, (SingleDeviceStrategy, DDPStrategy)), (
+            "Only Single Device or DDP strategies are supported,"
+            f" instead found: {self.trainer.strategy}"
+        )
 
         def _get_inference_dir_name(
             base_dir, inference_type, dataset_name, model_tag: ModelTag
@@ -391,7 +392,7 @@ class DefaultTask(D2GoDataAPIMixIn, pl.LightningModule):
     # ---------------------------------------------------------------------------
     # Hooks
     # ---------------------------------------------------------------------------
-    def on_pretrain_routine_end(self) -> None:
+    def on_fit_start(self) -> None:
         if self.cfg.MODEL_EMA.ENABLED:
             if self.ema_state and self.ema_state.has_inited():
                 # ema_state could have been loaded from checkpoint

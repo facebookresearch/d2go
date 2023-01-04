@@ -54,18 +54,6 @@ def rhasattr(obj: Any, attr: str, *args) -> bool:
     return True
 
 
-def _deepcopy(pl_module: LightningModule) -> LightningModule:
-    """Copy a LightningModule. Some properties need to be ignored."""
-    # Remove trainer reference.
-    trainer = pl_module.trainer
-    try:
-        pl_module.trainer = None
-        copy = deepcopy(pl_module)
-    finally:
-        pl_module.trainer = trainer
-    return copy
-
-
 def _quantized_forward(self, *args, **kwargs):
     """Forward method for a quantized module."""
     if not self.training and hasattr(self, "_quantized"):
@@ -100,7 +88,7 @@ def checkpoint_has_prepared(checkpoint: Dict[str, Any]) -> bool:
 def maybe_prepare_for_quantization(model: LightningModule, checkpoint: Dict[str, Any]):
     if checkpoint_has_prepared(checkpoint) and not hasattr(model, PREPARED):
         # model has been prepared for QAT before saving into checkpoint
-        copied = _deepcopy(model)
+        copied = deepcopy(model)
         prepared = prepare_fake_quant_model(copied.cfg, copied.model, is_qat=True)
         copied.model = prepared
         setattr(model, PREPARED, copied)
@@ -465,7 +453,7 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
 
         with mode(pl_module, training=True) as train:
             prepared = self.prepare(
-                _deepcopy(train),
+                deepcopy(train),
                 configs=self.qconfig_dicts,
                 attrs=self.preserved_attrs,
             )
@@ -483,7 +471,6 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
         pl_module: LightningModule,
         batch: Any,
         batch_idx: int,
-        dataloader_idx: int,
     ) -> None:
         """Applies model transforms at as specified during training."""
         apply_only_once = []
@@ -603,7 +590,7 @@ class PostTrainingQuantization(Callback, QuantizationMixin):
         """
         # Pass a copy to quantization APIs.
         self.prepared = self.prepare(
-            _deepcopy(pl_module).eval(),
+            deepcopy(pl_module).eval(),
             configs=self.qconfig_dicts,
             attrs=self.preserved_attrs,
         )
