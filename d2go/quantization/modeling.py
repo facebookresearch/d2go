@@ -46,6 +46,23 @@ class QATCheckpointer(DetectionCheckpointer):
     (QAT / non-QAT) model.
     """
 
+    def __init__(
+        self,
+        model,
+        save_dir="",
+        *,
+        load_ckpt_to_gpu=False,
+        save_to_disk=None,
+        **checkpointables,
+    ):
+        super().__init__(
+            model,
+            save_dir,
+            save_to_disk=save_to_disk,
+            **checkpointables,
+        )
+        self.load_ckpt_to_gpu = load_ckpt_to_gpu
+
     @classmethod
     def _is_q_state_dict(cls, state_dict):
         return any(_is_observer_key(k) for k in state_dict)
@@ -56,13 +73,21 @@ class QATCheckpointer(DetectionCheckpointer):
         if filename.endswith(".ckpt"):
             # assume file is from lightning; no one else seems to use the ".ckpt" extension
             with PathManager.open(filename, "rb") as f:
-                data = torch.load(f, map_location=torch.device("cpu"))
+                data = self._torch_load(f)
             from d2go.runner.lightning_task import _convert_to_d2
 
             _convert_to_d2(data)
             return data
 
         return super()._load_file(filename)
+
+    def _torch_load(self, f):
+        device = (
+            "cuda:{}".format(torch.cuda.current_device())
+            if self.load_ckpt_to_gpu
+            else "cpu"
+        )
+        return torch.load(f, map_location=torch.device(device))
 
     def _load_model(self, checkpoint):
         model_is_qat = self._is_q_state_dict(self.model.state_dict())
