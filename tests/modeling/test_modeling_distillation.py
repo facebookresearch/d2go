@@ -365,7 +365,7 @@ class TestDistillation(unittest.TestCase):
         )
         input = torch.randn(1)
         output = model(input)
-        self.assertEqual(output, cache["test_layer"])
+        torch.testing.assert_close(output, cache["test_layer"])
 
     def test_cached_layer_list(self):
         """Check cached layer saves list"""
@@ -378,7 +378,7 @@ class TestDistillation(unittest.TestCase):
         )
         input = [torch.randn(1) for _ in range(2)]
         output = model(input)
-        self.assertEqual(output, cache["test_layer"])
+        torch.testing.assert_close(output, cache["test_layer"])
 
     def test_cached_layer_tuple(self):
         """Check cached layer saves list"""
@@ -391,7 +391,7 @@ class TestDistillation(unittest.TestCase):
         )
         input = (torch.randn(1) for _ in range(2))
         output = model(input)
-        self.assertEqual(output, cache["test_layer"])
+        torch.testing.assert_close(output, cache["test_layer"])
 
     def test_cached_layer_dict(self):
         """Check cached layer saves dict"""
@@ -404,7 +404,7 @@ class TestDistillation(unittest.TestCase):
         )
         input = [torch.randn(1) for _ in range(2)]
         output = model(input)
-        self.assertEqual(output, cache["test_layer"])
+        torch.testing.assert_close(output, cache["test_layer"])
 
     def test_cached_layer_arbitrary(self):
         """Check cached layer saves arbitrary nested data structure"""
@@ -417,7 +417,7 @@ class TestDistillation(unittest.TestCase):
         )
         input = [torch.randn(1) for _ in range(2)]
         output = model(input)
-        self.assertEqual(output, cache["test_layer"])
+        torch.testing.assert_close(output, cache["test_layer"])
 
     def test_cached_layer_unsupported(self):
         """Check cached layer doesn't save unsupported data type like strings"""
@@ -438,10 +438,10 @@ class TestDistillation(unittest.TestCase):
 
         input = torch.Tensor([0])
         output = model(input)
-        self.assertEqual(cache["layer0"], torch.Tensor([1]))
-        self.assertEqual(cache["layer1"], torch.Tensor([2]))
-        self.assertEqual(cache["layer2"], torch.Tensor([3]))
-        self.assertEqual(cache[""], output)
+        torch.testing.assert_close(cache["layer0"], torch.Tensor([1]))
+        torch.testing.assert_close(cache["layer1"], torch.Tensor([2]))
+        torch.testing.assert_close(cache["layer2"], torch.Tensor([3]))
+        torch.testing.assert_close(cache[""], output)
 
     def test_unrecord_layers(self):
         """Check we can remove a recorded layer"""
@@ -463,8 +463,12 @@ class TestDistillation(unittest.TestCase):
         layer0_cache = {"l00": torch.randn(1), "l01": torch.randn(1)}
         layer1_cache = {"l10": torch.randn(1), "l11": torch.randn(1)}
         output = compute_layer_losses(layer_losses, layer0_cache, layer1_cache)
-        self.assertEqual(output["add"], layer0_cache["l00"] + layer1_cache["l10"])
-        self.assertEqual(output["div"], layer0_cache["l01"] / layer1_cache["l11"])
+        torch.testing.assert_close(
+            output["add"], layer0_cache["l00"] + layer1_cache["l10"]
+        )
+        torch.testing.assert_close(
+            output["div"], layer0_cache["l01"] / layer1_cache["l11"]
+        )
 
     def test_set_cache_dict(self):
         """Check we can swap the cache dict used when recording layers"""
@@ -518,7 +522,7 @@ class TestPseudoLabeler(unittest.TestCase):
         pseudo_labeler = NoopPseudoLabeler()
         x = np.random.randn(1)
         output = pseudo_labeler.label(x)
-        self.assertEqual(x, output)
+        torch.testing.assert_close(x, output)
 
     def test_relabeltargetinbatch(self):
         """Check target is relabed using teacher"""
@@ -529,7 +533,7 @@ class TestPseudoLabeler(unittest.TestCase):
         batched_inputs = _get_input_data(n=2, use_input_target=True)
         gt = [{"input": d["input"], "target": d["input"] / 2.0} for d in batched_inputs]
         outputs = relabeler.label(batched_inputs)
-        self.assertEqual(outputs, gt)
+        torch.testing.assert_close(outputs, gt)
 
 
 class TestDistillationHelper(unittest.TestCase):
@@ -657,7 +661,7 @@ class TestDistillationAlgorithm(unittest.TestCase):
         model.eval()
         input = {"real": torch.randn(1), "synthetic": torch.randn(1)}
         output = model(input)
-        self.assertEqual(output, input["real"] + 3.0)
+        torch.testing.assert_close(output, input["real"] + 3.0)
 
     def test_da_train(self):
         """Check train pass results in updated loss output"""
@@ -671,13 +675,13 @@ class TestDistillationAlgorithm(unittest.TestCase):
         model.train()
         input = {"real": torch.randn(1), "synthetic": torch.randn(1)}
         output = model(input)
-        self.assertEqual(
-            output,
-            {
-                "real": (input["real"] + 3.0) * 0.1,
-                "synthetic": (input["synthetic"] + 3.0) * 0.5,
-                "add": ((input["real"] + 1.0) + (input["synthetic"] + 1.0)) * 10.0,
-            },
+        self.assertEqual(set(output.keys()), {"real", "synthetic", "add"})
+        torch.testing.assert_close(output["real"], (input["real"] + 3.0) * 0.1)
+        torch.testing.assert_close(
+            output["synthetic"], (input["synthetic"] + 3.0) * 0.5
+        )
+        torch.testing.assert_close(
+            output["add"], ((input["real"] + 1.0) + (input["synthetic"] + 1.0)) * 10.0
         )
 
     def test_da_remove_dynamic_mixin(self):
