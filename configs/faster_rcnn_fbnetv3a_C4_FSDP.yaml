@@ -1,0 +1,27 @@
+_BASE_: "faster_rcnn_fbnetv3a_C4.yaml"
+D2GO_DATA:
+  TEST:
+    MAX_IMAGES: 50
+MODEL:
+  MODELING_HOOKS: ["FSDPModelingHook"]
+DATASETS:
+  TRAIN: ("coco_2017_val",)
+  TEST: ("coco_2017_val",)
+DATALOADER:
+  NUM_WORKERS: 0
+FSDP:
+  ALGORITHM: "full"
+  USE_LOCAL_STATE_DICT: True
+  # AUTO_WRAP_POLICY: ""
+  STATE_DICT_CPU_OFFLOAD: False
+  STATE_DICT_RANK0_ONLY: True
+SOLVER:
+  IMS_PER_BATCH: 32
+  MAX_ITER: 5
+  CHECKPOINT_PERIOD: 2
+  AMP:
+    ENABLED: False
+    PRECISION: float16
+TEST:
+  EVAL_PERIOD: 10000
+OUTPUT_DIR: /tmp/output
