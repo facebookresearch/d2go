@@ -517,7 +517,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 _get_model_with_abnormal_checker(model),
                 data_loader,
                 optimizer,
-                grad_scaler=get_grad_scaler(cfg.FSDP.ALGORITHM),
+                grad_scaler=get_grad_scaler(cfg),
                 precision=parse_precision_from_string(
                     cfg.SOLVER.AMP.PRECISION, lightning=False
                 ),
