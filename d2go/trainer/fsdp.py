@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+import contextlib
 import logging
 from enum import Enum
 from functools import partial
-from typing import Callable, Iterable, Optional
+from typing import Callable, Generator, Iterable, Optional
 
-import detectron2.utils.comm as comm
 import torch
 import torch.nn as nn
 from d2go.config import CfgNode as CN
@@ -19,6 +19,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import (
     CPUOffload,
     FullStateDictConfig,
     FullyShardedDataParallel as FSDP,
+    LocalStateDictConfig,
     MixedPrecision,
     ShardingStrategy,
     StateDictType,
@@ -51,8 +52,10 @@ def add_fsdp_configs(_C: CN):
     _C.FSDP.AUTO_WRAP_MIN_PARAMS = int(1e4)
     # A list of layer cls names to wrap, case sensitive
     _C.FSDP.AUTO_WRAP_LAYER_CLS = []
+    # Whether to use local state dict
+    _C.FSDP.USE_LOCAL_STATE_DICT = False
     # Whether to offload state dict to cpu
-    _C.FSDP.STATE_DICT_CPU_OFFLOAD = True
+    _C.FSDP.STATE_DICT_CPU_OFFLOAD = False
     # Whether to materialize state dict on rank 0
     _C.FSDP.STATE_DICT_RANK0_ONLY = True
 
@@ -81,22 +84,35 @@ class FSDPWrapper(FSDP):
     def __init__(
         self,
         model,
+        use_local_state_dict=False,
+        load_local_state_dict=False,
         state_dict_cpu_offload=True,
         state_dict_rank0_only=True,
         **fsdp_kwargs,
     ):
+        self.use_local_state_dict = use_local_state_dict
+        self.load_local_state_dict = load_local_state_dict
         self.offload_to_cpu = state_dict_cpu_offload
         self.rank0_only = state_dict_rank0_only
-
         super().__init__(model, **fsdp_kwargs)
 
+    @contextlib.contextmanager
+    def state_dict_type_and_config(self, is_sharded: bool) -> Generator:
+        if is_sharded:
+            state_dict_type = StateDictType.LOCAL_STATE_DICT
+            # only offload_to_cpu=False is supported for local state dict
+            state_dict_config = LocalStateDictConfig(offload_to_cpu=False)
+        else:
+            state_dict_type = StateDictType.FULL_STATE_DICT
+            state_dict_config = FullStateDictConfig(
+                offload_to_cpu=self.offload_to_cpu, rank0_only=self.rank0_only
+            )
+        with FSDP.state_dict_type(self, state_dict_type, state_dict_config):
+            yield
+
     def state_dict(self, *args, **kwargs):
-        # TODO: support local state dict
         # NOTE: model.state_dict() needs to be called by all ranks because synchronization primitives are used
-        save_policy = FullStateDictConfig(
-            offload_to_cpu=self.offload_to_cpu, rank0_only=self.rank0_only
-        )
-        with FSDP.state_dict_type(self, StateDictType.FULL_STATE_DICT, save_policy):
+        with self.state_dict_type_and_config(self.use_local_state_dict):
             return super().state_dict(*args, **kwargs)
 
     def load_state_dict(
@@ -105,7 +121,7 @@ class FSDPWrapper(FSDP):
         *args,
         **kwargs,
     ):
-        with FSDP.state_dict_type(self, StateDictType.FULL_STATE_DICT):
+        with self.state_dict_type_and_config(self.load_local_state_dict):
             return super().load_state_dict(state_dict, *args, **kwargs)
 
 
@@ -120,6 +136,8 @@ def build_fsdp(
     param_dtype: Optional[torch.dtype] = None,
     reduce_dtype: Optional[torch.dtype] = None,
     buffer_dtype: Optional[torch.dtype] = None,
+    use_local_state_dict: bool = False,
+    load_local_state_dict: bool = False,
     state_dict_cpu_offload: bool = True,
     state_dict_rank0_only: bool = True,
     device_id: Optional[int] = None,
@@ -163,6 +181,8 @@ def build_fsdp(
         "device_id": torch.cuda.current_device() if not device_id else device_id,
     }
     wrapper_kwargs = {
+        "use_local_state_dict": use_local_state_dict,
+        "load_local_state_dict": load_local_state_dict,
         "state_dict_cpu_offload": state_dict_cpu_offload,
         "state_dict_rank0_only": state_dict_rank0_only,
     }
@@ -194,6 +214,8 @@ class FSDPModelingHook(mh.ModelingHook):
             param_dtype=precision_dtype,
             reduce_dtype=precision_dtype,
             buffer_dtype=precision_dtype,
+            use_local_state_dict=self.cfg.FSDP.USE_LOCAL_STATE_DICT,
+            load_local_state_dict=self.cfg.FSDP.USE_LOCAL_STATE_DICT,
             state_dict_cpu_offload=self.cfg.FSDP.STATE_DICT_CPU_OFFLOAD,
             state_dict_rank0_only=self.cfg.FSDP.STATE_DICT_RANK0_ONLY,
             device_id=torch.cuda.current_device(),
