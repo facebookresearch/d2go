@@ -28,17 +28,33 @@ class FSDPCheckpointer(QATCheckpointer):
             In general users should not resume non-FSDP training with FSDP.
         """
         if isinstance(self.model, FSDPWrapper):
-            if path is not None:
+            load_path = path
+            if path:
                 # loading path is a directory: sharded local state dict is used
                 if self.path_manager.isdir(path):
+                    self.logger.info(
+                        "[FSDPCheckpointer] Loading from local checkpoint ..."
+                    )
                     self.model.load_local_state_dict = True
-                    path = os.path.join(path, f"rank{comm.get_rank()}.pth")
+                    load_path = os.path.join(path, f"rank{comm.get_rank()}.pth")
                 # loading path is a file: full global state dict is used
                 else:
+                    self.logger.info(
+                        "[FSDPCheckpointer] Loading from global checkpoint ..."
+                    )
                     self.model.load_local_state_dict = False
+
+            # Convert local ckpt to global ckpt when we load from a local ckpt but want to save to global ckpt
+            convert_local_ckpt_to_global = (
+                path
+                and self.model.load_local_state_dict
+                and not self.model.use_local_state_dict
+            )
+
+            # Load all checkpointables from local ckpt if we want to convert to global ckpt
             checkpointables_iter = (
                 self.checkpointables.keys()
-                if checkpointables is None
+                if checkpointables is None or convert_local_ckpt_to_global
                 else checkpointables
             )
             checkpointables_filtered = [
@@ -47,22 +63,39 @@ class FSDPCheckpointer(QATCheckpointer):
                 if name not in ["optimizer", "ema_state"]
             ]
 
-            checkpoint = super().load(path, checkpointables=checkpointables_filtered)
+            checkpoint = super().load(
+                load_path, checkpointables=checkpointables_filtered
+            )
             if "optimizer" in checkpointables_iter:
-                self.logger.info("Loading optimizer from {} ...".format(path))
+                self.logger.info(
+                    f"[FSDPCheckpointer] Loading optimizer from {load_path} ..."
+                )
                 optimizer = self.checkpointables["optimizer"]
                 osd = checkpoint.pop("optimizer")
                 scatter_optimizer_state_dict(optimizer, osd, self.model)
             if "ema_state" in checkpointables_iter:
-                self.logger.info("Loading ema_state from {} ...".format(path))
+                self.logger.info(
+                    f"[FSDPCheckpointer] Loading ema_state from {load_path} ..."
+                )
                 ema_state = checkpoint.pop("ema_state")
                 scatter_ema_state_dict(ema_state, self.model)
+
+            # Convert local ckpt by resaving the current state
+            if convert_local_ckpt_to_global:
+                self.logger.info(
+                    "[FSDPCheckpointer] Converting local FSDP checkpoint to global checkpoint ..."
+                )
+                self.save(os.path.basename(path), tag_last_ckpt=False, **checkpoint)
+                self.logger.info(
+                    "[FSDPCheckpointer] Local-to-global checkpoint conversion finishes"
+                )
+
             # return all remaining checkpoints
             return checkpoint
         else:
             return super().load(path, checkpointables=checkpointables)
 
-    def save(self, name: str, **kwargs) -> None:
+    def save(self, name: str, tag_last_ckpt=True, **kwargs) -> None:
         """
         Add support for saving sharding models and optimizers.
         The rest of the code is copied from implementation in the superclass
@@ -101,14 +134,15 @@ class FSDPCheckpointer(QATCheckpointer):
             self._save_file(data, save_file)
             # Main process tags last checkpoint if no errors in all processes
             comm.synchronize()
-            if comm.is_main_process():
+            if comm.is_main_process() and tag_last_ckpt:
                 self.tag_last_checkpoint(name)
         elif comm.is_main_process():
             basename = "{}.pth".format(name)
             save_file = os.path.join(self.save_dir, basename)
             assert os.path.basename(save_file) == basename, basename
             self._save_file(data, save_file)
-            self.tag_last_checkpoint(basename)
+            if tag_last_ckpt:
+                self.tag_last_checkpoint(basename)
 
     def _save_file(self, data, filename):
         self.logger.info("Saving checkpoint to {}".format(filename))
