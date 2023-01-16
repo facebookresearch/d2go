@@ -191,13 +191,3 @@ def load_full_config_from_file(filename: str) -> CfgNode:
     cfg = loaded_cfg.get_default_cfg()
     cfg.merge_from_other_cfg(loaded_cfg)
     return cfg
-
-
-def add_cfg_nodes(cfg, key: str, cfg_dict: Dict):
-    node = CfgNode()
-    setattr(cfg, key, node)
-    for k, v in cfg_dict.items():
-        if isinstance(v, dict):
-            add_cfg_nodes(node, k, v)
-        else:
-            setattr(node, k, v)
