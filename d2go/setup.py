@@ -281,8 +281,8 @@ def setup_after_launch(
 
     # save the diff config
     default_cfg = (
-        runner.get_default_cfg()
-        if runner and not isinstance(runner, RunnerV2Mixin)
+        runner_class.get_default_cfg()
+        if runner_class and not issubclass(runner_class, RunnerV2Mixin)
         else cfg.get_default_cfg()
     )
     dump_cfg(

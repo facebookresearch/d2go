@@ -15,6 +15,7 @@ from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
+from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from d2go.trainer.fsdp import add_fsdp_configs
 from d2go.utils.visualization import add_tensorboard_default_configs
 from detectron2.config import get_cfg as get_d2_cfg
@@ -122,6 +123,7 @@ def _add_rcnn_default_config(_C: CN) -> None:
     _C.register_deprecated_key("RCNN_PREPARE_FOR_QUANT_CONVERT")
 
 
+@CONFIG_UPDATER_REGISTRY.register("BaseRunner")
 def get_base_runner_default_cfg(cfg: CN) -> CN:
     assert len(cfg) == 0, f"start from scratch, but previous cfg is non-empty: {cfg}"
 
@@ -141,6 +143,7 @@ def get_base_runner_default_cfg(cfg: CN) -> CN:
     return cfg
 
 
+@CONFIG_UPDATER_REGISTRY.register("Detectron2GoRunner")
 def get_detectron2go_runner_default_cfg(cfg: CN) -> CN:
     assert len(cfg) == 0, f"start from scratch, but previous cfg is non-empty: {cfg}"
 
@@ -150,6 +153,7 @@ def get_detectron2go_runner_default_cfg(cfg: CN) -> CN:
     return cfg
 
 
+@CONFIG_UPDATER_REGISTRY.register("GeneralizedRCNNRunner")
 def get_generalized_rcnn_runner_default_cfg(cfg: CN) -> CN:
     assert len(cfg) == 0, f"start from scratch, but previous cfg is non-empty: {cfg}"
 

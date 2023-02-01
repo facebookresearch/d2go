@@ -95,6 +95,19 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
         params["gradient_clip_val"] = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
         params["gradient_clip_algorithm"] = cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE
 
+    # Allow specifying additional trainer parameters under `LIGHTNING_TRAINER` field.
+    # Please note that:
+    #   - the `LIGHTNING_TRAINER`` is not part of "base" config, users need to add this to their default config via `_DEFAULTS_` or `get_default_cfg`.
+    #   - this is a temporal solution due to future refactor of config system.
+    if hasattr(cfg, "LIGHTNING_TRAINER"):
+        params.update(
+            {
+                "reload_dataloaders_every_n_epochs": cfg.LIGHTNING_TRAINER.RELOAD_DATALOADERS_EVERY_N_EPOCHS,
+                "sync_batchnorm": cfg.LIGHTNING_TRAINER.SYNC_BATCHNORM,
+                "benchmark": cfg.LIGHTNING_TRAINER.BENCHMARK,
+            }
+        )
+
     return params
 
 
