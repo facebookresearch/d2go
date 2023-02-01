@@ -15,6 +15,7 @@ from d2go.data.utils import update_cfg_if_using_adhoc_dataset
 from d2go.modeling.api import build_meta_arch
 from d2go.modeling.model_freezing_utils import set_requires_grad
 from d2go.optimizer import build_optimizer_mapper
+from d2go.runner.api import RunnerV2Mixin
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
     _get_tbx_writer,
@@ -472,3 +473,12 @@ class GeneralizedRCNNTask(DefaultTask):
     @classmethod
     def get_default_cfg(cls):
         return GeneralizedRCNNRunner.get_default_cfg()
+
+
+# TODO(T123654122): subclass of DefaultTask will be refactored
+class GeneralizedRCNNTaskNoDefaultConfig(RunnerV2Mixin, DefaultTask):
+    """
+    Similar to `GeneralizedRCNNTask` but allowing specifying default config in yaml via `_defaults_`
+    """
+
+    pass
