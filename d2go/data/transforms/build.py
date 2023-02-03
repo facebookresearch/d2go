@@ -85,13 +85,9 @@ _TRANSFORM_REPR_SEPARATOR = "::"
 def parse_tfm_gen_repr(tfm_gen_repr: str) -> Tuple[str, Optional[str]]:
     if tfm_gen_repr.count(_TRANSFORM_REPR_SEPARATOR) == 0:
         return tfm_gen_repr, None
-    elif tfm_gen_repr.count(_TRANSFORM_REPR_SEPARATOR) == 1:
-        return tfm_gen_repr.split(_TRANSFORM_REPR_SEPARATOR)
     else:
-        raise ValueError(
-            "Can't to parse transform repr name because of multiple separator found."
-            " Offending name: {}"
-        )
+        # Split only after first one
+        return tfm_gen_repr.split(_TRANSFORM_REPR_SEPARATOR, 1)
 
 
 def build_transform_gen(
