@@ -85,13 +85,14 @@ _TRANSFORM_REPR_SEPARATOR = "::"
 def parse_tfm_gen_repr(tfm_gen_repr: str) -> Tuple[str, Optional[str]]:
     if tfm_gen_repr.count(_TRANSFORM_REPR_SEPARATOR) == 0:
         return tfm_gen_repr, None
-    elif tfm_gen_repr.count(_TRANSFORM_REPR_SEPARATOR) == 1:
-        return tfm_gen_repr.split(_TRANSFORM_REPR_SEPARATOR)
     else:
-        raise ValueError(
-            "Can't to parse transform repr name because of multiple separator found."
-            " Offending name: {}"
-        )
+        # Split only after first delimiter, to allow for:
+        #  - nested transforms, e.g:
+        #   'SomeTransformOp::{"args": ["SubTransform2Op::{\\"param1\\": 0, \\"param2\\": false}", "SubTransform2Op::{\\"param1\\": 0.8}"], "other_args": 2}'
+        #  - list of transforms, e.g.:
+        #   ["SubTransform2Op::{\\"param1\\": 0, \\"param2\\": false}", "SubTransform2Op::{\\"param1\\": 0.8}"]
+        # TODO(T144470024): Support recursive parsing. For now, it's user responsibility to ensure the nested transforms are parsed correctly.
+        return tfm_gen_repr.split(_TRANSFORM_REPR_SEPARATOR, 1)
 
 
 def build_transform_gen(
