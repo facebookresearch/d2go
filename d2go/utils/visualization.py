@@ -19,6 +19,8 @@ def add_tensorboard_default_configs(_C):
     # This controls max number of images over all batches, be considerate when
     # increasing this number because it takes disk space and slows down the training
     _C.TENSORBOARD.TRAIN_LOADER_VIS_MAX_IMAGES = 16
+    # This controls the max number of images to visualize each write period
+    _C.TENSORBOARD.TRAIN_LOADER_VIS_MAX_BATCH_IMAGES = 16
     # Max number of images per dataset to visualize in tensorboard during evaluation
     _C.TENSORBOARD.TEST_VIS_MAX_IMAGES = 16
     # Frequency of sending data to tensorboard during evaluation
@@ -135,8 +137,10 @@ class DataLoaderVisWrapper:
 
         self.log_frequency = cfg.TENSORBOARD.TRAIN_LOADER_VIS_WRITE_PERIOD
         self.log_limit = cfg.TENSORBOARD.TRAIN_LOADER_VIS_MAX_IMAGES
+        self.batch_log_limit = cfg.TENSORBOARD.TRAIN_LOADER_VIS_MAX_BATCH_IMAGES
         assert self.log_frequency >= 0
         assert self.log_limit >= 0
+        assert self.batch_log_limit >= 0
         self._remaining = self.log_limit
 
     def __iter__(self):
@@ -159,7 +163,7 @@ class DataLoaderVisWrapper:
         ):
             return
 
-        length = min(len(data), self._remaining)
+        length = min(len(data), min(self.batch_log_limit, self._remaining))
         data = data[:length]
         self._remaining -= length
 
