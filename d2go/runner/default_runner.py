@@ -60,6 +60,7 @@ from detectron2.evaluation import (
 from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver import build_lr_scheduler as d2_build_lr_scheduler
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter
+from fvcore.common.checkpoint import Checkpointer
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 from mobile_cv.predictor.api import PredictorWrapper
 from torch import nn
@@ -615,12 +616,19 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             # Note: when precise BN is enabled, some checkpoints will have more precise
             # statistics than others, if they are saved immediately after eval.
             # Note: FSDP requires all ranks to execute saving/loading logic
-            if comm.is_main_process() or isinstance(
-                periodic_checkpointer.checkpointer, FSDPCheckpointer
+            if comm.is_main_process() or self._is_distributed_checkpoint(
+                periodic_checkpointer.checkpointer
             ):
                 periodic_checkpointer.step(trainer.iter)
 
         return hooks.CallbackHook(after_step=after_step_callback)
+
+    def _is_distributed_checkpoint(self, checkpointer: Checkpointer) -> bool:
+        if isinstance(checkpointer, FSDPCheckpointer):
+            return True
+        if hasattr(checkpointer, "is_distributed"):
+            return checkpointer.is_distributed()
+        return False
 
     def _create_data_loader_hook(self, cfg):
         """
