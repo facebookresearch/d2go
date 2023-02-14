@@ -108,6 +108,9 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # Add FB specific configs
     _add_detectron2go_runner_default_fb_cfg(_C)
 
+    # Specify whether to perform NUMA binding
+    _C.NUMA_BINDING = False
+
 
 def _add_rcnn_default_config(_C: CN) -> None:
     _C.EXPORT_CAFFE2 = CN()
