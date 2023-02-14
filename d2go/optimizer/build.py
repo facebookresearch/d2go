@@ -280,7 +280,8 @@ def adamw(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
         lr=cfg.SOLVER.BASE_LR,
         betas=cfg.SOLVER.BETAS,
         eps=cfg.SOLVER.EPS,
-        foreach=True,
+        foreach=True if cfg.SOLVER.FUSED is False else False,
+        fused=True if cfg.SOLVER.FUSED else False,
     )
 
 
