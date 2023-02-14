@@ -475,6 +475,16 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         # if a model has input-dependent logic
         attach_profilers(cfg, model)
 
+        if cfg.NUMA_BINDING is True:
+            import numa
+            num_gpus_per_node = comm.get_local_size()
+            num_sockets = numa.get_max_node() + 1
+            socket_id = torch.cuda.current_device() // (
+                max(num_gpus_per_node // num_sockets, 1)
+            )
+            node_mask = set([socket_id])
+            numa.bind(node_mask)
+
         optimizer = self.build_optimizer(cfg, model)
         scheduler = self.build_lr_scheduler(cfg, optimizer)
 
