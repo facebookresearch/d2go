@@ -330,6 +330,32 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
     def build_lr_scheduler(self, cfg, optimizer):
         return d2_build_lr_scheduler(cfg, optimizer)
 
+    def _create_evaluators(
+        self, cfg, dataset_name, output_folder, train_iter, model_tag
+    ):
+        evaluator = self.get_evaluator(cfg, dataset_name, output_folder=output_folder)
+
+        if not isinstance(evaluator, DatasetEvaluators):
+            evaluator = DatasetEvaluators([evaluator])
+        if comm.is_main_process():
+            # Add evaluator for visualization only to rank 0
+            tbx_writer = self.get_tbx_writer(cfg)
+            logger.info("Adding visualization evaluator ...")
+            mapper = self.get_mapper(cfg, is_train=False)
+            vis_eval_type = self.get_visualization_evaluator()
+            if vis_eval_type is not None:
+                evaluator._evaluators.append(
+                    vis_eval_type(
+                        cfg,
+                        tbx_writer,
+                        mapper,
+                        dataset_name,
+                        train_iter=train_iter,
+                        tag_postfix=model_tag,
+                    )
+                )
+        return evaluator
+
     def _do_test(self, cfg, model, train_iter=None, model_tag="default"):
         """train_iter: Current iteration of the model, None means final iteration"""
         assert len(cfg.DATASETS.TEST)
@@ -363,28 +389,9 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             # NOTE: creating evaluator after dataset is loaded as there might be dependency.  # noqa
             data_loader = self.build_detection_test_loader(cfg, dataset_name)
 
-            evaluator = self.get_evaluator(
-                cfg, dataset_name, output_folder=output_folder
+            evaluator = self._create_evaluators(
+                cfg, dataset_name, output_folder, train_iter, model_tag
             )
-
-            if not isinstance(evaluator, DatasetEvaluators):
-                evaluator = DatasetEvaluators([evaluator])
-            if comm.is_main_process():
-                tbx_writer = self.get_tbx_writer(cfg)
-                logger.info("Adding visualization evaluator ...")
-                mapper = self.get_mapper(cfg, is_train=False)
-                vis_eval_type = self.get_visualization_evaluator()
-                if vis_eval_type is not None:
-                    evaluator._evaluators.append(
-                        vis_eval_type(
-                            cfg,
-                            tbx_writer,
-                            mapper,
-                            dataset_name,
-                            train_iter=train_iter,
-                            tag_postfix=model_tag,
-                        )
-                    )
 
             results_per_dataset = inference_on_dataset(model, data_loader, evaluator)
 
