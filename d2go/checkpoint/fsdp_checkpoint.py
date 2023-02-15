@@ -20,6 +20,9 @@ class FSDPCheckpointer(QATCheckpointer):
     Extend the Checkpointer to support saving/loading FSDP models
     """
 
+    def is_distributed(self) -> bool:
+        return True
+
     def load(self, path: str, checkpointables=None):
         """
         Add support for loading sharded optimizer states in FSDP.
