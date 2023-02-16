@@ -71,8 +71,8 @@ ALL_TB_WRITERS = []
 
 
 @lru_cache()
-def _get_tbx_writer(log_dir):
-    ret = TensorboardXWriter(log_dir)
+def _get_tbx_writer(log_dir, window_size=20):
+    ret = TensorboardXWriter(log_dir, window_size=window_size)
     ALL_TB_WRITERS.append(ret)
     return ret
 
@@ -236,7 +236,10 @@ class D2GoDataAPIMixIn:
 
     @classmethod
     def get_tbx_writer(cls, cfg):
-        return _get_tbx_writer(get_tensorboard_log_dir(cfg.OUTPUT_DIR))
+        return _get_tbx_writer(
+            get_tensorboard_log_dir(cfg.OUTPUT_DIR),
+            window_size=cfg.get("WRITER_PERIOD", 20),
+        )
 
     @staticmethod
     def get_data_loader_vis_wrapper() -> Optional[Type[DataLoaderVisWrapper]]:
@@ -535,6 +538,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 _get_model_with_abnormal_checker(model),
                 data_loader,
                 optimizer,
+                gather_metric_period=cfg.GATHER_METRIC_PERIOD,
                 grad_scaler=get_grad_scaler(cfg),
                 precision=parse_precision_from_string(
                     cfg.SOLVER.AMP.PRECISION, lightning=False
@@ -542,7 +546,10 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             )
         else:
             trainer = SimpleTrainer(
-                _get_model_with_abnormal_checker(model), data_loader, optimizer
+                _get_model_with_abnormal_checker(model),
+                data_loader,
+                optimizer,
+                gather_metric_period=cfg.GATHER_METRIC_PERIOD,
             )
 
         if cfg.SOLVER.AMP.ENABLED and torch.cuda.is_available():
@@ -556,10 +563,17 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         )
 
         if comm.is_main_process():
+            assert (
+                cfg.GATHER_METRIC_PERIOD <= cfg.WRITER_PERIOD
+                and cfg.WRITER_PERIOD % cfg.GATHER_METRIC_PERIOD == 0
+            ), "WRITER_PERIOD needs to be divisible by GATHER_METRIC_PERIOD"
             tbx_writer = self.get_tbx_writer(cfg)
             writers = [
-                CommonMetricPrinter(max_iter),
-                JSONWriter(os.path.join(cfg.OUTPUT_DIR, "metrics.json")),
+                CommonMetricPrinter(max_iter, window_size=cfg.WRITER_PERIOD),
+                JSONWriter(
+                    os.path.join(cfg.OUTPUT_DIR, "metrics.json"),
+                    window_size=cfg.WRITER_PERIOD,
+                ),
                 tbx_writer,
             ]
             trainer_hooks.append(hooks.PeriodicWriter(writers, cfg.WRITER_PERIOD))

@@ -137,6 +137,8 @@ def get_base_runner_default_cfg(cfg: CN) -> CN:
 
     cfg.SOLVER.AUTO_SCALING_METHODS = ["default_scale_d2_configs"]
 
+    # Frequency of metric gathering in trainer.
+    cfg.GATHER_METRIC_PERIOD = 1
     # Frequency of metric printer, tensorboard writer, etc.
     cfg.WRITER_PERIOD = 20
 
