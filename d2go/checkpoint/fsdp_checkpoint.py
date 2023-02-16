@@ -5,9 +5,10 @@ from typing import cast, IO
 import detectron2.utils.comm as comm
 import torch
 from d2go.modeling.ema import EMAState
-
 from d2go.quantization.modeling import QATCheckpointer
 from d2go.trainer.fsdp import FSDPWrapper
+
+from mobile_cv.torch.utils_pytorch.distributed_helper import interleave_by_rank
 
 from torch.distributed.fsdp.fully_sharded_data_parallel import (
     FullyShardedDataParallel as FSDP,
@@ -145,9 +146,14 @@ class FSDPCheckpointer(QATCheckpointer):
                 self.tag_last_checkpoint(basename)
 
     def _save_file(self, data, filename):
-        self.logger.info("Saving checkpoint to {}".format(filename))
-        with self.path_manager.open(filename, "wb") as f:
-            torch.save(data, cast(IO[bytes], f))
+        with interleave_by_rank():
+            self.logger.info("Saving checkpoint to {}".format(filename))
+            with self.path_manager.open(filename, "wb") as f:
+                torch.save(data, cast(IO[bytes], f))
+
+    def _load_file(self, f: str):
+        with interleave_by_rank():
+            return super()._load_file(f)
 
 
 def gather_optimizer_state_dict(optimizer, model: FSDPWrapper):
