@@ -149,13 +149,15 @@ class FSDPCheckpointer(QATCheckpointer):
                 self.tag_last_checkpoint(basename)
 
     def _save_file(self, data, filename):
-        with interleave_by_rank():
+        # allow 8 GPUs to write to manifold at the same time
+        with interleave_by_rank(concurrency_limit=8):
             self.logger.info("Saving checkpoint to {}".format(filename))
             with self.path_manager.open(filename, "wb") as f:
                 torch.save(data, cast(IO[bytes], f))
 
     def _load_file(self, f: str):
-        with interleave_by_rank():
+        # allow 8 GPUs to read from manifold at the same time
+        with interleave_by_rank(concurrency_limit=8):
             return super()._load_file(f)
 
 
