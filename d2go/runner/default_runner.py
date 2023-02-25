@@ -208,7 +208,7 @@ class D2GoDataAPIMixIn:
 
     @classmethod
     def build_detection_test_loader(
-        cls, cfg, dataset_name: Union[str, List[str]], mapper=None
+        cls, cfg, dataset_name: Union[str, List[str]], mapper=None, collate_fn=None
     ):
         logger.info(
             "Building detection test loader for dataset: {} ...".format(dataset_name)
@@ -216,7 +216,9 @@ class D2GoDataAPIMixIn:
         with configure_dataset_creation(cfg):
             mapper = mapper or cls.get_mapper(cfg, is_train=False)
             logger.info("Using dataset mapper:\n{}".format(mapper))
-            return d2_build_detection_test_loader(cfg, dataset_name, mapper=mapper)
+            return d2_build_detection_test_loader(
+                cfg, dataset_name, mapper=mapper, collate_fn=collate_fn
+            )
 
     @classmethod
     def build_detection_train_loader(cls, cfg, *args, mapper=None, **kwargs):
