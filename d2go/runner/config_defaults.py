@@ -33,6 +33,11 @@ def _add_detectron2go_runner_default_fb_cfg(_C: CN) -> None:
     pass
 
 
+@fb_overwritable()
+def _add_base_runner_default_fb_cfg(_C: CN) -> None:
+    pass
+
+
 def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # _C.MODEL.FBNET_V2...
     add_fbnet_v2_default_configs(_C)
@@ -145,6 +150,8 @@ def get_base_runner_default_cfg(cfg: CN) -> CN:
     # train_net specific arguments, define in runner but used in train_net
     # run evaluation after training is done
     cfg.TEST.FINAL_EVAL = True
+
+    _add_base_runner_default_fb_cfg(cfg)
 
     return cfg
 
