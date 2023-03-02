@@ -27,6 +27,7 @@ from mobile_cv.torch.utils_pytorch.distributed_helper import (
     DistributedParams,
     enable_dist_process_groups,
     launch as _launch,
+    launch_deco as _launch_deco,
     save_return_deco,
 )
 
@@ -77,6 +78,13 @@ def distributed_worker(
         # Now the D2's comm module should be fully functional
         deco = save_return_deco(return_save_file, dist_params.global_rank)
         return deco(main_func)(*args, **kwargs)
+
+
+def launch_deco(**kwargs):
+    """
+    launch_deco for d2go distributed worker
+    """
+    return _launch_deco(launcher=launch, **kwargs)
 
 
 def launch(
