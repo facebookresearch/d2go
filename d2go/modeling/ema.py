@@ -185,6 +185,8 @@ def add_model_ema_configs(_C):
     _C.MODEL_EMA.USE_EMA_WEIGHTS_FOR_EVAL_ONLY = False
     # Whether to use LERP to compute EMA
     _C.MODEL_EMA.USE_LERP = False
+    # Whether to put EMA to the backward pass
+    _C.MODEL_EMA.AFTER_BACKWARD = False
 
 
 def _remove_ddp(model):
@@ -266,6 +268,7 @@ class EMAHook(HookBase):
         self.model = model
         self.ema = self.model.ema_state
         self.device = cfg.MODEL_EMA.DEVICE or cfg.MODEL.DEVICE
+        self.is_after_backward = cfg.MODEL_EMA.AFTER_BACKWARD
         self.ema_updater = EMAUpdater(
             self.model.ema_state,
             decay=cfg.MODEL_EMA.DECAY,
@@ -285,7 +288,17 @@ class EMAHook(HookBase):
     def before_step(self):
         pass
 
+    def after_backward(self):
+        if not self.is_after_backward:
+            return
+        self._update()
+
     def after_step(self):
+        if self.is_after_backward:
+            return
+        self._update()
+
+    def _update(self):
         if not self.model.train:
             return
         self.ema_updater.update(self.model)
