@@ -45,9 +45,12 @@ def dump_flops_info(model, inputs, output_dir, use_eval_mode=True):
         logger.info("Failed to deepcopy the model and skip FlopsEstimation.")
         return
 
-    # delete other forward_pre_hooks so they are not simultaneously called
-    for k in model._forward_pre_hooks:
-        del model._forward_pre_hooks[k]
+    # Delete other forward_pre_hooks so they are not simultaneously called.
+    # The keys are wrapped in a list to avoid mutating ordered_dict during iteration.
+    # See https://github.com/pytorch/pytorch/issues/49739 for more details.
+    for hook_key in list(model._forward_pre_hooks.keys()):
+        logger.warning(f"Forward hook with key {hook_key} was removed in flop counter.")
+        model._forward_pre_hooks.pop(hook_key)
 
     if use_eval_mode:
         model.eval()
