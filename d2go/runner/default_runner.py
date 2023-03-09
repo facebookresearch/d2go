@@ -141,6 +141,11 @@ def prepare_fb_model(cfg: CfgNode, model: torch.nn.Module) -> torch.nn.Module:
     return model
 
 
+@fb_overwritable()
+def prepare_fb_model_for_eval(cfg: CfgNode, model: torch.nn.Module) -> torch.nn.Module:
+    return model
+
+
 class BaseRunner(object):
     def __init__(self):
         identifier = f"D2Go.Runner.{self.__class__.__name__}"
@@ -380,6 +385,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             )
 
         attach_profilers(cfg, model)
+        prepare_fb_model_for_eval(cfg, model)
 
         results = OrderedDict()
         results[model_tag] = OrderedDict()
