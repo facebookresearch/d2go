@@ -81,6 +81,8 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     assert not _C.SOLVER.AMP.ENABLED
     # AMP precision is used by both D2 and lightning backend. Can be "float16" or "bfloat16".
     _C.SOLVER.AMP.PRECISION = "float16"
+    # log the grad scalar to the output
+    _C.SOLVER.AMP.LOG_GRAD_SCALER = False
 
     # Betas are used in the AdamW optimizer
     _C.SOLVER.BETAS = (0.9, 0.999)
