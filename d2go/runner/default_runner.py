@@ -551,6 +551,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 precision=parse_precision_from_string(
                     cfg.SOLVER.AMP.PRECISION, lightning=False
                 ),
+                log_grad_scaler=cfg.SOLVER.AMP.LOG_GRAD_SCALER,
             )
         else:
             trainer = SimpleTrainer(
