@@ -4,8 +4,6 @@ import itertools
 import logging
 from typing import Any, Dict, List, Optional, Union
 
-import apex
-
 import torch
 
 # FIXME: optimizer should not depend on quantization (or vice versa)
@@ -315,24 +313,6 @@ def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     params = get_optimizer_param_groups(model, cfg)
     return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.AdamW)(
         params=params, lr=cfg.SOLVER.BASE_LR, eps=cfg.SOLVER.EPS
-    )
-
-
-@D2GO_OPTIM_MAPPER_REGISTRY.register()
-def lamb(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
-    """
-    LAMB optimizer has been proposed in `Large Batch Optimization for Deep Learning:
-    Training BERT in 76 minutes` (https://arxiv.org/abs/1904.00962). It helped scale
-    LLM training to batch sizes of 32K samples.
-
-    """
-    params = get_optimizer_param_groups(model, cfg)
-    assert cfg.SOLVER.FUSED, "Only fused version of LAMB optimizer is supported"
-    return maybe_add_gradient_clipping(cfg, apex.optimizers.FusedLAMB)(
-        params=params,
-        lr=cfg.SOLVER.BASE_LR,
-        betas=cfg.SOLVER.BETAS,
-        eps=cfg.SOLVER.EPS,
     )
 
 
