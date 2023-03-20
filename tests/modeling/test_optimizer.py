@@ -30,10 +30,11 @@ class TestArch(torch.nn.Module):
         return ret
 
 
-def _test_each_optimizer(cfg):
+def _test_each_optimizer(cfg, cuda: bool = False):
     print("Solver: " + str(cfg.SOLVER.OPTIMIZER))
+    device = "cuda:0" if cuda else "cpu"
 
-    model = TestArch()
+    model = TestArch().to(device)
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = build_optimizer_mapper(cfg, model)
     optimizer.zero_grad()
@@ -41,8 +42,9 @@ def _test_each_optimizer(cfg):
     random.seed(20210912)
     num_iter = 500
     for _ in range(num_iter):
-        target = torch.empty(1, 1, 1, 1).fill_(random.randint(0, 1))
-        x = torch.add(torch.rand(1, 3, 16, 16), 2 * target)
+        target = torch.empty(1, 1, 1, 1).fill_(random.randint(0, 1)).to(device)
+        noise = torch.rand(1, 3, 16, 16).to(device)
+        x = torch.add(noise, 2 * target)
         y_pred = model(x)
         loss = criterion(y_pred, target)
         loss.backward()
@@ -51,8 +53,8 @@ def _test_each_optimizer(cfg):
     n_correct = 0
     n_eval = 100
     for _ in range(n_eval):
-        target = torch.empty(1, 1, 1, 1).fill_(random.randint(0, 1))
-        x = torch.add(torch.rand(1, 3, 16, 16), 2 * target)
+        target = torch.empty(1, 1, 1, 1).fill_(random.randint(0, 1)).to(device)
+        x = torch.add(torch.rand(1, 3, 16, 16).to(device), 2 * target)
         y_pred = torch.round(torch.sigmoid(model(x)))
         if y_pred == target:
             n_correct += 1
@@ -163,7 +165,7 @@ class TestOptimizer(unittest.TestCase):
     OPTIMIZER_NAMES_PART1 = ["SGD", "AdamW", "SGD_MT"]
     OPTIMIZER_NAMES_PART2 = ["AdamW_MT", "Adam"]
 
-    def _test_optimizers_list(self, optimizers_list):
+    def _test_optimizers_list(self, optimizers_list, fused: bool = False):
         runner = default_runner.Detectron2GoRunner()
         cfg = runner.get_default_cfg()
         multipliers = [None, [{"conv": 0.1}]]
@@ -171,9 +173,10 @@ class TestOptimizer(unittest.TestCase):
         for optimizer_name in optimizers_list:
             for mult in multipliers:
                 cfg.SOLVER.BASE_LR = 0.01
+                cfg.SOLVER.FUSED = fused
                 cfg.SOLVER.OPTIMIZER = optimizer_name
                 cfg.SOLVER.MULTIPLIERS = mult
-                _test_each_optimizer(cfg)
+                _test_each_optimizer(cfg, cuda=fused)
 
     def test_all_optimizers_part_1(self):
         self._test_optimizers_list(self.OPTIMIZER_NAMES_PART1)
