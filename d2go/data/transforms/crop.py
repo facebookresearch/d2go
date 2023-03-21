@@ -82,7 +82,10 @@ class PadBorderDivisible(aug.Augmentation):
 
     def get_transform(self, image: np.ndarray) -> Transform:
         """image: HxWxC"""
-        assert len(image.shape) == 3 and image.shape[2] in [1, 3]
+        assert len(image.shape) == 3 and image.shape[2] in [
+            1,
+            3,
+        ], f"Invalid image shape {image.shape}"
         H, W = image.shape[:2]
         new_h = int(math.ceil(H / self.size_divisibility) * self.size_divisibility)
         new_w = int(math.ceil(W / self.size_divisibility) * self.size_divisibility)
@@ -103,7 +106,10 @@ class PadToSquare(aug.Augmentation):
 
     def get_transform(self, image: np.ndarray) -> Transform:
         """image: HxWxC"""
-        assert len(image.shape) == 3 and image.shape[2] in [1, 3]
+        assert len(image.shape) == 3 and image.shape[2] in [
+            1,
+            3,
+        ], f"Invalid image shape {image.shape}"
         H, W = image.shape[:2]
         new_h = new_w = max(H, W)
         return PadTransform(
