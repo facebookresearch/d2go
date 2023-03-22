@@ -665,8 +665,11 @@ def _reset_qat_data_loader_if_needed(cfg, trainer, build_loader_func):
                 old_bs, new_bs
             )
         )
-        # This method assumes the data loader can be replaced from trainer
-        assert trainer.__class__ == SimpleTrainer
+
+        assert isinstance(
+            trainer, SimpleTrainer
+        ), "Trainer needs to be a subclass of SimpleTrainer to support resetting the dataloader"
+
         trainer.reset_data_loader(lambda: build_loader_func(loader_cfg))
 
 
