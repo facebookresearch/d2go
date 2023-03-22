@@ -3,10 +3,12 @@
 
 
 import argparse
+import builtins
 import logging
 import os
+import sys
 import time
-from typing import List, Optional, Tuple, Type, Union
+from typing import Any, List, Optional, Tuple, Type, Union
 
 import detectron2.utils.comm as comm
 import torch
@@ -48,6 +50,33 @@ def setup_root_logger(logging_level: int = logging.DEBUG) -> None:
     """
     root_logger = logging.getLogger()
     root_logger.setLevel(logging_level)
+    _replace_print_with_logging()
+
+
+def _replace_print_with_logging() -> None:
+    builtin_print = builtins.print
+
+    def _print(
+        *objects: Any,
+        sep: Optional[str] = " ",
+        end: Optional[str] = "\n",
+        file: Optional[Any] = None,
+        flush: bool = False,
+    ) -> None:
+        # Mimicking the behavior of Python's built-in print function.
+        if sep is None:
+            sep = " "
+        if end is None:
+            end = "\n"
+
+        # Don't replace prints to files.
+        if file is not None and file != sys.stdout and file != sys.stderr:
+            builtin_print(*objects, sep=sep, end=end, file=file, flush=flush)
+            return
+
+        logging.info(sep.join(map(str, objects)), stacklevel=3)
+
+    builtins.print = _print
 
 
 def basic_argument_parser(
@@ -324,6 +353,8 @@ def setup_logger(
 
 @run_once()
 def setup_loggers(output_dir):
+    # Setup logging in each of the distributed processes.
+    setup_root_logger()
     setup_logger("detectron2", output_dir, abbrev_name="d2")
     setup_logger("fvcore", output_dir)
     setup_logger("d2go", output_dir)
