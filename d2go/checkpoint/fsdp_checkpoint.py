@@ -1,4 +1,5 @@
 # (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+import json
 import os
 from typing import Callable, cast, IO
 
@@ -49,25 +50,32 @@ class FSDPCheckpointer(QATCheckpointer):
             load_path = path
             if path:
                 # loading path is a directory: local or sharded state dict is used
-                # TODO(T148056077): Make loading sharded state dicts more elegant
                 if self.path_manager.isdir(path):
-                    self.logger.info(
-                        "[FSDPCheckpointer] Loading from local or sharded checkpoint ..."
+                    # Get state dict type from metadata file
+                    metadata = self._load_metadata(path)
+                    state_dict_type = (
+                        metadata["state_dict_type"] if metadata else "LOCAL_STATE_DICT"
                     )
-                    self.model.load_local_state_dict = True
+
+                    assert state_dict_type in ["LOCAL_STATE_DICT", "SHARDED_STATE_DICT"]
+                    type_str = "local" if "LOCAL_STATE_DICT" else "sharded"
+                    self.logger.info(
+                        f"[FSDPCheckpointer] Loading from {type_str} checkpoint ..."
+                    )
+                    self.model.load_state_dict_type = StateDictType[state_dict_type]
                     load_path = os.path.join(path, f"rank{comm.get_rank()}.pth")
                 # loading path is a file: full global state dict is used
                 else:
                     self.logger.info(
-                        "[FSDPCheckpointer] Loading from global checkpoint ..."
+                        "[FSDPCheckpointer] Loading from full checkpoint ..."
                     )
-                    self.model.load_local_state_dict = False
+                    self.model.load_state_dict_type = StateDictType.FULL_STATE_DICT
 
             # Convert local ckpt to global ckpt when we load from a local ckpt but want to save to global ckpt
             convert_local_ckpt_to_global = (
                 path
-                and self.model.load_local_state_dict
-                and not self.model.use_local_state_dict
+                and self.model.load_state_dict_type == StateDictType.LOCAL_STATE_DICT
+                and self.model.state_dict_type == StateDictType.FULL_STATE_DICT
             )
 
             # Load all checkpointables from local ckpt if we want to convert to global ckpt
@@ -156,8 +164,10 @@ class FSDPCheckpointer(QATCheckpointer):
                 self._save_file(data, save_file)
             # Main process tags last checkpoint if no errors in all processes
             comm.synchronize()
-            if comm.is_main_process() and tag_last_ckpt:
-                self.tag_last_checkpoint(name)
+            if comm.is_main_process():
+                self._save_metadata(new_save_dir)
+                if tag_last_ckpt:
+                    self.tag_last_checkpoint(name)
         elif comm.is_main_process():
             basename = "{}.pth".format(name)
             save_file = os.path.join(self.save_dir, basename)
@@ -175,6 +185,20 @@ class FSDPCheckpointer(QATCheckpointer):
         # Limit the read concurrency to avoid QPS overload
         with interleave_by_rank(concurrency_limit=self._concurrency_limit_fetcher()):
             return super()._load_file(f)
+
+    def _save_metadata(self, path):
+        metadata_file = os.path.join(path, "metadata.json")
+        obj = {"state_dict_type": self.model.state_dict_type.name}
+        with self.path_manager.open(metadata_file, "w") as f:
+            json.dump(obj, f)
+
+    def _load_metadata(self, path):
+        metadata_file = os.path.join(path, "metadata.json")
+        if self.path_manager.exists(metadata_file):
+            with self.path_manager.open(metadata_file, "r") as f:
+                return json.load(f)
+        else:
+            return None
 
 
 def gather_optimizer_state_dict(optimizer, model: FSDPWrapper):
@@ -198,7 +222,7 @@ def scatter_optimizer_state_dict(optimizer, optim_state_dict, model: FSDPWrapper
         optim_state_dict = FSDP.shard_full_optim_state_dict(optim_state_dict, model)
     elif model.state_dict_type == StateDictType.SHARDED_STATE_DICT:
         optim_state_dict = FSDP.flatten_sharded_optim_state_dict(
-            optim_state_dict, model
+            optim_state_dict, model, optimizer
         )
     optimizer.load_state_dict(optim_state_dict)
 
