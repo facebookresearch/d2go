@@ -22,6 +22,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import (
     FullyShardedDataParallel as FSDP,
     LocalStateDictConfig,
     MixedPrecision,
+    ShardedStateDictConfig,
     ShardingStrategy,
     StateDictType,
 )
@@ -53,8 +54,11 @@ def add_fsdp_configs(_C: CN):
     _C.FSDP.AUTO_WRAP_MIN_PARAMS = int(1e4)
     # A list of layer cls names to wrap, case sensitive
     _C.FSDP.AUTO_WRAP_LAYER_CLS = []
-    # Whether to use local state dict
+    # Whether to use local state dict -- superseded by STATE_DICT_TYPE
     _C.FSDP.USE_LOCAL_STATE_DICT = False
+    # State dict type to use when calling FSDPWrapper.state_dict() (used when saving).
+    # If None, defaults to checking the value of USE_LOCAL_STATE_DICT
+    _C.FSDP.STATE_DICT_TYPE = None
     # Whether to offload state dict to cpu
     _C.FSDP.STATE_DICT_CPU_OFFLOAD = False
     # Whether to materialize state dict on rank 0
@@ -106,6 +110,8 @@ class FSDPWrapper(FSDP):
     def __init__(
         self,
         model,
+        state_dict_type: StateDictType,
+        load_state_dict_type: StateDictType,
         amp_autocast_dtype: Optional[torch.dtype] = None,
         use_local_state_dict: bool = False,
         load_local_state_dict: bool = False,
@@ -116,6 +122,8 @@ class FSDPWrapper(FSDP):
         self.precision = amp_autocast_dtype
         self.use_local_state_dict = use_local_state_dict
         self.load_local_state_dict = load_local_state_dict
+        self.state_dict_type = state_dict_type
+        self.load_state_dict_type = load_state_dict_type
         self.offload_to_cpu = state_dict_cpu_offload
         self.rank0_only = state_dict_rank0_only
         super().__init__(model, **fsdp_kwargs)
@@ -131,22 +139,24 @@ class FSDPWrapper(FSDP):
             return super().forward(*args, **kwargs)
 
     @contextlib.contextmanager
-    def state_dict_type_and_config(self, is_sharded: bool) -> Generator:
-        if is_sharded:
-            state_dict_type = StateDictType.LOCAL_STATE_DICT
+    def state_dict_type_and_config(self, state_dict_type: StateDictType) -> Generator:
+        if state_dict_type == StateDictType.LOCAL_STATE_DICT:
             # only offload_to_cpu=False is supported for local state dict
             state_dict_config = LocalStateDictConfig(offload_to_cpu=False)
-        else:
-            state_dict_type = StateDictType.FULL_STATE_DICT
+        elif state_dict_type == StateDictType.FULL_STATE_DICT:
             state_dict_config = FullStateDictConfig(
                 offload_to_cpu=self.offload_to_cpu, rank0_only=self.rank0_only
+            )
+        else:
+            state_dict_config = ShardedStateDictConfig(
+                offload_to_cpu=self.offload_to_cpu
             )
         with FSDP.state_dict_type(self, state_dict_type, state_dict_config):
             yield
 
     def state_dict(self, *args, **kwargs):
         # NOTE: model.state_dict() needs to be called by all ranks because synchronization primitives are used
-        with self.state_dict_type_and_config(self.use_local_state_dict):
+        with self.state_dict_type_and_config(self.state_dict_type):
             return super().state_dict(*args, **kwargs)
 
     def load_state_dict(
@@ -155,7 +165,7 @@ class FSDPWrapper(FSDP):
         *args,
         **kwargs,
     ):
-        with self.state_dict_type_and_config(self.load_local_state_dict):
+        with self.state_dict_type_and_config(self.load_state_dict_type):
             return super().load_state_dict(state_dict, *args, **kwargs)
 
 
@@ -173,6 +183,7 @@ def build_fsdp(
     amp_autocast_dtype: Optional[torch.dtype] = None,
     use_local_state_dict: bool = False,
     load_local_state_dict: bool = False,
+    state_dict_type: Optional[StateDictType] = None,
     state_dict_cpu_offload: bool = True,
     state_dict_rank0_only: bool = True,
     ignored_modules: Optional[nn.Module] = None,
@@ -230,10 +241,27 @@ def build_fsdp(
         "forward_prefetch": forward_prefetch,
         "device_id": torch.cuda.current_device() if not device_id else device_id,
     }
+    # default to using use_local_state_dict if state_dict_type is None
+    if not state_dict_type:
+        _state_dict_type = (
+            StateDictType.LOCAL_STATE_DICT
+            if use_local_state_dict
+            else StateDictType.FULL_STATE_DICT
+        )
+    else:
+        _state_dict_type = state_dict_type
+    # load_state_dict_type defaults to load_local_state_dict
+    _load_state_dict_type = (
+        StateDictType.LOCAL_STATE_DICT
+        if load_local_state_dict
+        else StateDictType.FULL_STATE_DICT
+    )
     wrapper_kwargs = {
         "amp_autocast_dtype": amp_autocast_dtype,
         "use_local_state_dict": use_local_state_dict,
         "load_local_state_dict": load_local_state_dict,
+        "state_dict_type": _state_dict_type,
+        "load_state_dict_type": _load_state_dict_type,
         "state_dict_cpu_offload": state_dict_cpu_offload,
         "state_dict_rank0_only": state_dict_rank0_only,
     }
@@ -264,6 +292,11 @@ class FSDPModelingHook(mh.ModelingHook):
         forward_prefetch = (
             self.cfg.FSDP.FORWARD_PREFETCH_OPTION == ForwardPrefetchOption.AUTO
         )
+        _state_dict_type = (
+            StateDictType[self.cfg.FSDP.STATE_DICT_TYPE]
+            if self.cfg.FSDP.STATE_DICT_TYPE
+            else None
+        )
         wrapped_model = build_fsdp(
             model,
             sharding_algorithm=self.cfg.FSDP.ALGORITHM,
@@ -280,6 +313,7 @@ class FSDPModelingHook(mh.ModelingHook):
             amp_autocast_dtype=precision_dtype,
             use_local_state_dict=self.cfg.FSDP.USE_LOCAL_STATE_DICT,
             load_local_state_dict=self.cfg.FSDP.USE_LOCAL_STATE_DICT,
+            state_dict_type=_state_dict_type,
             state_dict_cpu_offload=self.cfg.FSDP.STATE_DICT_CPU_OFFLOAD,
             state_dict_rank0_only=self.cfg.FSDP.STATE_DICT_RANK0_ONLY,
             ignored_modules=ignored_modules,
