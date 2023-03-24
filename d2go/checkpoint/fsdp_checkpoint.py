@@ -12,6 +12,7 @@ from mobile_cv.torch.utils_pytorch.distributed_helper import interleave_by_rank
 
 from torch.distributed.fsdp.fully_sharded_data_parallel import (
     FullyShardedDataParallel as FSDP,
+    StateDictType,
 )
 
 
@@ -47,10 +48,11 @@ class FSDPCheckpointer(QATCheckpointer):
         if isinstance(self.model, FSDPWrapper):
             load_path = path
             if path:
-                # loading path is a directory: sharded local state dict is used
+                # loading path is a directory: local or sharded state dict is used
+                # TODO(T148056077): Make loading sharded state dicts more elegant
                 if self.path_manager.isdir(path):
                     self.logger.info(
-                        "[FSDPCheckpointer] Loading from local checkpoint ..."
+                        "[FSDPCheckpointer] Loading from local or sharded checkpoint ..."
                     )
                     self.model.load_local_state_dict = True
                     load_path = os.path.join(path, f"rank{comm.get_rank()}.pth")
@@ -123,7 +125,6 @@ class FSDPCheckpointer(QATCheckpointer):
             if comm.is_main_process():
                 return super().save(name, **kwargs)
             return
-
         data = {}
         # FSDP: model.state_dict() needs to be called by all ranks before saving
         data["model"] = self.model.state_dict()
@@ -137,7 +138,7 @@ class FSDPCheckpointer(QATCheckpointer):
         data.update(kwargs)
 
         # If using full state dict, only the main process does checkpoint saving; Otherwise, all processes do
-        if self.model.use_local_state_dict:
+        if self.model.state_dict_type != StateDictType.FULL_STATE_DICT:
             # Main process creates directory for local saves
             new_save_dir = os.path.join(self.save_dir, name)
             if comm.is_main_process():
@@ -181,8 +182,10 @@ def gather_optimizer_state_dict(optimizer, model: FSDPWrapper):
     Get full/local optimizer state dict from an FSDP model.
     """
     # FSDP: full_optim_state_dict() needs to be called by all ranks
-    if not model.use_local_state_dict:
+    if model.state_dict_type == StateDictType.FULL_STATE_DICT:
         return FSDP.full_optim_state_dict(model, optimizer, rank0_only=model.rank0_only)
+    elif model.state_dict_type == StateDictType.SHARDED_STATE_DICT:
+        return FSDP.sharded_optim_state_dict(model, optimizer)
     return optimizer.state_dict()
 
 
@@ -191,8 +194,12 @@ def scatter_optimizer_state_dict(optimizer, optim_state_dict, model: FSDPWrapper
     Load a full/local optimizer state dict to a FSDP model.
     If using full state dict, shard and scatter the optimizer state dict before loading
     """
-    if not model.load_local_state_dict:
+    if model.state_dict_type == StateDictType.FULL_STATE_DICT:
         optim_state_dict = FSDP.shard_full_optim_state_dict(optim_state_dict, model)
+    elif model.state_dict_type == StateDictType.SHARDED_STATE_DICT:
+        optim_state_dict = FSDP.flatten_sharded_optim_state_dict(
+            optim_state_dict, model
+        )
     optimizer.load_state_dict(optim_state_dict)
 
 
@@ -201,7 +208,7 @@ def gather_ema_state_dict(ema_state, model: FSDPWrapper):
     Get full/local EMA state dict from an FSDP model.
     If using full state dict, gather local sharded EMA states from all FSDP processes and aggregate them into a full EMA state dict
     """
-    if not model.use_local_state_dict:
+    if model.state_dict_type == StateDictType.FULL_STATE_DICT:
         # Apply local ema states to the model and unshard them
         with ema_state.apply_and_restore(model):
             with FSDP.summon_full_params(
@@ -220,7 +227,7 @@ def scatter_ema_state_dict(ema_state_dict, model: FSDPWrapper):
     Load a full/local EMA state dict to a FSDP model.
     If loading full state dict, ema_state_dict needs to be properly sharded for each FSDP process to store locally
     """
-    if not model.load_local_state_dict:
+    if model.state_dict_type == StateDictType.FULL_STATE_DICT:
         # Store the current model state.
         old_local_state = EMAState.FromModel(model)
 
