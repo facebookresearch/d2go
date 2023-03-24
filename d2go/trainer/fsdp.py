@@ -113,15 +113,11 @@ class FSDPWrapper(FSDP):
         state_dict_type: StateDictType,
         load_state_dict_type: StateDictType,
         amp_autocast_dtype: Optional[torch.dtype] = None,
-        use_local_state_dict: bool = False,
-        load_local_state_dict: bool = False,
         state_dict_cpu_offload: bool = True,
         state_dict_rank0_only: bool = True,
         **fsdp_kwargs,
     ):
         self.precision = amp_autocast_dtype
-        self.use_local_state_dict = use_local_state_dict
-        self.load_local_state_dict = load_local_state_dict
         self.state_dict_type = state_dict_type
         self.load_state_dict_type = load_state_dict_type
         self.offload_to_cpu = state_dict_cpu_offload
@@ -181,6 +177,7 @@ def build_fsdp(
     reduce_dtype: Optional[torch.dtype] = None,
     buffer_dtype: Optional[torch.dtype] = None,
     amp_autocast_dtype: Optional[torch.dtype] = None,
+    # TODO: to remove after migration to state_dict_type completes
     use_local_state_dict: bool = False,
     load_local_state_dict: bool = False,
     state_dict_type: Optional[StateDictType] = None,
@@ -258,8 +255,6 @@ def build_fsdp(
     )
     wrapper_kwargs = {
         "amp_autocast_dtype": amp_autocast_dtype,
-        "use_local_state_dict": use_local_state_dict,
-        "load_local_state_dict": load_local_state_dict,
         "state_dict_type": _state_dict_type,
         "load_state_dict_type": _load_state_dict_type,
         "state_dict_cpu_offload": state_dict_cpu_offload,
