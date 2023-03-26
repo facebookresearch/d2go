@@ -27,7 +27,7 @@ class TestLightningTrainNet(unittest.TestCase):
         return mah.create_detection_cfg(GeneralizedRCNNTask, tmp_dir)
 
     @tempdir
-    @enable_ddp_env
+    @enable_ddp_env()
     def test_train_net_main(self, root_dir):
         """tests the main training entry point."""
         cfg = self._get_cfg(root_dir)
@@ -36,7 +36,7 @@ class TestLightningTrainNet(unittest.TestCase):
         main(cfg, root_dir, GeneralizedRCNNTask)
 
     @tempdir
-    @enable_ddp_env
+    @enable_ddp_env()
     def test_checkpointing(self, tmp_dir):
         """tests saving and loading from checkpoint."""
         cfg = self._get_cfg(tmp_dir)

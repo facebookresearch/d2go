@@ -237,7 +237,7 @@ class TestOptimizer(unittest.TestCase):
             self, optimizer.param_groups[2], num_params=2, lr=1.0, weight_decay=0.0
         )
 
-    @helper.enable_ddp_env
+    @helper.enable_ddp_env()
     def test_create_optimizer_custom_ddp(self):
         class Model(torch.nn.Module):
             def __init__(self):
