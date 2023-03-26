@@ -173,7 +173,7 @@ class TestDefaultRunner(unittest.TestCase):
         )
         self.assertTrue(isinstance(runner, default_runner.Detectron2GoRunner))
 
-    @helper.enable_ddp_env
+    @helper.enable_ddp_env()
     def test_d2go_runner_ema(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             ds_name = create_local_dataset(tmp_dir, 5, 10, 10)
