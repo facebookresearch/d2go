@@ -60,7 +60,12 @@ class VisualizerWrapper(object):
 
         img = per_image["image"].permute(1, 2, 0).cpu().detach().numpy()
         img = utils.convert_image_to_rgb(img, cfg.INPUT.FORMAT)
-        metadata = MetadataCatalog.get(cfg.DATASETS.TRAIN[0])
+
+        if "dataset_name" in input_dict:
+            metadata = MetadataCatalog.get(input_dict["dataset_name"])
+        else:
+            metadata = MetadataCatalog.get(cfg.DATASETS.TRAIN[0])
+
         scale = 2.0
         visualizer = self.visualizer(img, metadata=metadata, scale=scale)
 
