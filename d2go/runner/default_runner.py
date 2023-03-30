@@ -385,7 +385,8 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             )
 
         attach_profilers(cfg, model)
-        prepare_fb_model_for_eval(cfg, model)
+        if is_final:
+            prepare_fb_model_for_eval(cfg, model)
 
         results = OrderedDict()
         results[model_tag] = OrderedDict()
