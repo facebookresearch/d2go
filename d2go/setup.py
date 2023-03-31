@@ -28,6 +28,7 @@ from d2go.distributed import (
 from d2go.runner import BaseRunner, DefaultTask, import_runner, RunnerV2Mixin
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
+from d2go.utils.logging import initialize_logging
 from detectron2.utils.collect_env import collect_env_info
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import setup_logger as _setup_logger
@@ -48,8 +49,7 @@ def setup_root_logger(logging_level: int = logging.DEBUG) -> None:
     See https://docs.python.org/3/library/logging.html for a more in-depth
     description
     """
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging_level)
+    initialize_logging(logging_level)
     _replace_print_with_logging()
 
 
@@ -342,11 +342,9 @@ def setup_logger(
         color=color,
         name=module_name,
         abbrev_name=abbrev_name,
+        enable_propagation=True,
+        configure_stdout=False,
     )
-
-    # NOTE: the root logger might has been configured by other applications,
-    # since this already sub-top level, just don't propagate to root.
-    logger.propagate = False
 
     return logger
 
