@@ -38,7 +38,7 @@ from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem
 logger = logging.getLogger(__name__)
 
 
-def setup_root_logger(logging_level: int = logging.DEBUG) -> None:
+def setup_root_logger(logging_level: int = logging.INFO) -> None:
     """
     Sets up the D2Go root logger. When a new logger is created, it lies in a tree.
     If the logger being used does not have a specific level being specified, it
