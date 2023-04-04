@@ -41,7 +41,7 @@ D2GO_FSDP_WRAP_POLICY_REGISTRY = Registry("D2GO_FSDP_WRAP_POLICY_REGISTRY")
 
 def add_fsdp_configs(_C: CN):
     _C.FSDP = CN()
-    _C.FSDP.ALGORITHM = ""  # 'grad_optim' or 'full'
+    _C.FSDP.ALGORITHM = "grad_optim"  # 'grad_optim', 'full', 'hybrid', 'hybrid_zero2'
 
     # Configs for fully sharded data parallel (fsdp)
     # Check out https://pytorch.org/docs/stable/fsdp.html
