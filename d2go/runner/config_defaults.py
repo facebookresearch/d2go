@@ -72,6 +72,8 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     _C.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
     # Set FP16 gradient compression for DistributedDataParallel.
     _C.MODEL.DDP_FP16_GRAD_COMPRESS = False
+    # Specify the gradients as views
+    _C.MODEL.DDP_GRADIENT_AS_BUCKET_VIEW = False
 
     # Set default optimizer
     _C.SOLVER.OPTIMIZER = "sgd"

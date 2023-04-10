@@ -93,6 +93,7 @@ def main(
                 else [comm.get_local_rank()],
                 broadcast_buffers=False,
                 find_unused_parameters=cfg.MODEL.DDP_FIND_UNUSED_PARAMETERS,
+                gradient_as_bucket_view=cfg.MODEL.DDP_GRADIENT_AS_BUCKET_VIEW,
             )
 
         logger.info("Starting train..")
