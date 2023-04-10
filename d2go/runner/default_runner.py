@@ -548,6 +548,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 data_loader,
                 optimizer,
                 gather_metric_period=cfg.GATHER_METRIC_PERIOD,
+                zero_grad_before_forward=cfg.ZERO_GRAD_BEFORE_FORWARD,
                 grad_scaler=get_grad_scaler(cfg),
                 precision=parse_precision_from_string(
                     cfg.SOLVER.AMP.PRECISION, lightning=False
@@ -560,6 +561,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 data_loader,
                 optimizer,
                 gather_metric_period=cfg.GATHER_METRIC_PERIOD,
+                zero_grad_before_forward=cfg.ZERO_GRAD_BEFORE_FORWARD,
             )
 
         if cfg.SOLVER.AMP.ENABLED and torch.cuda.is_available():

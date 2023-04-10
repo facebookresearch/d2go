@@ -118,6 +118,9 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # Specify whether to perform NUMA binding
     _C.NUMA_BINDING = False
 
+    # Specify whether to zero the gradients before forward
+    _C.ZERO_GRAD_BEFORE_FORWARD = False
+
 
 def _add_rcnn_default_config(_C: CN) -> None:
     _C.EXPORT_CAFFE2 = CN()
