@@ -14,9 +14,11 @@ def gather_optimizer_state_dict(optimizer, model: FSDPWrapper):
     """
     # FSDP: full_optim_state_dict() needs to be called by all ranks
     if model.state_dict_type == StateDictType.FULL_STATE_DICT:
-        return FSDP.full_optim_state_dict(model, optimizer, rank0_only=model.rank0_only)
+        return FSDP.full_optim_state_dict(
+            model, optim=optimizer, rank0_only=model.rank0_only
+        )
     elif model.state_dict_type == StateDictType.SHARDED_STATE_DICT:
-        return FSDP.sharded_optim_state_dict(model, optimizer)
+        return FSDP.sharded_optim_state_dict(model, optim=optimizer)
     return optimizer.state_dict()
 
 
@@ -26,10 +28,12 @@ def scatter_optimizer_state_dict(optimizer, optim_state_dict, model: FSDPWrapper
     If using full state dict, shard and scatter the optimizer state dict before loading
     """
     if model.load_state_dict_type == StateDictType.FULL_STATE_DICT:
-        optim_state_dict = FSDP.shard_full_optim_state_dict(optim_state_dict, model)
+        optim_state_dict = FSDP.shard_full_optim_state_dict(
+            optim_state_dict, model, optim=optimizer
+        )
     elif model.load_state_dict_type == StateDictType.SHARDED_STATE_DICT:
         optim_state_dict = FSDP.flatten_sharded_optim_state_dict(
-            optim_state_dict, model, optimizer
+            optim_state_dict, model, optim=optimizer
         )
     optimizer.load_state_dict(optim_state_dict)
 
