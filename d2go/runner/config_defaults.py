@@ -153,6 +153,8 @@ def get_base_runner_default_cfg(cfg: CN) -> CN:
     cfg.GATHER_METRIC_PERIOD = 1
     # Frequency of metric printer, tensorboard writer, etc.
     cfg.WRITER_PERIOD = 20
+    # Enable async writing metrics to tensorboard and logs to speed up training
+    cfg.ASYNC_WRITE_METRICS = False
 
     # train_net specific arguments, define in runner but used in train_net
     # run evaluation after training is done
