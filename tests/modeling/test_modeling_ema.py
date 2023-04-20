@@ -61,7 +61,17 @@ class TestModelingModelEMA(unittest.TestCase):
         state = ema.EMAState.FromModel(model)
         # two for conv (conv.weight, conv.bias),
         # five for bn (bn.weight, bn.bias, bn.running_mean, bn.running_var, bn.num_batches_tracked)
+        full_state = {
+            "conv.weight",
+            "conv.bias",
+            "bn.weight",
+            "bn.bias",
+            "bn.running_mean",
+            "bn.running_var",
+            "bn.num_batches_tracked",
+        }
         self.assertEqual(len(state.state), 7)
+        self.assertTrue(set(state.state) == full_state)
 
         for _, val in state.state.items():
             self.assertFalse(val.requires_grad)
@@ -71,6 +81,25 @@ class TestModelingModelEMA(unittest.TestCase):
 
         state.apply_to(model1)
         self.assertTrue(_compare_state_dict(model, model1))
+
+        # test ema state that excludes buffers and frozen parameters
+        model.conv.weight.requires_grad = False
+        state1 = ema.EMAState.FromModel(model, include_frozen=False)
+        # should exclude frozen parameter: conv.weight
+        self.assertTrue(full_state - set(state1.state) == {"conv.weight"})
+
+        state2 = ema.EMAState.FromModel(model, include_buffer=False)
+        # should exclude buffers: bn.running_mean, bn.running_var, bn.num_batches_tracked
+        self.assertTrue(
+            full_state - set(state2.state)
+            == {"bn.running_mean", "bn.running_var", "bn.num_batches_tracked"}
+        )
+
+        state3 = ema.EMAState.FromModel(
+            model, include_frozen=False, include_buffer=False
+        )
+        # should exclude frozen param + buffers: conv.weight, bn.running_mean, bn.running_var, bn.num_batches_tracked
+        self.assertTrue(set(state3.state) == {"conv.bias", "bn.weight", "bn.bias"})
 
     def test_emastate_saveload(self):
         model = TestArch()

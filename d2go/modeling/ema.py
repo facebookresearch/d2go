@@ -16,12 +16,14 @@ logger = logging.getLogger(__name__)
 
 
 class EMAState(object):
-    def __init__(self):
+    def __init__(self, include_frozen=True, include_buffer=True):
+        self.include_frozen = include_frozen
+        self.include_buffer = include_buffer
         self.state = {}
 
     @classmethod
-    def FromModel(cls, model: torch.nn.Module, device: str = ""):
-        ret = cls()
+    def FromModel(cls, model: torch.nn.Module, device: str = "", **kwargs):
+        ret = cls(**kwargs)
         ret.save_from(model, device)
         return ret
 
@@ -72,8 +74,12 @@ class EMAState(object):
 
     def get_model_state_iterator(self, model):
         param_iter = model.named_parameters()
-        buffer_iter = model.named_buffers()
-        return itertools.chain(param_iter, buffer_iter)
+        if not self.include_frozen:
+            param_iter = iter((n, v) for n, v in param_iter if v.requires_grad)
+        if self.include_buffer:
+            buffer_iter = model.named_buffers()
+            return itertools.chain(param_iter, buffer_iter)
+        return param_iter
 
     def state_dict(self):
         return self.state
@@ -179,6 +185,10 @@ def add_model_ema_configs(_C):
     _C.MODEL_EMA = type(_C)()
     _C.MODEL_EMA.ENABLED = False
     _C.MODEL_EMA.DECAY = 0.999
+    # Whether to include frozen parameters in EMA
+    _C.MODEL_EMA.INCLUDE_FROZEN = True
+    # Whether to include model buffers in EMA
+    _C.MODEL_EMA.INCLUDE_BUFFER = True
     # use the same as MODEL.DEVICE when empty
     _C.MODEL_EMA.DEVICE = ""
     # When True, loading the ema weight to the model when eval_only=True in build_model()
@@ -204,7 +214,10 @@ def may_build_model_ema(cfg, model):
     assert not hasattr(
         model, "ema_state"
     ), "Name `ema_state` is reserved for model ema."
-    model.ema_state = EMAState()
+    model.ema_state = EMAState(
+        include_frozen=cfg.MODEL_EMA.INCLUDE_FROZEN,
+        include_buffer=cfg.MODEL_EMA.INCLUDE_BUFFER,
+    )
     logger.info("Using Model EMA.")
 
 
