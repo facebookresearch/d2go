@@ -554,6 +554,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                     cfg.SOLVER.AMP.PRECISION, lightning=False
                 ),
                 log_grad_scaler=cfg.SOLVER.AMP.LOG_GRAD_SCALER,
+                async_write_metrics=cfg.ASYNC_WRITE_METRICS,
             )
         else:
             trainer = SimpleTrainer(
@@ -562,6 +563,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 optimizer,
                 gather_metric_period=cfg.GATHER_METRIC_PERIOD,
                 zero_grad_before_forward=cfg.ZERO_GRAD_BEFORE_FORWARD,
+                async_write_metrics=cfg.ASYNC_WRITE_METRICS,
             )
 
         if cfg.SOLVER.AMP.ENABLED and torch.cuda.is_available():
