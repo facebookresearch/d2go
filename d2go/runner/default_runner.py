@@ -339,7 +339,13 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
         return d2_build_lr_scheduler(cfg, optimizer)
 
     def _create_evaluators(
-        self, cfg, dataset_name, output_folder, train_iter, model_tag
+        self,
+        cfg,
+        dataset_name,
+        output_folder,
+        train_iter,
+        model_tag,
+        model=None,
     ):
         evaluator = self.get_evaluator(cfg, dataset_name, output_folder=output_folder)
 
@@ -400,7 +406,14 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             data_loader = self.build_detection_test_loader(cfg, dataset_name)
 
             evaluator = self._create_evaluators(
-                cfg, dataset_name, output_folder, train_iter, model_tag
+                cfg,
+                dataset_name,
+                output_folder,
+                train_iter,
+                model_tag,
+                model.module
+                if isinstance(model, nn.parallel.DistributedDataParallel)
+                else model,
             )
 
             results_per_dataset = inference_on_dataset(model, data_loader, evaluator)
