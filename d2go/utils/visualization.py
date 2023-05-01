@@ -101,8 +101,10 @@ class VisualizerWrapper(object):
         visualizer = self.visualizer(image, metadata=MetadataCatalog.get(dataset_name))
 
         if "panoptic_seg" in output_dict:
-            # NOTE: refer to https://fburl.com/diffusion/evarrhbh
-            raise NotImplementedError()
+            panoptic_seg, segments_info = output_dict["panoptic_seg"]
+            visualizer.draw_panoptic_seg_predictions(
+                panoptic_seg.to("cpu"), segments_info
+            )
         if "instances" in output_dict:
             visualizer.draw_instance_predictions(output_dict["instances"].to("cpu"))
         if "sem_seg" in output_dict:
