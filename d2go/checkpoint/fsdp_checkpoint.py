@@ -13,10 +13,14 @@ from d2go.checkpoint.utils import (
 )
 from d2go.quantization.modeling import QATCheckpointer
 from d2go.trainer.fsdp import FSDPWrapper
+from d2go.utils.misc import _log_api_usage_on_main_process
 
 from mobile_cv.torch.utils_pytorch.distributed_helper import interleave_by_rank
 
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
+
+
+LOG_API_IDENTIFIER = "checkpointing.FSDPCheckpointer"
 
 
 def get_max_checkpoint_concurrency() -> int:
@@ -60,19 +64,21 @@ class FSDPCheckpointer(QATCheckpointer):
                     )
 
                     assert state_dict_type in ["LOCAL_STATE_DICT", "SHARDED_STATE_DICT"]
-                    type_str = "local" if "LOCAL_STATE_DICT" else "sharded"
                     self.logger.info(
-                        f"[FSDPCheckpointer] Loading from {type_str} checkpoint ..."
+                        f"[FSDPCheckpointer] Loading from {state_dict_type} checkpoint ..."
                     )
                     self.model.load_state_dict_type = StateDictType[state_dict_type]
                     load_path = os.path.join(path, f"rank{comm.get_rank()}.pth")
                 # loading path is a file: full global state dict is used
                 else:
                     self.logger.info(
-                        "[FSDPCheckpointer] Loading from full checkpoint ..."
+                        "[FSDPCheckpointer] Loading from FULL_STATE_DICT checkpoint ..."
                     )
                     self.model.load_state_dict_type = StateDictType.FULL_STATE_DICT
 
+            _log_api_usage_on_main_process(
+                f"{LOG_API_IDENTIFIER}.load.fsdp.{self.model.load_state_dict_type.name}"  # pyre-ignore
+            )
             # Convert local ckpt to global ckpt when we load from a local ckpt but want to save to global ckpt
             convert_local_ckpt_to_global = (
                 path
@@ -121,6 +127,7 @@ class FSDPCheckpointer(QATCheckpointer):
             # return all remaining checkpoints
             return checkpoint
         else:
+            _log_api_usage_on_main_process(f"{LOG_API_IDENTIFIER}.load.ddp")
             return super().load(path, checkpointables=checkpointables)
 
     def save(self, name: str, tag_last_ckpt=True, **kwargs) -> None:
@@ -131,9 +138,15 @@ class FSDPCheckpointer(QATCheckpointer):
         # If no sharding, only the main process enters the saving codepath;
         # otherwise, all processes need to call state_dict() to enable state broadcasting among ranks
         if not isinstance(self.model, FSDPWrapper):
+            _log_api_usage_on_main_process(f"{LOG_API_IDENTIFIER}.save.ddp")
             if comm.is_main_process():
                 return super().save(name, **kwargs)
             return
+
+        _log_api_usage_on_main_process(
+            f"{LOG_API_IDENTIFIER}.save.fsdp.{self.model.state_dict_type.name}"
+        )
+
         data = {}
         # FSDP: model.state_dict() needs to be called by all ranks before saving
         data["model"] = self.model.state_dict()
