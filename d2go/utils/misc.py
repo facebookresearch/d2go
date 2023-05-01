@@ -129,6 +129,14 @@ def _log_api_usage(identifier: str):
     torch._C._log_api_usage_once("d2go." + identifier)
 
 
+def _log_api_usage_on_main_process(identifier: str):
+    """
+    Log the usage of d2go API only on the main process.
+    """
+    if comm.is_main_process():
+        _log_api_usage(identifier)
+
+
 def inplace_delegate(
     self,
     api_name: str,
