@@ -111,7 +111,7 @@ class AbnormalLossChecker(object):
         all_info = {
             "losses": losses,
             "data": data,
-            "model": model.module if hasattr(model, "module") else model,
+            "model": getattr(model, "module", model),
             "prev_loss": self.prev_loss,
             "step": self.prev_index + 1,
         }
