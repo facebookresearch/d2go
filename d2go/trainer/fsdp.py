@@ -55,10 +55,10 @@ def add_fsdp_configs(_C: CN):
     # A list of layer cls names to wrap, case sensitive
     _C.FSDP.AUTO_WRAP_LAYER_CLS = []
     # Whether to use local state dict -- superseded by STATE_DICT_TYPE
-    _C.FSDP.USE_LOCAL_STATE_DICT = False
+    _C.FSDP.USE_LOCAL_STATE_DICT = True
     # State dict type to use when calling FSDPWrapper.state_dict() (used when saving).
     # If None, defaults to checking the value of USE_LOCAL_STATE_DICT
-    _C.FSDP.STATE_DICT_TYPE = None
+    _C.FSDP.STATE_DICT_TYPE = "SHARDED_STATE_DICT"
     # Whether to offload state dict to cpu
     _C.FSDP.STATE_DICT_CPU_OFFLOAD = False
     # Whether to materialize state dict on rank 0
