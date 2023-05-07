@@ -5,6 +5,8 @@ from typing import Callable, cast, IO
 
 import detectron2.utils.comm as comm
 import torch
+
+from d2go.checkpoint.checkpoint_instrumentation import instrument_checkpoint
 from d2go.checkpoint.utils import (
     gather_ema_state_dict,
     gather_optimizer_state_dict,
@@ -45,6 +47,7 @@ class FSDPCheckpointer(QATCheckpointer):
     def is_distributed(self) -> bool:
         return True
 
+    @instrument_checkpoint("load")
     def load(self, path: str, checkpointables=None):
         """
         Add support for loading sharded optimizer states in FSDP.
@@ -130,6 +133,7 @@ class FSDPCheckpointer(QATCheckpointer):
             _log_api_usage_on_main_process(f"{LOG_API_IDENTIFIER}.load.ddp")
             return super().load(path, checkpointables=checkpointables)
 
+    @instrument_checkpoint("save")
     def save(self, name: str, tag_last_ckpt=True, **kwargs) -> None:
         """
         Add support for saving sharding models and optimizers.
