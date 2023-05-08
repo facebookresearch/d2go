@@ -21,5 +21,5 @@ def get_prepare_fx_fn(cfg, is_qat):
 
 
 @fb_overwritable()
-def get_convert_fx_fn(cfg, example_inputs):
+def get_convert_fx_fn(cfg, example_inputs, qconfig_mapping=None, backend_config=None):
     return convert_fx
