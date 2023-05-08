@@ -141,6 +141,8 @@ def add_quantization_default_configs(_C):
     _C.QUANTIZATION.MODULES = []
     # Lightning quantization callback name
     _C.QUANTIZATION.NAME = ""
+    _C.QUANTIZATION.ACT_BITS = 8
+    _C.QUANTIZATION.WEIGHT_BITS = 8
 
     # quantization-aware training
     _C.QUANTIZATION.QAT = CfgNode()
