@@ -3,12 +3,10 @@
 
 
 import argparse
-import builtins
 import logging
 import os
-import sys
 import time
-from typing import Any, List, Optional, Tuple, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 
 import detectron2.utils.comm as comm
 import torch
@@ -28,7 +26,7 @@ from d2go.distributed import (
 from d2go.runner import BaseRunner, DefaultTask, import_runner, RunnerV2Mixin
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
-from d2go.utils.logging import initialize_logging
+from d2go.utils.logging import initialize_logging, replace_print_with_logging
 from detectron2.utils.collect_env import collect_env_info
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import setup_logger as _setup_logger
@@ -51,33 +49,7 @@ def setup_root_logger(logging_level: int = logging.INFO) -> None:
     description
     """
     initialize_logging(logging_level)
-    _replace_print_with_logging()
-
-
-def _replace_print_with_logging() -> None:
-    builtin_print = builtins.print
-
-    def _print(
-        *objects: Any,
-        sep: Optional[str] = " ",
-        end: Optional[str] = "\n",
-        file: Optional[Any] = None,
-        flush: bool = False,
-    ) -> None:
-        # Mimicking the behavior of Python's built-in print function.
-        if sep is None:
-            sep = " "
-        if end is None:
-            end = "\n"
-
-        # Don't replace prints to files.
-        if file is not None and file != sys.stdout and file != sys.stderr:
-            builtin_print(*objects, sep=sep, end=end, file=file, flush=flush)
-            return
-
-        logging.info(sep.join(map(str, objects)), stacklevel=3)
-
-    builtins.print = _print
+    replace_print_with_logging()
 
 
 def basic_argument_parser(
