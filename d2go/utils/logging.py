@@ -3,6 +3,9 @@
 import builtins
 import logging
 import sys
+import time
+import uuid
+from contextlib import ContextDecorator
 from typing import Any, Optional
 
 from mobile_cv.common.misc.oss_utils import fb_overwritable
@@ -47,3 +50,48 @@ def _print_to_logging(
         return
 
     logging.info(sep.join(map(str, objects)), stacklevel=3)
+
+
+@fb_overwritable()
+def _log_enter(category: str, name: str, unique_id: str) -> None:
+    logging.info(f"Entering logging context, {category=}, {name=}, {unique_id=}")
+
+
+@fb_overwritable()
+def _log_exit(category: str, name: str, unique_id: str, duration: float) -> None:
+    logging.info(
+        f"Exiting logging context, {category=}, {name=}, {unique_id=}, {duration=}"
+    )
+
+
+class log_interval(ContextDecorator):
+    def __init__(
+        self, category: Optional[str] = None, name: Optional[str] = None
+    ) -> None:
+        super().__init__()
+        self._unique_id = uuid.uuid1().int >> 97
+        self._category = category
+        self._name = name
+        self._start = 0
+
+    def __call__(self, func):
+        if self._category is None:
+            self._category = func.__qualname__.split(".")[0]
+        if self._name is None:
+            self._name = func.__name__
+
+        return super().__call__(func)
+
+    def __enter__(self) -> "log_interval":
+        _log_enter(self._category, self._name, self._unique_id)
+        self._start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb) -> bool:
+        _log_exit(
+            self._category,
+            self._name,
+            self._unique_id,
+            time.perf_counter() - self._start,
+        )
+        return True
