@@ -295,6 +295,12 @@ def setup_after_launch(
     # scale the config after dumping so that dumped config files keep original world size
     auto_scale_world_size(cfg, new_world_size=comm.get_world_size())
 
+    # avoid random pytorch and CUDA algorithms during the training
+    if cfg.SOLVER.DETERMINISTIC:
+        logging.warning("Using deterministic training for the reproducibility")
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True)
+
     return runner
 
 

@@ -90,6 +90,7 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     _C.SOLVER.BETAS = (0.9, 0.999)
     _C.SOLVER.EPS = 1e-08
     _C.SOLVER.FUSED = False
+    _C.SOLVER.DETERMINISTIC = False
 
     # RECOMPUTE_BOXES for LSJ Training
     _C.INPUT.RECOMPUTE_BOXES = False
@@ -122,6 +123,9 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
 
     # Specify whether to zero the gradients before forward
     _C.ZERO_GRAD_BEFORE_FORWARD = False
+
+    # Whether to enforce rebuilding data loaders for datasets that have expiration
+    _C.DATALOADER.ENFORE_EXPIRATION = False
 
 
 def _add_rcnn_default_config(_C: CN) -> None:
