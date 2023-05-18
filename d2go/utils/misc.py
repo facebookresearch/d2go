@@ -92,9 +92,11 @@ def dump_trained_model_configs(
         config_file = os.path.join(trained_model_config_dir, "{}.yaml".format(name))
         trained_model_configs[name] = config_file
         if comm.is_main_process():
-            logger.info("Dump trained config file: {}".format(config_file))
+            logger.info("Dumping trained config file: {}".format(config_file))
             with PathManager.open(config_file, "w") as f:
                 f.write(trained_cfg.dump())
+        comm.synchronize()
+        logger.info("Finished dumping trained config file")
     return trained_model_configs
 
 
