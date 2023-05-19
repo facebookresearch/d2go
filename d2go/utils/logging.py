@@ -5,14 +5,16 @@ import logging
 import sys
 import time
 import uuid
-from contextlib import ContextDecorator
-from typing import Any, Optional
+from functools import wraps
+from typing import Any, Callable, Optional, TypeVar
 
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 
 # Saving the builtin print to wrap it up later.
 BUILTIN_PRINT = builtins.print
+
+_T = TypeVar("_T")
 
 
 @fb_overwritable()
@@ -64,34 +66,27 @@ def _log_exit(category: str, name: str, unique_id: str, duration: float) -> None
     )
 
 
-class log_interval(ContextDecorator):
-    def __init__(
-        self, category: Optional[str] = None, name: Optional[str] = None
-    ) -> None:
-        super().__init__()
-        self._unique_id = uuid.uuid1().int >> 97
-        self._category = category
-        self._name = name
-        self._start = 0
+def log_interval(
+    category: Optional[str] = None, name: Optional[str] = None
+) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
 
-    def __call__(self, func):
-        if self._category is None:
-            self._category = func.__qualname__.split(".")[0]
-        if self._name is None:
-            self._name = func.__name__
+    _unique_id = uuid.uuid1().int >> 97
+    _overwrite_category = category
+    _overwrite_name = name
 
-        return super().__call__(func)
+    def log_interval_deco(func: Callable[..., _T]) -> Callable[..., _T]:
 
-    def __enter__(self) -> "log_interval":
-        _log_enter(self._category, self._name, self._unique_id)
-        self._start = time.perf_counter()
-        return self
+        _category = _overwrite_category or func.__qualname__.split(".")[0]
+        _name = _overwrite_name or func.__name__
 
-    def __exit__(self, exc_type, exc_value, tb) -> bool:
-        _log_exit(
-            self._category,
-            self._name,
-            self._unique_id,
-            time.perf_counter() - self._start,
-        )
-        return True
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> _T:
+            _log_enter(_category, _name, _unique_id)
+            _start = time.perf_counter()
+            ret = func(*args, **kwargs)
+            _log_exit(_category, _name, _unique_id, time.perf_counter() - _start)
+            return ret
+
+        return wrapper
+
+    return log_interval_deco
