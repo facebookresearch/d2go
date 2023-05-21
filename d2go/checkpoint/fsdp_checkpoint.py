@@ -29,6 +29,10 @@ def get_max_checkpoint_concurrency() -> int:
     return comm.get_world_size()
 
 
+def get_max_checkpoint_concurrency() -> int:
+    return comm.get_world_size()
+
+
 # TODO: replace FSDPCheckpointer with central D2GoCheckpointer
 class FSDPCheckpointer(QATCheckpointer):
     """
