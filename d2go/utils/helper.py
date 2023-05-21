@@ -21,7 +21,7 @@ from detectron2.evaluation import (
     PascalVOCDetectionEvaluator,
     SemSegEvaluator,
 )
-from detectron2.utils.events import TensorboardXWriter
+from detectron2.utils.events import TensorBoardXWriter
 from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 T = TypeVar("T")
@@ -33,7 +33,7 @@ __all__ = [
     "run_once",
     "retryable",
     "get_dir_path",
-    "TensorboardXWriter",  # TODO: move to D2Go's vis utils if needed
+    "TensorBoardXWriter",  # TODO: move to D2Go's vis utils if needed
     "D2Trainer",  # TODO: move to trainer folder
 ]
 

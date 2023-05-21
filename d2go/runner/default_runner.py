@@ -39,7 +39,7 @@ from d2go.runner.training_hooks import update_hooks_from_registry
 from d2go.trainer.fsdp import get_grad_scaler
 from d2go.trainer.helper import parse_precision_from_string
 from d2go.utils.flop_calculator import attach_profilers
-from d2go.utils.helper import D2Trainer, TensorboardXWriter
+from d2go.utils.helper import D2Trainer, TensorBoardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
@@ -72,7 +72,7 @@ ALL_TB_WRITERS = []
 
 @lru_cache()
 def _get_tbx_writer(log_dir, window_size=20):
-    ret = TensorboardXWriter(log_dir, window_size=window_size)
+    ret = TensorBoardXWriter(log_dir, window_size=window_size)
     ALL_TB_WRITERS.append(ret)
     return ret
 
