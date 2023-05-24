@@ -7,11 +7,10 @@ from typing import Any, List, Tuple, Union
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
 import torch
+from d2go.data.transforms.build import _json_load, TRANSFORM_OP_REGISTRY
 from detectron2.config import CfgNode
 from detectron2.data.transforms.transform import Transform
 from detectron2.structures.boxes import Boxes
-
-from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 def get_box_union(boxes: Boxes):

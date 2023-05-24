@@ -7,7 +7,7 @@ from d2go.config import CfgNode
 
 from d2go.utils.gpu_memory_profiler import log_memory_snapshot, record_memory_history
 
-from detectron2.engine import HookBase
+from detectron2.engine.train_loop import HookBase
 from detectron2.utils.registry import Registry
 
 

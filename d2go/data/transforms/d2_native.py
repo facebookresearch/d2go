@@ -6,11 +6,10 @@ import logging
 from typing import List, Optional, Union
 
 import detectron2.data.transforms.augmentation as aug
+from d2go.data.transforms.build import _json_load, TRANSFORM_OP_REGISTRY
 from detectron2.config import CfgNode
 from detectron2.data import transforms as d2T
 from detectron2.projects.point_rend import ColorAugSSDTransform
-
-from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 logger = logging.getLogger(__name__)
 

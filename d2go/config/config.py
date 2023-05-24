@@ -8,10 +8,9 @@ from typing import List
 
 import mock
 import yaml
+from d2go.config.utils import reroute_config_path, resolve_default_config
 from detectron2.config import CfgNode as _CfgNode
 from fvcore.common.registry import Registry
-
-from .utils import reroute_config_path, resolve_default_config
 
 logger = logging.getLogger(__name__)
 

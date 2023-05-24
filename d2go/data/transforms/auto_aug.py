@@ -7,11 +7,11 @@ from typing import List, Optional, Union
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
 import torchvision.transforms as tvtf
+
+from d2go.data.transforms.build import _json_load, TRANSFORM_OP_REGISTRY
 from d2go.data.transforms.tensor import Array2Tensor, Tensor2Array
 from detectron2.config import CfgNode
 from fvcore.transforms.transform import Transform
-
-from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 class ToTensorWrapper:

@@ -11,12 +11,11 @@ from collections import defaultdict
 from typing import Callable, Dict, List, Optional
 
 import detectron2.utils.comm as comm
+from d2go.data.cache_util import _cache_json_file
 from detectron2.data import MetadataCatalog
 from detectron2.structures import BoxMode
 from detectron2.utils.file_io import PathManager
 from pycocotools.coco import COCO
-
-from .cache_util import _cache_json_file
 
 
 logger = logging.getLogger(__name__)

@@ -5,15 +5,14 @@
 import math
 from typing import Any, List, Optional, Tuple, Union
 
+import d2go.data.transforms.box_utils as bu
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
+from d2go.data.transforms.build import _json_load, TRANSFORM_OP_REGISTRY
 from detectron2.config import CfgNode
-from detectron2.data.transforms import ExtentTransform
+from detectron2.data.transforms.transform import ExtentTransform
 from detectron2.structures import BoxMode
 from fvcore.transforms.transform import CropTransform, NoOpTransform, Transform
-
-from . import box_utils as bu
-from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 class CropBoundary(aug.Augmentation):
