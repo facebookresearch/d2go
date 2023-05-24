@@ -6,12 +6,11 @@ from typing import Callable, List, Union
 
 import detectron2.data.transforms.augmentation as aug
 import numpy as np
+from d2go.data.transforms.build import _json_load, TRANSFORM_OP_REGISTRY
 from detectron2.config import CfgNode
 from detectron2.data import detection_utils as du
 from detectron2.data.transforms.transform import Transform
 from fvcore.transforms.transform import BlendTransform
-
-from .build import _json_load, TRANSFORM_OP_REGISTRY
 
 
 class InvertibleColorTransform(Transform):

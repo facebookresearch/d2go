@@ -54,7 +54,8 @@ from detectron2.data import (
     build_detection_train_loader as d2_build_detection_train_loader,
     MetadataCatalog,
 )
-from detectron2.engine import AMPTrainer, hooks, SimpleTrainer
+from detectron2.engine import hooks
+from detectron2.engine.train_loop import AMPTrainer, SimpleTrainer
 from detectron2.evaluation import (
     COCOEvaluator,
     DatasetEvaluators,

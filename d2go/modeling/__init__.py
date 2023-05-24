@@ -3,4 +3,4 @@
 
 
 # NOTE: making necessary imports to register with Registery
-from . import backbone, meta_arch, modeldef  # noqa  # noqa  # noqa
+from d2go.modeling import backbone, meta_arch, modeldef  # noqa  # noqa  # noqa

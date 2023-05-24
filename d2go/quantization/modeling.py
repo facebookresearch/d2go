@@ -10,15 +10,17 @@ from typing import Tuple
 import detectron2.utils.comm as comm
 import torch
 from d2go.quantization import learnable_qat
+from d2go.quantization.fx import get_convert_fx_fn, get_prepare_fx_fn
+from d2go.quantization.qconfig import (
+    set_backend_and_create_qconfig,
+    smart_decode_backend,
+)
 from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.engine import HookBase, SimpleTrainer
+from detectron2.engine.train_loop import HookBase, SimpleTrainer
 from detectron2.utils.file_io import PathManager
 from mobile_cv.arch.quantization.observer import update_stat as observer_update_stat
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
-
-from .fx import get_convert_fx_fn, get_prepare_fx_fn
-from .qconfig import set_backend_and_create_qconfig, smart_decode_backend
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):

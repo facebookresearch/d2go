@@ -2,4 +2,4 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 # enable registry
-from . import torchscript  # noqa
+from d2go.export import torchscript  # noqa

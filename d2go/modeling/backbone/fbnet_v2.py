@@ -9,6 +9,14 @@ from typing import List
 
 import torch
 import torch.nn as nn
+from d2go.modeling.backbone.modules import (
+    KeypointRCNNConvUpsamplePredictorNoUpscale,
+    KeypointRCNNIRFPredictorNoUpscale,
+    KeypointRCNNPredictor,
+    KeypointRCNNPredictorNoUpscale,
+    MaskRCNNConv1x1Predictor,
+    RPNHeadConvRegressor,
+)
 from d2go.modeling.modeldef.fbnet_modeldef_registry import FBNetV2ModelArch
 from detectron2.layers import ShapeSpec
 from detectron2.modeling import (
@@ -22,15 +30,6 @@ from detectron2.modeling.roi_heads import box_head, keypoint_head, mask_head
 from detectron2.utils.logger import log_first_n
 from mobile_cv.arch.fbnet_v2 import fbnet_builder as mbuilder
 from mobile_cv.arch.utils.helper import format_dict_expanding_list_values
-
-from .modules import (
-    KeypointRCNNConvUpsamplePredictorNoUpscale,
-    KeypointRCNNIRFPredictorNoUpscale,
-    KeypointRCNNPredictor,
-    KeypointRCNNPredictorNoUpscale,
-    MaskRCNNConv1x1Predictor,
-    RPNHeadConvRegressor,
-)
 
 
 logger = logging.getLogger(__name__)

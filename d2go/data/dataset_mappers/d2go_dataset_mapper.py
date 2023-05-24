@@ -7,6 +7,7 @@ import logging
 
 import numpy as np
 import torch
+from d2go.data.dataset_mappers.build import D2GO_DATA_MAPPER_REGISTRY
 from d2go.data.dataset_mappers.data_reading import (
     read_image_with_prefetch,
     read_sem_seg_file_with_prefetch,
@@ -14,8 +15,6 @@ from d2go.data.dataset_mappers.data_reading import (
 from d2go.utils.helper import retryable
 from detectron2.data import detection_utils as utils, transforms as T
 from detectron2.data.transforms.augmentation import AugInput, AugmentationList
-
-from .build import D2GO_DATA_MAPPER_REGISTRY
 
 logger = logging.getLogger(__name__)
 

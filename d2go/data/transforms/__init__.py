@@ -3,5 +3,13 @@
 
 
 # import all modules to make sure Registry works
-# @fb-only: from . import fb  # isort:skip  # noqa 
-from . import affine, auto_aug, blur, box_utils, color_yuv, crop, d2_native  # noqa
+# @fb-only: from d2go.data.transforms import fb  # isort:skip  # noqa 
+from d2go.data.transforms import (  # noqa
+    affine,
+    auto_aug,
+    blur,
+    box_utils,
+    color_yuv,
+    crop,
+    d2_native,
+)

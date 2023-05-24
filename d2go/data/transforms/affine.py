@@ -9,10 +9,11 @@ from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 import torchvision.transforms as T
+from d2go.data.transforms.build import TRANSFORM_OP_REGISTRY
 from detectron2.config import CfgNode
-from detectron2.data.transforms import NoOpTransform, Transform, TransformGen
 
-from .build import TRANSFORM_OP_REGISTRY
+from detectron2.data.transforms.augmentation import TransformGen
+from fvcore.transforms.transform import NoOpTransform, Transform
 
 
 class AffineTransform(Transform):

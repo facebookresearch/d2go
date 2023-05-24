@@ -8,10 +8,10 @@ import cv2
 import detectron2.data.transforms.augmentation as aug
 
 import numpy as np
+from d2go.data.transforms.build import _json_load, TRANSFORM_OP_REGISTRY
 from detectron2.config import CfgNode
-from detectron2.data.transforms import NoOpTransform, Transform
 
-from .build import _json_load, TRANSFORM_OP_REGISTRY
+from fvcore.transforms.transform import NoOpTransform, Transform
 
 
 class LocalizedBoxMotionBlurTransform(Transform):

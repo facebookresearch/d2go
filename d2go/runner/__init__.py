@@ -5,11 +5,14 @@
 import importlib
 from typing import Optional, Type, Union
 
-from .api import RunnerV2Mixin
-from .default_runner import BaseRunner, Detectron2GoRunner, GeneralizedRCNNRunner
-from .lightning_task import DefaultTask
-from .training_hooks import TRAINER_HOOKS_REGISTRY
-
+from d2go.runner.api import RunnerV2Mixin
+from d2go.runner.default_runner import (
+    BaseRunner,
+    Detectron2GoRunner,
+    GeneralizedRCNNRunner,
+)
+from d2go.runner.lightning_task import DefaultTask
+from d2go.runner.training_hooks import TRAINER_HOOKS_REGISTRY
 
 __all__ = [
     "RunnerV2Mixin",

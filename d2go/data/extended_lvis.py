@@ -5,11 +5,10 @@
 import logging
 import os
 
+from d2go.data.extended_coco import _cache_json_file
 from detectron2.data import MetadataCatalog
 from detectron2.structures import BoxMode
 from fvcore.common.timer import Timer
-
-from .extended_coco import _cache_json_file
 
 """
 This file contains functions to parse LVIS-format annotations into dicts in the
