@@ -15,7 +15,7 @@ def add_memory_profiler_configs(_C: CN):
     _C.MEMORY_PROFILER = CN()
     _C.MEMORY_PROFILER.ENABLED = False
     # max number of trace entries in memory snapshot
-    _C.MEMORY_PROFILER.MAX_ENTRIES = 1000000
+    _C.MEMORY_PROFILER.TRACE_MAX_ENTRIES = 1000000
     # Configs to be used by d2go.utils.gpu_memory_profiler.D2GoGpuMemorySnapshot
     # determine the number of iterations to log memory snapshots for
     _C.MEMORY_PROFILER.LOG_N_STEPS = 3
