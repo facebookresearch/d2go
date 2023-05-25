@@ -29,6 +29,7 @@ from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment
 from d2go.utils.logging import initialize_logging, replace_print_with_logging
 from detectron2.utils.collect_env import collect_env_info
+from detectron2.utils.env import seed_all_rng
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import setup_logger as _setup_logger
 from detectron2.utils.serialize import PicklableWrapper
@@ -301,6 +302,11 @@ def setup_after_launch(
         logging.warning("Using deterministic training for the reproducibility")
         torch.backends.cudnn.benchmark = False
         torch.use_deterministic_algorithms(True)
+        # reference: https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
+    if cfg.SEED > 0:
+        seed_all_rng(cfg.SEED)
 
     return runner
 
