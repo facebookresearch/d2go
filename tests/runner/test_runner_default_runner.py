@@ -40,7 +40,7 @@ class MetaArchForTest(torch.nn.Module):
             return self.inference(inputs)
 
         images = [x["image"] for x in inputs]
-        images = ImageList.from_tensors(images, 1)
+        images = ImageList.from_tensors(images, 1).to(self.device)
         ret = self.conv(images.tensor)
         ret = self.bn(ret)
         ret = self.relu(ret)
