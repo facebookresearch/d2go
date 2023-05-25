@@ -8,7 +8,6 @@ import warnings
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, Optional
 
-# @manual=//vision/fair/detectron2/detectron2:detectron2
 import detectron2.utils.comm as comm
 import torch
 from d2go.config import CfgNode
