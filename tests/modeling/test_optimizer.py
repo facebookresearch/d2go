@@ -7,7 +7,7 @@ import unittest
 
 import d2go.runner.default_runner as default_runner
 import torch
-from d2go.optimizer import build_optimizer_mapper
+from d2go.optimizer.build import build_optimizer_mapper
 from d2go.utils.testing import helper
 
 

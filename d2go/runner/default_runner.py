@@ -28,7 +28,7 @@ from d2go.evaluation.evaluator import inference_on_dataset
 from d2go.modeling import ema, kmeans_anchors
 from d2go.modeling.api import build_d2go_model
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
-from d2go.optimizer import build_optimizer_mapper
+from d2go.optimizer.build import build_optimizer_mapper
 from d2go.quantization.modeling import QATHook, setup_qat_model
 from d2go.runner.config_defaults import (
     get_base_runner_default_cfg,

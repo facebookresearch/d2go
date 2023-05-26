@@ -14,7 +14,7 @@ from d2go.data.datasets import inject_coco_datasets, register_dynamic_datasets
 from d2go.data.utils import update_cfg_if_using_adhoc_dataset
 from d2go.modeling.api import build_meta_arch
 from d2go.modeling.model_freezing_utils import set_requires_grad
-from d2go.optimizer import build_optimizer_mapper
+from d2go.optimizer.build import build_optimizer_mapper
 from d2go.runner.api import RunnerV2Mixin
 from d2go.runner.callbacks.quantization import maybe_prepare_for_quantization, PREPARED
 from d2go.runner.default_runner import (
