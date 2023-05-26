@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import torch
-from d2go.quantization import learnable_qat
+from d2go.quantization.learnable_qat import convert_to_learnable_qconfig
 from mobile_cv.common.misc.registry import Registry
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
@@ -69,7 +69,7 @@ def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
         backend=backend, is_qat=is_train, use_symmetric=is_symmetric
     )
     if is_train and qat_method == "learnable":
-        qconfig = learnable_qat.convert_to_learnable_qconfig(qconfig)
+        qconfig = convert_to_learnable_qconfig(qconfig)
 
     return qconfig
 
