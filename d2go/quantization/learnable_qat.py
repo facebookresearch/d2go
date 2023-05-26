@@ -4,8 +4,8 @@ from functools import partial
 
 import torch
 import torch.distributed as dist
+from d2go.utils.parse_module_params import iterate_module_named_parameters
 from torch.ao.quantization._learnable_fake_quantize import _LearnableFakeQuantize
-
 
 logger = logging.getLogger(__name__)
 
@@ -40,21 +40,6 @@ def check_for_learnable_fake_quant_ops(qat_method, model):
             raise Exception(
                 "No learnable fake quant is used for learnable quantzation, please use d2go.quantization.learnable_qat.get_learnable_qat_qconfig() to get proper qconfig"
             )
-
-
-def iterate_module_named_parameters(model, check_requires_grad=True):
-    """Iterate over all parameters for the model"""
-    memo = set()
-    for module_name, module in model.named_modules():
-        for module_param_name, value in module.named_parameters(recurse=False):
-            if check_requires_grad and not value.requires_grad:
-                continue
-            # Avoid duplicating parameters
-            if value in memo:
-                continue
-            memo.add(value)
-
-            yield module_name, module, module_param_name, value
 
 
 def convert_to_learnable_qconfig(qconfig):

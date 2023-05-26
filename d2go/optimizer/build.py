@@ -5,9 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 import torch
-
-# FIXME: optimizer should not depend on quantization (or vice versa)
-from d2go.quantization.learnable_qat import iterate_module_named_parameters
+from d2go.utils.parse_module_params import iterate_module_named_parameters
 from detectron2.solver.build import (
     maybe_add_gradient_clipping as d2_maybe_add_gradient_clipping,
     reduce_param_groups,
