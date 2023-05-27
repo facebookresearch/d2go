@@ -24,7 +24,6 @@ from d2go.data.utils import (
     maybe_subsample_n_images,
     update_cfg_if_using_adhoc_dataset,
 )
-from d2go.distributed import D2GoSharedContext
 from d2go.evaluation.evaluator import inference_on_dataset
 from d2go.modeling import ema, kmeans_anchors
 from d2go.modeling.api import build_d2go_model
@@ -190,7 +189,7 @@ class BaseRunner(object):
         pass
 
     @classmethod
-    def create_shared_context(cls, cfg) -> D2GoSharedContext:
+    def create_shared_context(cls, cfg):
         """
         Override `create_shared_context` in order to run customized code to create distributed shared context that can be accessed by all workers
         """
