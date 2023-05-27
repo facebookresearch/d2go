@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, Iterator, Optional
 
 import detectron2.utils.comm as comm
 import torch
-from d2go.config import CfgNode
+from d2go.config.config import CfgNode
 from d2go.utils.tensorboard_log_util import get_tensorboard_log_dir  # noqa: forwarding
 from detectron2.utils.file_io import PathManager
 from tabulate import tabulate
