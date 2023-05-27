@@ -10,7 +10,7 @@ from typing import Dict
 
 import torch
 from d2go.config import CfgNode
-from d2go.data.dataset_mappers import build_dataset_mapper
+from d2go.data.dataset_mappers.build import build_dataset_mapper
 from d2go.data.utils import ClipLengthGroupedDataset
 from detectron2.data import (
     build_batch_data_loader,
