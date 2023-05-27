@@ -8,7 +8,8 @@ from typing import Any, Dict, List
 import numpy as np
 import torch
 from d2go.config import CfgNode as CN
-from d2go.data.dataset_mappers import D2GO_DATA_MAPPER_REGISTRY, D2GoDatasetMapper
+from d2go.data.dataset_mappers.build import D2GO_DATA_MAPPER_REGISTRY
+from d2go.data.dataset_mappers.d2go_dataset_mapper import D2GoDatasetMapper
 from detectron2.layers import cat
 from detectron2.modeling import ROI_HEADS_REGISTRY, StandardROIHeads
 from detectron2.utils.registry import Registry
