@@ -13,7 +13,6 @@ from d2go.modeling import modeling_hook as mh
 from d2go.modeling.distillation import (
     _build_teacher,
     _set_device,
-    add_distillation_configs,
     BaseDistillationHelper,
     CachedLayer,
     compute_layer_losses,
@@ -38,6 +37,7 @@ from d2go.registry.builtin import (
     DISTILLATION_HELPER_REGISTRY,
     META_ARCH_REGISTRY,
 )
+from d2go.runner.config_defaults import add_distillation_configs
 from d2go.runner.default_runner import BaseRunner
 from d2go.utils.testing import helper
 from detectron2.checkpoint import DetectionCheckpointer
