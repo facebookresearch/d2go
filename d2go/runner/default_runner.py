@@ -8,7 +8,6 @@ from collections import OrderedDict
 from functools import lru_cache
 from typing import List, Optional, Type, Union
 
-import d2go.utils.abnormal_checker as abnormal_checker
 import detectron2.utils.comm as comm
 import torch
 from d2go.checkpoint.api import is_distributed_checkpoint
@@ -25,8 +24,9 @@ from d2go.data.utils import (
     update_cfg_if_using_adhoc_dataset,
 )
 from d2go.evaluation.evaluator import inference_on_dataset
-from d2go.modeling import ema, kmeans_anchors
+from d2go.modeling import ema
 from d2go.modeling.api import build_d2go_model
+from d2go.modeling.kmeans_anchors import compute_kmeans_anchors_hook
 from d2go.modeling.model_freezing_utils import freeze_matched_bn, set_requires_grad
 from d2go.optimizer.build import build_optimizer_mapper
 from d2go.quantization.modeling import QATHook, setup_qat_model
@@ -43,6 +43,11 @@ from d2go.runner.training_hooks import (
 )
 from d2go.trainer.fsdp import get_grad_scaler
 from d2go.trainer.helper import parse_precision_from_string
+from d2go.utils.abnormal_checker import (
+    AbnormalLossChecker,
+    AbnormalLossCheckerWrapper,
+    get_writers,
+)
 from d2go.utils.flop_calculator import attach_profilers
 from d2go.utils.gpu_memory_profiler import attach_oom_logger
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
@@ -525,7 +530,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 lambda: self.do_test(cfg, model, train_iter=trainer.iter),
                 eval_after_train=False,  # done by a separate do_test call in tools/train_net.py
             ),
-            kmeans_anchors.compute_kmeans_anchors_hook(self, cfg),
+            compute_kmeans_anchors_hook(self, cfg),
             self._create_qat_hook(cfg) if cfg.QUANTIZATION.QAT.ENABLED else None,
         ]
 
@@ -577,9 +582,9 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 return model
 
             tbx_writer = self.get_tbx_writer(cfg)
-            writers = abnormal_checker.get_writers(cfg, tbx_writer)
-            checker = abnormal_checker.AbnormalLossChecker(start_iter, writers)
-            ret = abnormal_checker.AbnormalLossCheckerWrapper(model, checker)
+            writers = get_writers(cfg, tbx_writer)
+            checker = AbnormalLossChecker(start_iter, writers)
+            ret = AbnormalLossCheckerWrapper(model, checker)
             return ret
 
         if cfg.SOLVER.AMP.ENABLED:

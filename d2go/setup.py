@@ -23,7 +23,9 @@ from d2go.distributed import (
     get_local_rank,
     get_num_processes_per_machine,
 )
-from d2go.runner import BaseRunner, import_runner, RunnerV2Mixin
+from d2go.runner import import_runner
+from d2go.runner.api import RunnerV2Mixin
+from d2go.runner.default_runner import BaseRunner
 from d2go.runner.lightning_task import DefaultTask
 from d2go.utils.helper import run_once
 from d2go.utils.launch_environment import get_launch_environment

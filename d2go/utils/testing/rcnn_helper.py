@@ -10,7 +10,7 @@ from typing import Optional
 import d2go.data.transforms.box_utils as bu
 import torch
 from d2go.export.exporter import convert_and_export_predictor
-from d2go.runner import GeneralizedRCNNRunner
+from d2go.runner.default_runner import GeneralizedRCNNRunner
 from d2go.utils.testing.data_loader_helper import (
     create_detection_data_loader_on_toy_dataset,
 )
