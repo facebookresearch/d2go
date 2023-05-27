@@ -3,7 +3,7 @@
 
 
 import torch
-from d2go.quantization.modeling import set_backend_and_create_qconfig
+from d2go.quantization.qconfig import set_backend_and_create_qconfig
 from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.utils.testing.data_loader_helper import create_local_dataset
 from detectron2.structures import Boxes, ImageList, Instances
