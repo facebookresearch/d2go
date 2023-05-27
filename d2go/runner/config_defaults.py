@@ -8,8 +8,9 @@ from d2go.data.build import (
     add_weighted_training_sampler_default_configs,
 )
 from d2go.data.config import add_d2go_data_default_configs
-from d2go.modeling import ema, kmeans_anchors
 from d2go.modeling.backbone.fbnet_cfg import add_fbnet_v2_default_configs
+from d2go.modeling.ema import add_model_ema_configs
+from d2go.modeling.kmeans_anchors import add_kmeans_anchors_cfg
 from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
@@ -63,13 +64,13 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # _C.MODEL.FROZEN_LAYER_REG_EXP
     add_model_freezing_configs(_C)
     # _C.MODEL other models
-    ema.add_model_ema_configs(_C)
+    add_model_ema_configs(_C)
     # _C.D2GO_DATA...
     add_d2go_data_default_configs(_C)
     # _C.TENSORBOARD...
     add_tensorboard_default_configs(_C)
     # _C.MODEL.KMEANS...
-    kmeans_anchors.add_kmeans_anchors_cfg(_C)
+    add_kmeans_anchors_cfg(_C)
     # _C.QUANTIZATION
     add_quantization_default_configs(_C)
     # _C.DATASETS.TRAIN_REPEAT_FACTOR
