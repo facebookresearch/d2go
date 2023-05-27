@@ -10,7 +10,6 @@ from d2go.data.build import (
 from d2go.data.config import add_d2go_data_default_configs
 from d2go.modeling import ema, kmeans_anchors
 from d2go.modeling.backbone.fbnet_cfg import add_fbnet_v2_default_configs
-from d2go.modeling.distillation import add_distillation_configs
 from d2go.modeling.meta_arch.fcos import add_fcos_configs
 from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
@@ -37,6 +36,25 @@ def _add_detectron2go_runner_default_fb_cfg(_C: CN) -> None:
 @fb_overwritable()
 def _add_base_runner_default_fb_cfg(_C: CN) -> None:
     pass
+
+
+def add_distillation_configs(_C: CN) -> None:
+    """Add default parameters to config
+
+    The TEACHER.CONFIG field allows us to build a PyTorch model using an
+    existing config.  We can build any model that is normally supported by
+    D2Go (e.g., FBNet) because we just use the same config
+    """
+    _C.DISTILLATION = CN()
+    _C.DISTILLATION.ALGORITHM = "LabelDistillation"
+    _C.DISTILLATION.HELPER = "BaseDistillationHelper"
+    _C.DISTILLATION.TEACHER = CN()
+    _C.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME = ""
+    _C.DISTILLATION.TEACHER.DEVICE = ""
+    _C.DISTILLATION.TEACHER.TYPE = "torchscript"
+    _C.DISTILLATION.TEACHER.CONFIG_FNAME = ""
+    _C.DISTILLATION.TEACHER.RUNNER_NAME = "d2go.runner.GeneralizedRCNNRunner"
+    _C.DISTILLATION.TEACHER.OVERWRITE_OPTS = []
 
 
 def _add_detectron2go_runner_default_cfg(_C: CN) -> None:

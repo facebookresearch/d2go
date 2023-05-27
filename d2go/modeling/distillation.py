@@ -37,25 +37,6 @@ logger = logging.getLogger(__name__)
 ModelOutput = Union[None, torch.Tensor, Iterable["ModelOutput"]]
 
 
-def add_distillation_configs(_C: CN) -> None:
-    """Add default parameters to config
-
-    The TEACHER.CONFIG field allows us to build a PyTorch model using an
-    existing config.  We can build any model that is normally supported by
-    D2Go (e.g., FBNet) because we just use the same config
-    """
-    _C.DISTILLATION = CN()
-    _C.DISTILLATION.ALGORITHM = "LabelDistillation"
-    _C.DISTILLATION.HELPER = "BaseDistillationHelper"
-    _C.DISTILLATION.TEACHER = CN()
-    _C.DISTILLATION.TEACHER.TORCHSCRIPT_FNAME = ""
-    _C.DISTILLATION.TEACHER.DEVICE = ""
-    _C.DISTILLATION.TEACHER.TYPE = "torchscript"
-    _C.DISTILLATION.TEACHER.CONFIG_FNAME = ""
-    _C.DISTILLATION.TEACHER.RUNNER_NAME = "d2go.runner.GeneralizedRCNNRunner"
-    _C.DISTILLATION.TEACHER.OVERWRITE_OPTS = []
-
-
 @dataclass
 class LayerLossMetadata:
     loss: nn.Module
