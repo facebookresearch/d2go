@@ -5,6 +5,8 @@
 # misc.py
 # modules that are used in different places but are not a specific type (e.g., backbone)
 
+from typing import Any, Callable, Optional
+
 import torch
 import torch.nn as nn
 
@@ -83,3 +85,31 @@ class AddCoordChannels(nn.Module):
             out = torch.cat([out, rr], dim=1)
 
         return out
+
+
+def inplace_delegate(
+    self,
+    api_name: str,
+    sub_module_name: str,
+    setter_fn: Optional[Callable],
+    *args,
+    **kwargs,
+) -> Any:
+    """Helper function to delegate API calls to its submodule"""
+
+    sub_module = getattr(self, sub_module_name)
+    api_name = f"delegate_{api_name}"
+    if hasattr(sub_module, api_name):
+        func = getattr(sub_module, api_name)
+        orig_ret = func(*args, **kwargs)
+        if setter_fn is None:
+            # Assume the return of `func` will replace the submodule
+            setattr(self, sub_module_name, orig_ret)
+            return self
+        else:
+            return setter_fn(self, sub_module_name, orig_ret)
+    else:
+        raise RuntimeError(
+            f"It seems the {sub_module_name} doesn't implement {api_name},"
+            " quantization might fail."
+        )
