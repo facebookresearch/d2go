@@ -9,7 +9,7 @@ from typing import Callable, Generator, Iterable, Optional
 import torch
 import torch.nn as nn
 from d2go.config import CfgNode as CN
-from d2go.modeling import modeling_hook as mh
+from d2go.modeling.modeling_hook import ModelingHook
 from d2go.registry.builtin import MODELING_HOOK_REGISTRY
 from d2go.trainer.helper import parse_precision_from_string
 from detectron2.utils.registry import Registry
@@ -265,7 +265,7 @@ def build_fsdp(
 
 
 @MODELING_HOOK_REGISTRY.register()
-class FSDPModelingHook(mh.ModelingHook):
+class FSDPModelingHook(ModelingHook):
     """Modeling hook that wraps model in FSDP based on config"""
 
     def apply(self, model: nn.Module) -> FSDPWrapper:
