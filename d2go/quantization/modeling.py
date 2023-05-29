@@ -33,6 +33,9 @@ else:
 logger = logging.getLogger(__name__)
 
 _CONVERT_FX_CALLBACK_ATTRIBUTE = "_convert_fx_callback"
+_STATE_DICT_KEY = "state_dict"
+_OLD_STATE_DICT_KEY = "model"
+_OLD_EMA_KEY = "ema_state"
 
 
 def _is_observer_key(state_dict_key):
@@ -76,9 +79,6 @@ class QATCheckpointer(DetectionCheckpointer):
             # assume file is from lightning; no one else seems to use the ".ckpt" extension
             with PathManager.open(filename, "rb") as f:
                 data = self._torch_load(f)
-            # TODO: Remove once buck targets are modularized and directly use
-            #       from d2go.runner.lightning_task import _convert_to_d2
-            # from d2go.runner.lightning_task import _convert_to_d2
 
             _convert_to_d2(data)
             return data
@@ -689,13 +689,6 @@ def forward_custom_prepare_fx(root, sub_module_name, orig_ret):
         return m
 
     return root, new_callback
-
-
-# TODO: Remove once buck targets are modularized and directly use
-#       from d2go.runner.lightning_task import _convert_to_d2
-_STATE_DICT_KEY = "state_dict"
-_OLD_STATE_DICT_KEY = "model"
-_OLD_EMA_KEY = "ema_state"
 
 
 def _convert_to_d2(lightning_checkpoint: Dict[str, Any]) -> None:
