@@ -2,7 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import itertools
 import logging
+import os
 from typing import Any, Dict, List, Optional, Union
+
+import detectron2.utils.comm as comm
 
 import torch
 from d2go.utils.parse_module_params import iterate_module_named_parameters
@@ -10,6 +13,7 @@ from detectron2.solver.build import (
     maybe_add_gradient_clipping as d2_maybe_add_gradient_clipping,
     reduce_param_groups,
 )
+from detectron2.utils.file_io import PathManager
 from detectron2.utils.registry import Registry
 
 
@@ -70,7 +74,13 @@ def get_optimizer_param_groups_default(model: OptimizerModelsType):
                     lambda x: x.requires_grad,
                     model.parameters(),
                 )
-            )
+            ),
+            "param_names": [
+                name
+                for name, _param in filter(
+                    lambda x: x[1].requires_grad, model.named_parameters()
+                )
+            ],
         }
     ]
     return ret
@@ -110,6 +120,7 @@ def get_optimizer_param_groups_lr(
 
         params += [
             {
+                "param_names": [module_name + "." + module_param_name],
                 "params": [value],
                 "lr": cur_lr,
             }
@@ -150,7 +161,7 @@ def get_optimizer_param_groups_weight_decay(
     )
     params: List[Dict[str, Any]] = []
     for (
-        _module_name,
+        module_name,
         module,
         module_param_name,
         value,
@@ -170,6 +181,7 @@ def get_optimizer_param_groups_weight_decay(
         if cur_wd is not None:
             params += [
                 {
+                    "param_names": [module_name + "." + module_param_name],
                     "params": [value],
                     "weight_decay": cur_wd,
                 }
@@ -318,17 +330,21 @@ def build_optimizer_mapper(cfg, model):
     name = cfg.SOLVER.OPTIMIZER
     optimizer = D2GO_OPTIM_MAPPER_REGISTRY.get(name.lower())(cfg, model)
 
-    def _param_group_str(group):
-        ret = {x: y if x != "params" else len(y) for x, y in group.items()}
+    def _param_group_str(group, verbose=False):
+        ret = {x: y for x, y in group.items() if x != "params" and x != "param_names"}
+        ret["params"] = len(group["params"])
         ret = sorted(ret.items())
         ret = [f"{x[0]}: {x[1]}" for x in ret]
+        if verbose and "param_names" in group:
+            param_name_str = "\n" + "\n".join(group["param_names"]) + "\n"
+            ret.append(f"param_names: {param_name_str}")
         ret = "{" + ", ".join(ret) + "}"
         return ret
 
-    def _param_groups_str(groups):
+    def _param_groups_str(groups, verbose=False):
         ret = ""
         for idx, group in enumerate(groups):
-            ret += f"Param group {idx}: {_param_group_str(group)}\n"
+            ret += f"Param group {idx}: {_param_group_str(group, verbose=verbose)}\n"
         return ret
 
     logger.info(f"Using optimizer:\n{optimizer}")
@@ -336,5 +352,21 @@ def build_optimizer_mapper(cfg, model):
     logger.info(
         f"optimizer parameter groups:\n{_param_groups_str(optimizer.param_groups)}"
     )
+
+    if (
+        comm.is_main_process()
+        and hasattr(cfg, "OUTPUT_DIR")
+        and PathManager.isdir(cfg.OUTPUT_DIR)
+    ):
+        param_groups_str_verbose = _param_groups_str(
+            optimizer.param_groups, verbose=True
+        )
+        output_file = os.path.join(cfg.OUTPUT_DIR, "param_groups.txt")
+        if PathManager.isfile(output_file):
+            logger.warning("param_groups.txt already exists")
+        else:
+            logger.info(f"Write parameter groups to file: {output_file}")
+            with PathManager.open(output_file, "w") as f:
+                f.write(param_groups_str_verbose)
 
     return optimizer
