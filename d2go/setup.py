@@ -104,6 +104,7 @@ def basic_argument_parser(
             "--num-processes", type=int, default=1, help="number of gpus per machine"
         )
         parser.add_argument("--num-machines", type=int, default=1)
+        parser.add_argument("--run-as-worker", type=bool, default=False)
         parser.add_argument(
             "--machine-rank",
             type=int,
@@ -129,6 +130,7 @@ def build_basic_cli_args(
     dist_url: Optional[str] = None,
     dist_backend: Optional[str] = None,
     disable_post_mortem: bool = False,
+    run_as_worker: bool = False,
 ) -> List[str]:
     """
     Returns parameters in the form of CLI arguments for the binary using
@@ -147,6 +149,8 @@ def build_basic_cli_args(
         args += ["--save-return-file", str(save_return_file)]
     if disable_post_mortem:
         args += ["--disable-post-mortem"]
+    if run_as_worker:
+        args += ["--run-as-worker", str(run_as_worker)]
     if num_processes is not None:
         args += ["--num-processes", str(num_processes)]
     if num_machines is not None:
