@@ -11,7 +11,7 @@ from typing import List, Type, Union
 
 import detectron2.utils.comm as comm
 from d2go.config import CfgNode
-from d2go.distributed import launch
+from d2go.distributed import distributed_worker, launch
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
@@ -141,24 +141,42 @@ def run_with_cmdline_args(args):
     shared_context = setup_before_launch(cfg, output_dir, runner_name)
 
     main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
-    outputs = launch(
-        main_func,
-        num_processes_per_machine=args.num_processes,
-        num_machines=args.num_machines,
-        machine_rank=args.machine_rank,
-        dist_url=args.dist_url,
-        backend=args.dist_backend,
-        shared_context=shared_context,
-        args=(cfg, output_dir, runner_name),
-        kwargs={
-            "eval_only": args.eval_only,
-            "resume": args.resume,
-        },
-    )
+
+    if args.run_as_worker:
+        logger.info("Running as worker")
+        result = distributed_worker(
+            main_func,
+            args=(cfg, output_dir, runner_name),
+            kwargs={
+                "eval_only": args.eval_only,
+                "resume": args.resume,
+            },
+            backend=args.dist_backend,
+            init_method=None,  # init_method is env by default
+            dist_params=None,
+            return_save_file=None,
+            shared_context=shared_context,
+        )
+    else:
+        outputs = launch(
+            main_func,
+            num_processes_per_machine=args.num_processes,
+            num_machines=args.num_machines,
+            machine_rank=args.machine_rank,
+            dist_url=args.dist_url,
+            backend=args.dist_backend,
+            shared_context=shared_context,
+            args=(cfg, output_dir, runner_name),
+            kwargs={
+                "eval_only": args.eval_only,
+                "resume": args.resume,
+            },
+        )
+        result = outputs[0]
 
     # Only save results from global rank 0 for consistency.
     if args.save_return_file is not None and args.machine_rank == 0:
-        save_binary_outputs(args.save_return_file, outputs[0])
+        save_binary_outputs(args.save_return_file, result)
 
 
 def cli(args=None):
