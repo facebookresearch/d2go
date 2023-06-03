@@ -10,7 +10,7 @@ from typing import Any, Dict, Tuple
 import detectron2.utils.comm as comm
 import torch
 from d2go.quantization import learnable_qat
-from d2go.quantization.fx import get_convert_fx_fn, get_prepare_fx_fn
+from d2go.quantization.fx import get_convert_fn, get_prepare_fx_fn
 from d2go.quantization.qconfig import (
     set_backend_and_create_qconfig,
     smart_decode_backend,
@@ -329,7 +329,7 @@ def default_custom_prepare_fx(cfg, model, is_qat, example_input=None):
         qconfig_mapping=qconfig_dict,
         example_inputs=(example_input,),
     )
-    convert_fn = get_convert_fx_fn(cfg, (example_input,))
+    convert_fn = get_convert_fn(cfg, (example_input,))
     return model, convert_fn
 
 
@@ -396,7 +396,8 @@ def convert_to_quantized_model(cfg, fp32_model):
     quantized model (int8 operators).
     """
     if cfg.QUANTIZATION.EAGER_MODE:
-        int8_model = convert(fp32_model, inplace=False)
+        convert_fn = get_convert_fn(cfg)
+        int8_model = convert_fn(fp32_model, inplace=False)
     else:
         # FX graph mode quantization
         if not hasattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE):

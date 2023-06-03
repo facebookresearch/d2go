@@ -10,8 +10,10 @@ from mobile_cv.common.misc.oss_utils import fb_overwritable
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):
+    from torch.ao.quantization.quantize import convert
     from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 else:
+    from torch.quantization.quantize import convert
     from torch.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 
 
@@ -21,5 +23,8 @@ def get_prepare_fx_fn(cfg, is_qat):
 
 
 @fb_overwritable()
-def get_convert_fx_fn(cfg, example_inputs, qconfig_mapping=None, backend_config=None):
-    return convert_fx
+def get_convert_fn(cfg, example_inputs=None, qconfig_mapping=None, backend_config=None):
+    if cfg.QUANTIZATION.EAGER_MODE:
+        return convert
+    else:
+        return convert_fx
