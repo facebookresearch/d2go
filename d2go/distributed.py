@@ -56,6 +56,21 @@ def get_num_processes_per_machine() -> int:
     return mcv_comm.get_local_size()
 
 
+def _maybe_convert_to_cpu_run(args, backend):
+    if get_launch_environment() == "local" and not torch.cuda.is_available():
+        assert len(args) > 0, args
+        cfg = args[0]
+        if isinstance(cfg, CfgNode) and cfg.MODEL.DEVICE == "cuda":
+            logger.warning(
+                "Detected that CUDA is not available on this machine, set MODEL.DEVICE"
+                " to cpu and backend to GLOO"
+            )
+            with temp_defrost(cfg):
+                cfg.MODEL.DEVICE = "cpu"
+        backend = "GLOO"
+    return args, backend
+
+
 # Modify mobile_cv's `default_distributed_worker` to also setup D2's comm module
 def distributed_worker(
     main_func: Callable[..., _RT],
@@ -73,6 +88,8 @@ def distributed_worker(
             shared_context
         )  # set the global shared context from the args passed in by mp spawn
     dist_params = dist_params or DistributedParams.from_environ()
+
+    args, backend = _maybe_convert_to_cpu_run(args, backend)
 
     with enable_dist_process_groups(backend, init_method, dist_params, timeout):
         d2_comm._LOCAL_PROCESS_GROUP = mcv_comm._LOCAL_PROCESS_GROUP
@@ -107,17 +124,7 @@ def launch(
         - Automatically convert GPU to CPU if CUDA is not available.
         - Add D2Go-specific initialziation in the _distributed_worker.
     """
-    if get_launch_environment() == "local" and not torch.cuda.is_available():
-        assert len(args) > 0, args
-        cfg = args[0]
-        if isinstance(cfg, CfgNode) and cfg.MODEL.DEVICE == "cuda":
-            logger.warning(
-                "Detected that CUDA is not available on this machine, set MODEL.DEVICE"
-                " to cpu and backend to GLOO"
-            )
-            with temp_defrost(cfg):
-                cfg.MODEL.DEVICE = "cpu"
-        backend = "GLOO"
+    args, backend = _maybe_convert_to_cpu_run(args, backend)
 
     return _launch(
         main_func=main_func,
