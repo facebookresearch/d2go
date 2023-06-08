@@ -139,6 +139,8 @@ class FSDPCheckpointer(QATCheckpointer):
         Add support for saving sharding models and optimizers.
         The rest of the code is copied from implementation in the superclass
         """
+        # checkpoint_type is used to annotate preemption checkpoints for internal checkpointer. Ignore it here
+        kwargs.pop("checkpoint_type", None)
         # If no sharding, only the main process enters the saving codepath;
         # otherwise, all processes need to call state_dict() to enable state broadcasting among ranks
         if not isinstance(self.model, FSDPWrapper):
