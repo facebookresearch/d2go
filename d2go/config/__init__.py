@@ -9,10 +9,10 @@ from d2go.config.config import (
     CONFIG_CUSTOM_PARSE_REGISTRY,
     CONFIG_SCALING_METHOD_REGISTRY,
     load_full_config_from_file,
-    reroute_config_path,
     temp_defrost,
     temp_new_allowed,
 )
+from d2go.config.utils import reroute_config_path
 
 
 __all__ = [

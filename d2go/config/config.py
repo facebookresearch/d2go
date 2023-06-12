@@ -5,8 +5,8 @@ import contextlib
 import copy
 import logging
 from typing import List
+from unittest import mock
 
-import mock
 import yaml
 from d2go.config.utils import reroute_config_path, resolve_default_config
 from detectron2.config import CfgNode as _CfgNode
