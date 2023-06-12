@@ -222,9 +222,9 @@ def add_d2_quant_mapping(mappings):
 def mock_quantization_type(quant_func):
     import builtins
     import functools
+    from unittest import mock
 
     import detectron2.layers as d2l
-    import mock
 
     type_mapping = {d2l.Linear: torch.nn.Linear}
     from d2go.utils.misc import check_version

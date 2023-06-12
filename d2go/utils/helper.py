@@ -10,7 +10,7 @@ from typing import Any, Callable, List, TypeVar
 import detectron2.utils.comm as comm
 import torch
 from detectron2.data import MetadataCatalog
-from detectron2.engine import DefaultTrainer
+from detectron2.engine.defaults import DefaultTrainer
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
     CityscapesSemSegEvaluator,
