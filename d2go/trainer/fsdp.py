@@ -11,7 +11,7 @@ import torch.nn as nn
 from d2go.config import CfgNode as CN
 from d2go.modeling.modeling_hook import ModelingHook
 from d2go.registry.builtin import MODELING_HOOK_REGISTRY
-from d2go.trainer.helper import parse_precision_from_string
+from d2go.trainer.helper import get_layer_cls_from_names, parse_precision_from_string
 from detectron2.utils.registry import Registry
 from torch.ao.pruning import fqn_to_module
 from torch.cuda.amp import GradScaler
@@ -32,7 +32,6 @@ from torch.distributed.fsdp.wrap import (
     size_based_auto_wrap_policy as _size_based_auto_wrap_policy,
     transformer_auto_wrap_policy as _layer_based_auto_wrap_policy,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -323,25 +322,6 @@ class FSDPModelingHook(ModelingHook):
         )
 
 
-def get_module_class_from_name(module, name):
-    """
-    Gets a class from a module by its name. Code borrowed from HuggingFace
-    Args:
-        module (`torch.nn.Module`): The module to get the class from.
-        name (`str`): The name of the class.
-    """
-    modules_children = list(module.children())
-    if module.__class__.__name__ == name:
-        return module.__class__
-    elif len(modules_children) == 0:
-        return
-    else:
-        for child_module in modules_children:
-            module_class = get_module_class_from_name(child_module, name)
-            if module_class is not None:
-                return module_class
-
-
 @D2GO_FSDP_WRAP_POLICY_REGISTRY.register()
 def never_wrap_policy(model, **kwargs) -> Optional[Callable]:
     """
@@ -389,14 +369,7 @@ def layer_based_auto_wrap_policy(
     assert (
         len(layer_names) > 0
     ), "FSDP.AUTO_WRAP_LAYER_CLS should be a nonempty list of layer names contained in the model"
-    layer_cls = []
-    for name in layer_names:
-        closure = get_module_class_from_name(model, name)
-        if closure is None:
-            raise Exception(
-                f"Could not find the layer class {name} to wrap in the model."
-            )
-        layer_cls.append(closure)
+    layer_cls = get_layer_cls_from_names(model, layer_names)
     return partial(
         _layer_based_auto_wrap_policy,
         transformer_layer_cls=layer_cls,
