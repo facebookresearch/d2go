@@ -568,6 +568,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
             if resume and checkpointer.has_checkpoint()
             else -1
         )
+        del checkpoint
         # The checkpoint stores the training iteration that just finished, thus we start
         # at the next iteration (or iter zero if there's no checkpoint).
         start_iter += 1
