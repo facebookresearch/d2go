@@ -16,6 +16,7 @@ from d2go.modeling.model_freezing_utils import add_model_freezing_configs
 from d2go.modeling.subclass import add_subclass_configs
 from d2go.quantization.modeling import add_quantization_default_configs
 from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
+from d2go.trainer.activation_checkpointing import add_activation_checkpoint_configs
 from d2go.trainer.fsdp import add_fsdp_configs
 from d2go.utils.gpu_memory_profiler import add_memory_profiler_configs
 from d2go.utils.visualization import add_tensorboard_default_configs
@@ -87,6 +88,8 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     add_distillation_configs(_C)
     # _C.FSDP
     add_fsdp_configs(_C)
+    # _C.ACTIVATION_CHECKPOINT
+    add_activation_checkpoint_configs(_C)
 
     # Set find_unused_parameters for DistributedDataParallel.
     _C.MODEL.DDP_FIND_UNUSED_PARAMETERS = False
