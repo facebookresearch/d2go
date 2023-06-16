@@ -14,13 +14,13 @@ from mobile_cv.arch.quantization.observer import update_stat as observer_update_
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities import rank_zero_info
-from torch.ao.quantization import (  # @manual
+from torch.ao.quantization.qconfig import (
     get_default_qat_qconfig,
     get_default_qconfig,
     QConfig,
     QConfigDynamic,
-    QuantType,
 )
+from torch.ao.quantization.quant_type import QuantType
 from torch.ao.quantization.quantize_fx import convert_fx, prepare_fx, prepare_qat_fx
 from torch.ao.quantization.utils import get_fqn_to_example_inputs, get_quant_type
 
