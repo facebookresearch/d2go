@@ -157,6 +157,7 @@ def run_with_cmdline_args(args):
             return_save_file=None,
             shared_context=shared_context,
         )
+        outputs = {0: result}
     else:
         outputs = launch(
             main_func,
@@ -172,11 +173,10 @@ def run_with_cmdline_args(args):
                 "resume": args.resume,
             },
         )
-        result = outputs[0]
 
     # Only save results from global rank 0 for consistency.
     if args.save_return_file is not None and args.machine_rank == 0:
-        save_binary_outputs(args.save_return_file, result)
+        save_binary_outputs(args.save_return_file, outputs[0])
 
 
 def cli(args=None):
