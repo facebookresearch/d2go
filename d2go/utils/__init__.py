@@ -2,7 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-# import to make sure Registry works
-# usort does not respect the `fb-only` tag so use isort:skip here
-# @fb-only: from d2go.utils import fb  # isort:skip  # noqa 
-from d2go.utils import flop_calculator  # noqa
+# Populating registreis
+from d2go.utils import flop_calculator as _flop_calculator  # noqa
+# @fb-only: from d2go.utils import fb as _fb  # isort:skip  # noqa 
