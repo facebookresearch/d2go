@@ -343,8 +343,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
 
     def build_model(self, cfg, eval_only=False):
         # Attach memory profiler to GPU OOM events
-        # Disabled since it can cause ranks to die
-        if False and cfg.get("MEMORY_PROFILER", CfgNode()).get("ENABLED", False):
+        if cfg.get("MEMORY_PROFILER", CfgNode()).get("ENABLED", False):
             attach_oom_logger(
                 cfg.OUTPUT_DIR, trace_max_entries=cfg.MEMORY_PROFILER.TRACE_MAX_ENTRIES
             )

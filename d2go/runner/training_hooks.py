@@ -51,6 +51,9 @@ class D2GoGpuMemorySnapshot(HookBase):
         self.log_n_steps = log_n_steps
         self.log_during_train_at = log_during_train_at
         self.trace_max_entries = trace_max_entries
+        logger.warning(
+            "WARNING: Memory snapshot profiler is enabled. This may cause ranks to die and training jobs to get stuck. Please use with caution."
+        )
 
     def before_step(self):
         if self.trainer.iter == self.log_during_train_at:
