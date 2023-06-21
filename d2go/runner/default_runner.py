@@ -614,7 +614,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 async_write_metrics=cfg.ASYNC_WRITE_METRICS,
             )
 
-        if cfg.SOLVER.AMP.ENABLED and torch.cuda.is_available():
+        if torch.cuda.is_available():
             # Allow to use the TensorFloat32 (TF32) tensor cores, available on A100 GPUs.
             # For more details https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere.
             torch.backends.cuda.matmul.allow_tf32 = True
