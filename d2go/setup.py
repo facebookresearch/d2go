@@ -131,6 +131,11 @@ def build_basic_cli_args(
     dist_backend: Optional[str] = None,
     disable_post_mortem: bool = False,
     run_as_worker: bool = False,
+    # Evaluator args below
+    predictor_path: Optional[str] = None,
+    num_threads: Optional[int] = None,
+    caffe2_engine: Optional[int] = None,
+    caffe2_logging_print_net_summary: Optional[int] = None,
 ) -> List[str]:
     """
     Returns parameters in the form of CLI arguments for the binary using
@@ -161,6 +166,17 @@ def build_basic_cli_args(
         args += ["--dist-url", str(dist_url)]
     if dist_backend is not None:
         args += ["--dist-backend", str(dist_backend)]
+    if predictor_path is not None:
+        args += ["--predictor-path", predictor_path]
+    if num_threads is not None:
+        args += ["--num-threads", int(num_threads)]
+    if caffe2_engine is not None:
+        args += ["--caffe2-engine", int(caffe2_engine)]
+    if caffe2_logging_print_net_summary is not None:
+        args += [
+            "--caffe2_logging_print_net_summary",
+            str(caffe2_logging_print_net_summary),
+        ]
     return args
 
 
