@@ -9,7 +9,7 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 import logging
 import sys
 from dataclasses import dataclass
-from typing import Optional, Type, Union
+from typing import List, Optional, Type, Union
 
 import torch
 from d2go.config import CfgNode
@@ -19,6 +19,7 @@ from d2go.quantization.qconfig import smart_decode_backend
 from d2go.runner import BaseRunner
 from d2go.setup import (
     basic_argument_parser,
+    build_basic_cli_args,
     caffe2_global_init,
     post_mortem_if_fail_for_main,
     prepare_for_launch,
@@ -26,17 +27,12 @@ from d2go.setup import (
     setup_before_launch,
     setup_root_logger,
 )
+from d2go.trainer.api import EvaluatorOutput
 
-from d2go.utils.misc import print_metrics_table
+from d2go.utils.misc import print_metrics_table, save_binary_outputs
 from mobile_cv.predictor.api import create_predictor
 
 logger = logging.getLogger("d2go.tools.caffe2_evaluator")
-
-
-@dataclass
-class EvaluatorOutput:
-    accuracy: AccuracyDict[float]
-    metrics: MetricsDict[float]
 
 
 def main(
@@ -71,7 +67,7 @@ def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
     shared_context = setup_before_launch(cfg, output_dir, runner_name)
     main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
-    launch(
+    outputs = launch(
         main_func,
         args.num_processes,
         num_machines=args.num_machines,
@@ -88,6 +84,25 @@ def run_with_cmdline_args(args):
             "caffe2_logging_print_net_summary": args.caffe2_logging_print_net_summary,
         },
     )
+    # Only save results from global rank 0 for consistency.
+    if args.save_return_file is not None and args.machine_rank == 0:
+        save_binary_outputs(args.save_return_file, outputs[0])
+
+
+def build_cli_args(
+    eval_only: bool = False,
+    resume: bool = False,
+    **kwargs,
+) -> List[str]:
+    """Returns parameters in the form of CLI arguments for evaluator binary.
+
+    For the list of non-train_net-specific parameters, see build_basic_cli_args."""
+    args = build_basic_cli_args(**kwargs)
+    if eval_only:
+        args += ["--eval-only"]
+    if resume:
+        args += ["--resume"]
+    return args
 
 
 def cli(args=None):

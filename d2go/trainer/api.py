@@ -29,6 +29,12 @@ class TestNetOutput:
     tensorboard_log_dir: Optional[str] = None
 
 
+@dataclass
+class EvaluatorOutput:
+    accuracy: AccuracyDict[float]
+    metrics: MetricsDict[float]
+
+
 def do_train():
     pass
 

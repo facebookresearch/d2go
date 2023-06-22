@@ -52,7 +52,7 @@ def main(
 ) -> Union[TrainNetOutput, TestNetOutput]:
     logger.info("Starting main")
     error_handler = get_error_handler()
-    logger.debug(f">>>>>>> Error handler is: {type(error_handler)=}, {error_handler=}")
+    logger.debug(f"Error handler is: {type(error_handler)=}, {error_handler=}")
     error_handler.initialize()
     logger.debug("Error handler has been initialized")
 
