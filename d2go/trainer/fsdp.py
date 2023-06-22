@@ -37,9 +37,9 @@ def add_fsdp_configs(_C: CN):
     # Configs for fully sharded data parallel (fsdp)
     # Check out https://pytorch.org/docs/stable/fsdp.html
     # and docstring of torch.distributed.fsdp.fully_sharded_data_parallel
-    # See docstring of CpuOffload and BackwardPrefetch in torch.distributed.fsdp.fully_sharded_data_parallel
     _C.FSDP.CPU_OFFLOAD = False
     _C.FSDP.BACKWARD_PREFETCH = True
+    _C.FSDP.USE_ORIG_PARAMS = False
     # Find autowrap policy at D2GO_WRAP_POLICY_REGISTRY, or use '' to disable autowrap
     _C.FSDP.AUTO_WRAP_POLICY = "never_wrap_policy"
     _C.FSDP.AUTO_WRAP_MIN_PARAMS = int(1e4)
@@ -176,6 +176,7 @@ def build_fsdp(
     state_dict_rank0_only: bool = True,
     ignored_modules: Optional[nn.Module] = None,
     forward_prefetch: bool = False,
+    use_orig_params: bool = False,
     device_id: Optional[int] = None,
 ):
     if sharding_algorithm == ShardingAlgorithm.SHARD_GRAD_OP:
@@ -227,6 +228,7 @@ def build_fsdp(
         "backward_prefetch": backward_prefetch,
         "ignored_modules": ignored_modules,
         "forward_prefetch": forward_prefetch,
+        "use_orig_params": use_orig_params,
         "device_id": torch.cuda.current_device() if not device_id else device_id,
     }
     # default to using use_local_state_dict if state_dict_type is None
@@ -304,6 +306,7 @@ class FSDPModelingHook(ModelingHook):
             state_dict_rank0_only=self.cfg.FSDP.STATE_DICT_RANK0_ONLY,
             ignored_modules=ignored_modules,
             forward_prefetch=forward_prefetch,
+            use_orig_params=self.cfg.FSDP.USE_ORIG_PARAMS,
             device_id=torch.cuda.current_device(),
         )
         return wrapped_model
