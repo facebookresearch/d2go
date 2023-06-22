@@ -2,5 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
-# NOTE: making necessary imports to register with Registery
-from d2go.modeling import backbone, meta_arch, modeldef  # noqa  # noqa  # noqa
+# Populating registreis
+from d2go.modeling import (  # noqa
+    backbone as _backbone,
+    meta_arch as _meta_arch,
+    modeldef as _modeldef,
+)
