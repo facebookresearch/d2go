@@ -112,8 +112,6 @@ class TestActivationCheckpointing(unittest.TestCase):
 
     @tempdir
     def test_ac_runner(self, tmp_dir) -> None:
-        tmp_dir = "/tmp/test"
-        os.makedirs(tmp_dir, exist_ok=True)
         ds_name = create_local_dataset(tmp_dir, 5, 10, 10)
         runner = Detectron2GoRunner()
         cfg = _get_cfg(runner, tmp_dir, ds_name)
@@ -124,3 +122,10 @@ class TestActivationCheckpointing(unittest.TestCase):
         model = runner.build_model(cfg)
         runner.do_train(cfg, model, resume=False)
         self.assertTrue(os.path.exists(os.path.join(tmp_dir, "model_0000002.pth")))
+
+        # resume training onto a non-AC-wrapped model
+        cfg.MODEL.MODELING_HOOKS = []
+        cfg.SOLVER.MAX_ITER = 6
+        model = runner.build_model(cfg)
+        runner.do_train(cfg, model, resume=True)
+        self.assertTrue(os.path.exists(os.path.join(tmp_dir, "model_0000005.pth")))

@@ -6,10 +6,13 @@ import copy
 import itertools
 import logging
 from contextlib import contextmanager
-from typing import List
+from typing import Iterator, List
 
 import torch
 from detectron2.engine.train_loop import HookBase
+from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
+    _CHECKPOINT_PREFIX,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,9 @@ class EMAState(object):
         self.include_frozen = include_frozen
         self.include_buffer = include_buffer
         self.state = {}
+        # HACK: This hack is needed to strip checkpoint wrapper prefix from fqns so it doesn't affect loading.
+        # TODO: Remove this hack by rewriting EMAState to use model.state_dict()
+        self.prefix_to_remove = [_CHECKPOINT_PREFIX]
 
     @classmethod
     def FromModel(cls, model: torch.nn.Module, device: str = "", **kwargs):
@@ -72,14 +78,19 @@ class EMAState(object):
         self.state.clear()
         return self
 
+    def _get_model_parameter_iterator(self, model):
+        """
+        Return iterator for model parameters. Remove frozen parameters if needed.
+        """
+        for name, params in model.named_parameters():
+            if params.requires_grad or self.include_frozen:
+                yield name, params
+
     def get_model_state_iterator(self, model):
-        param_iter = model.named_parameters()
-        if not self.include_frozen:
-            param_iter = iter((n, v) for n, v in param_iter if v.requires_grad)
+        param_iter = self._get_model_parameter_iterator(model)
         if self.include_buffer:
-            buffer_iter = model.named_buffers()
-            return itertools.chain(param_iter, buffer_iter)
-        return param_iter
+            param_iter = itertools.chain(param_iter, model.named_buffers())
+        return _remove_prefix(param_iter, self.prefix_to_remove)
 
     def state_dict(self):
         return self.state
@@ -205,6 +216,16 @@ def _remove_ddp(model):
     if isinstance(model, DistributedDataParallel):
         return model.module
     return model
+
+
+def _remove_prefix(named_iterator: Iterator, prefix_to_remove: List[str]) -> Iterator:
+    """
+    Remove a list of prefix from a named_module iterator
+    """
+    for name, params in named_iterator:
+        for prefix in prefix_to_remove:
+            name = name.replace(prefix, "")
+        yield name, params
 
 
 def may_build_model_ema(cfg, model):
