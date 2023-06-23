@@ -20,6 +20,7 @@ from d2go.data.datasets import (
     ANN_FN,
     IM_DIR,
     INJECTED_COCO_DATASETS_LUT,
+    InjectedCocoEntry,
     register_dataset_split,
 )
 from detectron2.data import DatasetCatalog, MetadataCatalog
@@ -168,9 +169,10 @@ class AdhocCOCODataset(AdhocDataset):
             DatasetCatalog.register(self.new_ds_name, new_func)
         elif self.src_ds_name in INJECTED_COCO_DATASETS_LUT:
             _src_func, _src_dict = INJECTED_COCO_DATASETS_LUT[self.src_ds_name]
-            _src_func(
-                self.new_ds_name,
-                split_dict={**_src_dict, ANN_FN: tmp_file, IM_DIR: metadata.image_root},
+            split_dict = {**_src_dict, ANN_FN: tmp_file, IM_DIR: metadata.image_root}
+            _src_func(self.new_ds_name, split_dict=split_dict)
+            INJECTED_COCO_DATASETS_LUT[self.new_ds_name] = InjectedCocoEntry(
+                func=_src_func, split_dict=split_dict
             )
         else:
             # NOTE: only supports COCODataset as DS_TYPE since we cannot reconstruct
