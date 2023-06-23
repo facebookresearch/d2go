@@ -297,7 +297,7 @@ class FSDPModelingHook(ModelingHook):
             use_backward_prefetch=self.cfg.FSDP.BACKWARD_PREFETCH,
             param_dtype=precision_dtype,
             reduce_dtype=precision_dtype,
-            buffer_dtype=precision_dtype,
+            buffer_dtype=None,
             amp_autocast_dtype=precision_dtype,
             use_local_state_dict=self.cfg.FSDP.USE_LOCAL_STATE_DICT,
             load_local_state_dict=self.cfg.FSDP.USE_LOCAL_STATE_DICT,
