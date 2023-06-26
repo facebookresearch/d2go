@@ -176,6 +176,8 @@ def add_quantization_default_configs(_C):
     # after update_observer_stats_period iters
     _C.QUANTIZATION.QAT.UPDATE_OBSERVER_STATS_PERIODICALLY = False
     _C.QUANTIZATION.QAT.UPDATE_OBSERVER_STATS_PERIOD = 1
+    _C.QUANTIZATION.WEIGHT_OBSERVERS = None
+    _C.QUANTIZATION.ACTIVATION_OBSERVERS = None
 
     # post-training quantization
     _C.QUANTIZATION.PTQ = CfgNode()
