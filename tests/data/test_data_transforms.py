@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 from d2go.data.transforms.build import build_transform_gen
 from d2go.runner import Detectron2GoRunner
-from detectron2.data.transforms import apply_transform_gens
+from detectron2.data.transforms.augmentation import apply_transform_gens
 
 
 class TestDataTransforms(unittest.TestCase):

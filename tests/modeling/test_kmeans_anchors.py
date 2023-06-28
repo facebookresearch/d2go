@@ -14,7 +14,7 @@ from d2go.modeling.kmeans_anchors import (
 from d2go.runner import GeneralizedRCNNRunner
 from d2go.utils.testing.data_loader_helper import register_toy_coco_dataset
 from detectron2.data import DatasetCatalog, DatasetFromList, MapDataset
-from detectron2.engine import SimpleTrainer
+from detectron2.engine.train_loop import SimpleTrainer
 from torch.utils.data.sampler import BatchSampler, Sampler
 
 
