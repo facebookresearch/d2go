@@ -3,8 +3,8 @@
 
 import unittest
 from typing import List
+from unittest import mock
 
-import mock
 import numpy as np
 import torch
 import torch.nn as nn

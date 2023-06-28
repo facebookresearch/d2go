@@ -8,7 +8,7 @@ import numpy as np
 from d2go.data.transforms import color_yuv as cy
 from d2go.data.transforms.build import build_transform_gen
 from d2go.runner import Detectron2GoRunner
-from detectron2.data.transforms import apply_augmentations
+from detectron2.data.transforms.augmentation import apply_augmentations
 
 
 class TestDataTransformsColorYUV(unittest.TestCase):
