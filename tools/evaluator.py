@@ -8,13 +8,11 @@ torchscript, caffe2, etc.) using Detectron2Go system (dataloading, evaluation, e
 
 import logging
 import sys
-from dataclasses import dataclass
-from typing import List, Optional, Type, Union
+from typing import Callable, List, Optional, Type, Union
 
 import torch
 from d2go.config import CfgNode
 from d2go.distributed import launch
-from d2go.evaluation.api import AccuracyDict, MetricsDict
 from d2go.quantization.qconfig import smart_decode_backend
 from d2go.runner import BaseRunner
 from d2go.setup import (
@@ -28,6 +26,7 @@ from d2go.setup import (
     setup_root_logger,
 )
 from d2go.trainer.api import EvaluatorOutput
+from d2go.utils.mast import gather_mast_errors, mast_error_handler
 
 from d2go.utils.misc import print_metrics_table, save_binary_outputs
 from mobile_cv.predictor.api import create_predictor
@@ -63,10 +62,18 @@ def main(
     )
 
 
+def wrapped_main(*args, **kwargs) -> Callable:
+    return mast_error_handler(main)(*args, **kwargs)
+
+
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
     shared_context = setup_before_launch(cfg, output_dir, runner_name)
-    main_func = main if args.disable_post_mortem else post_mortem_if_fail_for_main(main)
+    main_func = (
+        wrapped_main
+        if args.disable_post_mortem
+        else post_mortem_if_fail_for_main(wrapped_main)
+    )
     outputs = launch(
         main_func,
         args.num_processes,
@@ -137,4 +144,4 @@ def cli(args=None):
 
 if __name__ == "__main__":
     setup_root_logger()
-    cli()
+    gather_mast_errors(cli())
