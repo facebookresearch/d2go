@@ -230,6 +230,7 @@ def build_fsdp(
         "forward_prefetch": forward_prefetch,
         "use_orig_params": use_orig_params,
         "device_id": torch.cuda.current_device() if not device_id else device_id,
+        "limit_all_gathers": True,
     }
     # default to using use_local_state_dict if state_dict_type is None
     if not state_dict_type:
