@@ -33,4 +33,9 @@ class instrument_checkpoint(ContextDecorator):
             unique_id=self.unique_id,
             state="end",
         )
+
+        if exc_value is not None:
+            # Re-raising the exception, otherwise it will be swallowed
+            raise exc_value
+
         return True
