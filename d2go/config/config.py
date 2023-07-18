@@ -190,3 +190,13 @@ def load_full_config_from_file(filename: str) -> CfgNode:
     cfg = loaded_cfg.get_default_cfg()
     cfg.merge_from_other_cfg(loaded_cfg)
     return cfg
+
+
+def convert_cfg_to_dict(cfg):
+    if not isinstance(cfg, CfgNode):
+        return cfg
+    else:
+        cfg_dict = dict(cfg)
+        for k, v in cfg_dict.items():
+            cfg_dict[k] = convert_cfg_to_dict(v)
+        return cfg_dict
