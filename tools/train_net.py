@@ -7,7 +7,7 @@ Detection Training Script.
 
 import logging
 import sys
-from typing import Callable, List, Type, Union
+from typing import Callable, Dict, List, Type, Union
 
 import detectron2.utils.comm as comm
 from d2go.config import CfgNode
@@ -38,13 +38,16 @@ logger = logging.getLogger("d2go.tools.train_net")
 setup_root_logger()
 
 
+TrainOrTestNetOutput = Union[TrainNetOutput, TestNetOutput]
+
+
 def main(
     cfg: CfgNode,
     output_dir: str,
     runner_class: Union[str, Type[BaseRunner]],
     eval_only: bool = False,
     resume: bool = True,  # NOTE: always enable resume when running on cluster
-) -> Union[TrainNetOutput, TestNetOutput]:
+) -> TrainOrTestNetOutput:
     logger.debug(f"Entered main for d2go, {runner_class=}")
     runner = setup_after_launch(cfg, output_dir, runner_class)
 
@@ -102,7 +105,7 @@ def main(
     )
 
 
-def wrapped_main(*args, **kwargs) -> Callable:
+def wrapped_main(*args, **kwargs) -> Callable[..., TrainOrTestNetOutput]:
     return mast_error_handler(main)(*args, **kwargs)
 
 
@@ -118,7 +121,7 @@ def run_with_cmdline_args(args):
 
     if args.run_as_worker:
         logger.info("Running as worker")
-        result = distributed_worker(
+        result: TrainOrTestNetOutput = distributed_worker(
             main_func,
             args=(cfg, output_dir, runner_name),
             kwargs={
@@ -131,9 +134,8 @@ def run_with_cmdline_args(args):
             return_save_file=None,
             shared_context=shared_context,
         )
-        outputs = {0: result}
     else:
-        outputs = launch(
+        outputs: Dict[int, TrainOrTestNetOutput] = launch(
             main_func,
             num_processes_per_machine=args.num_processes,
             num_machines=args.num_machines,
@@ -147,12 +149,15 @@ def run_with_cmdline_args(args):
                 "resume": args.resume,
             },
         )
+        # The indices of outputs are global ranks of all workers on this node, here we
+        # use the local master result.
+        result: TrainOrTestNetOutput = outputs[args.machine_rank * args.num_processes]
 
-    # Only save results from global rank 0 for consistency.
+    # Only save result from global rank 0 for consistency.
     if args.save_return_file is not None and args.machine_rank == 0:
-        logger.info(f"Operator results: {outputs[0]}")
-        logger.info(f"Writing results to {args.save_return_file}.")
-        save_binary_outputs(args.save_return_file, outputs[0])
+        logger.info(f"Operator result: {result}")
+        logger.info(f"Writing result to {args.save_return_file}.")
+        save_binary_outputs(args.save_return_file, result)
 
 
 def cli(args=None):

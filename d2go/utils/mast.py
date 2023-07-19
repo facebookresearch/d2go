@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import logging
-from typing import Callable
+from typing import Callable, TypeVar
 
 from torch.distributed.elastic.multiprocessing.errors import (
     _NOT_AVAILABLE,
@@ -11,9 +11,11 @@ from torch.distributed.elastic.multiprocessing.errors import (
 
 logger = logging.getLogger(__name__)
 
+_RT = TypeVar("_RT")
 
-def mast_error_handler(func: Callable) -> Callable:
-    def wrapper(*args, **kwargs):
+
+def mast_error_handler(func: Callable[..., _RT]) -> Callable[..., _RT]:
+    def wrapper(*args, **kwargs) -> _RT:
         logger.info("Starting main")
         error_handler = get_error_handler()
         logger.debug(f"Error handler is: {type(error_handler)=}, {error_handler=}")
@@ -44,11 +46,11 @@ def mast_error_handler(func: Callable) -> Callable:
     return wrapper
 
 
-def gather_mast_errors(func: Callable) -> Callable:
-    def wrapper(*args, **kwargs) -> None:
+def gather_mast_errors(func: Callable[..., _RT]) -> Callable[..., _RT]:
+    def wrapper(*args, **kwargs) -> _RT:
         logger.info("Starting CLI application")
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
         finally:
             logging.info("Entering final reply file generation step")
             import glob
