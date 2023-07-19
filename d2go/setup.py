@@ -6,7 +6,7 @@ import argparse
 import logging
 import os
 import time
-from typing import List, Optional, Tuple, Type, Union
+from typing import Callable, List, Optional, Tuple, Type, TypeVar, Union
 
 import detectron2.utils.comm as comm
 import torch
@@ -38,6 +38,8 @@ from detectron2.utils.serialize import PicklableWrapper
 from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem_if_fail
 
 logger = logging.getLogger(__name__)
+
+_RT = TypeVar("_RT")
 
 
 @run_once()
@@ -214,7 +216,7 @@ def create_cfg_from_cli(
 
 def prepare_for_launch(
     args,
-) -> Tuple[CfgNode, str, Optional[str]]:
+) -> Tuple[CfgNode, str, str]:
     """
     Load config, figure out working directory, create runner.
         - when args.config_file is empty, returned cfg will be the default one
@@ -436,8 +438,8 @@ def caffe2_global_init(logging_print_net_summary=0, num_threads=None):
     logger.info("Using {} threads after GlobalInit".format(torch.get_num_threads()))
 
 
-def post_mortem_if_fail_for_main(main_func):
-    def new_main_func(cfg, output_dir, *args, **kwargs):
+def post_mortem_if_fail_for_main(main_func: Callable[..., _RT]) -> Callable[..., _RT]:
+    def new_main_func(cfg, output_dir, *args, **kwargs) -> _RT:
         pdb_ = (
             MultiprocessingPdb(FolderLock(output_dir))
             if comm.get_world_size() > 1
