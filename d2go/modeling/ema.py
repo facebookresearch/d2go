@@ -131,6 +131,7 @@ class EMAUpdater(object):
         decay: float = 0.999,
         device: str = "",
         use_lerp: bool = False,
+        warm_up=False,
     ):
         self.decay = decay
         self.device = device
@@ -139,11 +140,22 @@ class EMAUpdater(object):
         self.use_lerp = use_lerp
         self.debug_lerp = False
 
+        self.num_updates = -1
+        if warm_up:
+            self.num_updates = 0
+
     def init_state(self, model):
         self.state.clear()
         self.state.save_from(model, self.device)
 
     def update(self, model):
+        # compute decay
+        decay = self.decay
+        if self.num_updates >= 0:
+            self.num_updates += 1
+            decay = min(self.decay, (1 + self.num_updates) / (10 + self.num_updates))
+
+        # update moving average
         with torch.no_grad():
             ema_param_list = []
             param_list = []
@@ -155,8 +167,8 @@ class EMAUpdater(object):
                     ema_param_list.append(ema_val)
                     param_list.append(val)
                 else:
-                    ema_val.copy_(ema_val * self.decay + val * (1.0 - self.decay))
-            self._ema_avg(ema_param_list, param_list, self.decay)
+                    ema_val.copy_(ema_val * decay + val * (1.0 - decay))
+            self._ema_avg(ema_param_list, param_list, decay)
 
     def _ema_avg(
         self,
@@ -308,6 +320,7 @@ class EMAHook(HookBase):
             decay=cfg.MODEL_EMA.DECAY,
             device=self.device,
             use_lerp=cfg.MODEL_EMA.USE_LERP,
+            warm_up=cfg.MODEL_EMA.WARM_UP,
         )
 
     def before_train(self):
