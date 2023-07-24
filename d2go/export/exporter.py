@@ -41,6 +41,10 @@ from mobile_cv.predictor.api import ModelInfo, PredictorInfo
 logger = logging.getLogger(__name__)
 
 
+def is_predictor_quantized(predictor_type: str) -> bool:
+    return "int8" in predictor_type
+
+
 def convert_model(
     cfg: CfgNode,
     pytorch_model: nn.Module,
@@ -50,7 +54,7 @@ def convert_model(
     """Converts pytorch model to pytorch model (fuse for fp32, fake quantize for int8)"""
     return (
         convert_quantized_model(cfg, pytorch_model, data_loader)
-        if "int8" in predictor_type
+        if is_predictor_quantized(predictor_type)
         else _convert_fp_model(cfg, pytorch_model, data_loader)
     )
 
