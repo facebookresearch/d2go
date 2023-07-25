@@ -118,6 +118,7 @@ class TestActivationCheckpointing(unittest.TestCase):
         cfg.MODEL.MODELING_HOOKS = ["ActivationCheckpointModelingHook"]
         cfg.ACTIVATION_CHECKPOINT.AUTO_WRAP_POLICY = "layer_based_auto_wrap_policy"
         cfg.ACTIVATION_CHECKPOINT.AUTO_WRAP_LAYER_CLS = ["Conv2d", "BatchNorm2d"]
+        cfg.MODEL_EMA.DECAY_WARM_UP_FACTOR = -1
 
         model = runner.build_model(cfg)
         runner.do_train(cfg, model, resume=False)

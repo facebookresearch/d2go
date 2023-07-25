@@ -185,6 +185,7 @@ class TestModelingModelEMAHook(unittest.TestCase):
         cfg.MODEL_EMA.ENABLED = True
         # use new model weights
         cfg.MODEL_EMA.DECAY = 0.0
+        cfg.MODEL_EMA.DECAY_WARM_UP_FACTOR = -1
 
         model = TestArch()
         ema.may_build_model_ema(cfg, model)

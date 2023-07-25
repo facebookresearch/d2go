@@ -182,6 +182,7 @@ class TestDefaultRunner(unittest.TestCase):
             cfg.MODEL.META_ARCHITECTURE = "MetaArchForTestSingleValue"
             cfg.MODEL_EMA.ENABLED = True
             cfg.MODEL_EMA.DECAY = 0.9
+            cfg.MODEL_EMA.DECAY_WARM_UP_FACTOR = -1
 
             def _run_train(cfg):
                 cfg = copy.deepcopy(cfg)
