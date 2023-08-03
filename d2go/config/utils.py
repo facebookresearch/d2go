@@ -204,13 +204,12 @@ def get_diff_cfg(old_cfg, new_cfg):
         for key in new_cfg.keys():
             if key not in old_cfg.keys() and old_cfg.is_new_allowed():
                 out[key] = new_cfg[key]
-            elif old_cfg[key] != new_cfg[key]:
+            elif key in old_cfg.keys() and old_cfg[key] != new_cfg[key]:
                 if type(new_cfg[key]) is type(out):
                     out[key] = out.__class__()
                     out[key] = get_diff_cfg_rec(old_cfg[key], new_cfg[key], out[key])
-                else:
-
-                    out[key] = new_cfg[key]
+            else:
+                out[key] = new_cfg[key]
         return out
 
     out = new_cfg.__class__()
