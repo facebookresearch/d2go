@@ -55,6 +55,13 @@ def fetch_checkpoints_till_final(checkpoint_dir):
         checkpoint_paths = DetectionCheckpointer(
             None, save_dir=checkpoint_dir
         ).get_all_checkpoint_files()
+
+        checkpoint_paths = [
+            cpt_path
+            for cpt_path in checkpoint_paths
+            if os.path.basename(cpt_path).startswith("model")
+        ]
+
         checkpoint_paths.extend(_get_lightning_checkpoints(checkpoint_dir))
 
         final_model_path = None
