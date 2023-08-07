@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 
+import contextlib
 import logging
 import os
 from collections import OrderedDict
@@ -170,7 +171,7 @@ def prepare_fb_model(cfg: CfgNode, model: torch.nn.Module) -> torch.nn.Module:
 
 @fb_overwritable()
 def get_monitoring_service() -> Any:
-    pass
+    return contextlib.nullcontext()
 
 
 class BaseRunner(object):
