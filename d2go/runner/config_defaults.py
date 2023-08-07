@@ -18,7 +18,10 @@ from d2go.quantization.modeling import add_quantization_default_configs
 from d2go.registry.builtin import CONFIG_UPDATER_REGISTRY
 from d2go.trainer.activation_checkpointing import add_activation_checkpoint_configs
 from d2go.trainer.fsdp import add_fsdp_configs
-from d2go.utils.gpu_memory_profiler import add_memory_profiler_configs
+from d2go.utils.gpu_memory_profiler import (
+    add_memory_profiler_configs,
+    add_zoomer_default_config,
+)
 from d2go.utils.visualization import add_tensorboard_default_configs
 from detectron2.config import get_cfg as get_d2_cfg
 from mobile_cv.common.misc.oss_utils import fb_overwritable
@@ -137,6 +140,9 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
 
     # GPU memory profiler
     add_memory_profiler_configs(_C)
+
+    # Zoomer memory profiling
+    add_zoomer_default_config(_C)
 
     # Checkpointing-specific config
     _C.LOAD_CKPT_TO_GPU = False
