@@ -23,6 +23,14 @@ def add_memory_profiler_configs(_C: CN):
     _C.MEMORY_PROFILER.LOG_DURING_TRAIN_AT = 550
 
 
+def add_zoomer_default_config(_C: CN):
+    _C.ZOOMER = CN()
+    _C.ZOOMER.ENABLE_STACK_TRACING = (
+        False  # Do not enable by default, since it may cause performance regression
+    )
+    _C.ZOOMER.ENABLE_MEMORY_PROFILING = False
+
+
 def omm_logger_wrapper(output_dir):
     def oom_logger(
         device: int, alloc: int, device_alloc: int, device_free: int
