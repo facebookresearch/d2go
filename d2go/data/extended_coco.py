@@ -150,6 +150,19 @@ def valid_bbox(bbox_xywh: List[int], img_w: int, img_h: int) -> bool:
     return True
 
 
+def valid_bbox_rotated(bbox_xywha: List[int], img_w: int, img_h: int) -> bool:
+    if (
+        bbox_xywha is None
+        or (bbox_xywha[3] == 0 or bbox_xywha[2] == 0)
+        or not (
+            0.4 * bbox_xywha[2] <= bbox_xywha[0] <= img_w - bbox_xywha[2] * 0.4
+        )  # using 0.4*h and 0.4*w to give some leeway for rotation but still remove huge bboxes for training stability
+        or not (0.4 * bbox_xywha[3] <= bbox_xywha[1] <= img_h - bbox_xywha[3] * 0.4)
+    ):
+        return False
+    return True
+
+
 def convert_coco_annotations(
     anno_dict_list: List[Dict],
     record: Dict,
@@ -201,15 +214,26 @@ def convert_coco_annotations(
                 obj["bbox_mode"] = (
                     BoxMode.XYWHA_ABS if len(obj["bbox"]) == 5 else BoxMode.XYWH_ABS
                 )
-
-        if (
-            filter_invalid_bbox
-            and record.get("width")
-            and record.get("height")
-            and not valid_bbox(bbox_object, record["width"], record["height"])
-        ):
-            error_report["without_valid_bounding_box"].cnt += 1
-            continue
+        if obj["bbox_mode"] != BoxMode.XYWHA_ABS:  # for horizontal bboxes
+            if (
+                filter_invalid_bbox
+                and record.get("width")
+                and record.get("height")
+                and not valid_bbox(bbox_object, record["width"], record["height"])
+            ):
+                error_report["without_valid_bounding_box"].cnt += 1
+                continue
+        else:  # for rotated bboxes in XYWHA format
+            if (
+                filter_invalid_bbox
+                and record.get("width")
+                and record.get("height")
+                and not valid_bbox_rotated(
+                    bbox_object, record["width"], record["height"]
+                )
+            ):
+                error_report["without_valid_bounding_box"].cnt += 1
+                continue
 
         # Segmentation: filter and add segmentation
         segm = anno.get("segmentation", None)
