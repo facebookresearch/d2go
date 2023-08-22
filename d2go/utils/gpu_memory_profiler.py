@@ -65,8 +65,6 @@ def log_memory_snapshot(output_dir: str, file_prefix: str = "") -> None:
         logger.info(f"Logging memory snapshot to {save_dir}")
         snapshot = torch.cuda.memory._snapshot()
         dump_snapshot(save_dir, snapshot)
-        # disable recording memory history
-        torch.cuda.memory._record_memory_history(enabled=None)
     except Exception as e:
         logger.error(f"Failed to log memory snapshot to {save_dir}: {e}")
 
