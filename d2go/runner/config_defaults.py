@@ -138,10 +138,10 @@ def _add_detectron2go_runner_default_cfg(_C: CN) -> None:
     # Profiler
     _C.PROFILERS = ["default_flop_counter"]
 
-    # GPU memory profiler
+    # Snapshot memory profiling
     add_memory_profiler_configs(_C)
 
-    # Zoomer memory profiling
+    # Zoomer Kineto memory profiling
     add_zoomer_default_config(_C)
 
     # Checkpointing-specific config
