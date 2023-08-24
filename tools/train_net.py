@@ -31,6 +31,7 @@ from d2go.utils.misc import (
     save_binary_outputs,
 )
 from detectron2.engine.defaults import create_ddp_model
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
 logger = logging.getLogger("d2go.tools.train_net")
 # Make sure logging is set up centrally even for e.g. dataloading workers which
@@ -73,7 +74,7 @@ def main(
 
     # Use DDP if FSDP is not enabled
     # TODO (T142223289): rewrite ddp wrapping as modeling hook
-    if not is_fsdp_enabled(cfg):
+    if not isinstance(model, FSDP):
         model = create_ddp_model(
             model,
             fp16_compression=cfg.MODEL.DDP_FP16_GRAD_COMPRESS,
