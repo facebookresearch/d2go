@@ -142,6 +142,7 @@ def convert_coco_text_to_coco_detection_json(
 def valid_bbox(bbox_xywh: List[int], img_w: int, img_h: int) -> bool:
     if (
         bbox_xywh is None
+        or not len(bbox_xywh) == 4
         or (bbox_xywh[3] == 0 or bbox_xywh[2] == 0)
         or not (0 <= bbox_xywh[0] <= img_w - bbox_xywh[2])
         or not (0 <= bbox_xywh[1] <= img_h - bbox_xywh[3])
