@@ -324,6 +324,7 @@ def setup_after_launch(
     # avoid random pytorch and CUDA algorithms during the training
     if cfg.SOLVER.DETERMINISTIC:
         logging.warning("Using deterministic training for the reproducibility")
+        torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         torch.use_deterministic_algorithms(True)
         # reference: https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
