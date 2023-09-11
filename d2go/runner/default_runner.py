@@ -618,6 +618,9 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 # For more details https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere.
                 torch.backends.cuda.matmul.allow_tf32 = True
                 torch.backends.cudnn.allow_tf32 = True
+            elif cfg.SOLVER.DETERMINISTIC:
+                torch.backends.cuda.matmul.allow_tf32 = False
+                torch.backends.cudnn.allow_tf32 = False
 
             trainer_hooks = self._get_trainer_hooks(
                 cfg, model, optimizer, scheduler, periodic_checkpointer, trainer
