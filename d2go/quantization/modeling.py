@@ -352,11 +352,8 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
             )
             model = default_prepare_for_quant(cfg, model)
         # NOTE: eager model needs to call prepare after `prepare_for_quant`
-        if is_qat:
-            torch.ao.quantization.prepare_qat(model, inplace=True)
-        else:
-            torch.ao.quantization.prepare(model, inplace=True)
-
+        prepare_fn = get_prepare_fx_fn(cfg, is_qat)
+        prepare_fn(model, inplace=True)
     else:
         # FX graph mode requires the model to be symbolically traceable, swap common
         # modules like SyncBN to FX-friendly version.
