@@ -58,7 +58,7 @@ class VisualizerWrapper(object):
         if hasattr(self._get_meta_arch_class(), "visualize_train_input"):
             return self._get_meta_arch_class().visualize_train_input(self, input_dict)
 
-        img = per_image["image"].permute(1, 2, 0).cpu().detach().numpy()
+        img = per_image["image"].permute(1, 2, 0).detach().cpu().numpy()
         img = utils.convert_image_to_rgb(img, cfg.INPUT.FORMAT)
 
         if "dataset_name" in input_dict:
