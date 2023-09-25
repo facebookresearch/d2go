@@ -38,7 +38,7 @@ def scatter_optimizer_state_dict(optimizer, optim_state_dict, model: FSDPWrapper
     optimizer.load_state_dict(optim_state_dict)
 
 
-def gather_ema_state_dict(ema_state, model: FSDPWrapper):
+def gather_ema_state_dict(ema_state: EMAState, model: FSDPWrapper):
     """
     Get full/local EMA state dict from an FSDP model.
     If using full state dict, gather local sharded EMA states from all FSDP processes and aggregate them into a full EMA state dict
@@ -52,7 +52,11 @@ def gather_ema_state_dict(ema_state, model: FSDPWrapper):
                 offload_to_cpu=model.offload_to_cpu,
                 rank0_only=model.rank0_only,
             ):
-                state = EMAState.FromModel(model)
+                state = EMAState.FromModel(
+                    model,
+                    include_frozen=ema_state.include_frozen,
+                    include_buffer=ema_state.include_buffer,
+                )
             return state.state
     elif model.state_dict_type == StateDictType.SHARDED_STATE_DICT:
         with ema_state.apply_and_restore(model):
