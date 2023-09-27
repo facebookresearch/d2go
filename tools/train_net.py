@@ -13,6 +13,7 @@ import detectron2.utils.comm as comm
 from d2go.config import CfgNode
 from d2go.distributed import distributed_worker, launch
 from d2go.runner import BaseRunner
+from d2go.runner.config_defaults import preprocess_cfg
 from d2go.setup import (
     basic_argument_parser,
     build_basic_cli_args,
@@ -112,6 +113,7 @@ def wrapped_main(*args, **kwargs) -> Callable[..., TrainOrTestNetOutput]:
 
 def run_with_cmdline_args(args):
     cfg, output_dir, runner_name = prepare_for_launch(args)
+    cfg = preprocess_cfg(cfg)
     shared_context = setup_before_launch(cfg, output_dir, runner_name)
 
     main_func = (
