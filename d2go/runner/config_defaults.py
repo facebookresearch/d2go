@@ -219,3 +219,8 @@ def get_generalized_rcnn_runner_default_cfg(cfg: CN) -> CN:
     _add_rcnn_default_config(cfg)
 
     return cfg
+
+
+@fb_overwritable()
+def preprocess_cfg(cfg: CN) -> CN:
+    return cfg
