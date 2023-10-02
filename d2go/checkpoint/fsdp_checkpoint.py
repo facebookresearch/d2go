@@ -188,18 +188,32 @@ class FSDPCheckpointer(QATCheckpointer):
                 self._save_metadata(new_save_dir)
                 if tag_last_ckpt:
                     self.tag_last_checkpoint(name)
-        elif comm.is_main_process():
-            basename = "{}.pth".format(name)
-            save_file = os.path.join(self.save_dir, basename)
-            assert os.path.basename(save_file) == basename, basename
-            self._save_file(data, save_file)
-            if tag_last_ckpt:
-                self.tag_last_checkpoint(basename)
+        else:
+            if comm.is_main_process():
+                basename = "{}.pth".format(name)
+                save_file = os.path.join(self.save_dir, basename)
+                assert os.path.basename(save_file) == basename, basename
+
+                self.logger.info(
+                    f"[FSDPCheckpointer] Rank {comm.get_rank()} is checkpointing {save_file}."
+                )
+                self._save_file(data, save_file)
+                if tag_last_ckpt:
+                    self.tag_last_checkpoint(basename)
+            else:
+                self.logger.info(
+                    f"[FSDPCheckpointer] Rank {comm.get_rank()} is deferring checkpointing to the main process."
+                )
+
+            comm.synchronize()
 
     def _save_file(self, data, filename):
         self.logger.info("Saving checkpoint to {}".format(filename))
+
         with self.path_manager.open(filename, "wb") as f:
             torch.save(data, cast(IO[bytes], f))
+
+        self.logger.info("Finished saving checkpoint to {}".format(filename))
 
     def _load_file(self, f: str):
         # Limit the read concurrency to avoid QPS overload
