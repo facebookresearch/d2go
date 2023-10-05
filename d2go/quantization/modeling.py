@@ -594,6 +594,18 @@ class QATHook(HookBase):
         model = self.trainer.model
         cfg = self.cfg
 
+        # if we load model in enable_fake_quant state, we need to disable fake quant again, if QAT.START_ITER > 0
+        if cur_iter < cfg.QUANTIZATION.QAT.START_ITER and cur_iter == 0:
+            logger.info(
+                "[QAT] disable fake quant to start QAT, iter = {}".format(cur_iter)
+            )
+            model.apply(torch.ao.quantization.disable_fake_quant)
+            model.apply(learnable_qat.disable_lqat_fake_quant)
+            self._applied["enable_fake_quant"] = False
+
+            _reset_qat_data_loader_if_needed(
+                self.cfg, self.trainer, self.build_data_loader_func
+            )
         if (
             not self._applied["enable_fake_quant"]
             and cur_iter >= cfg.QUANTIZATION.QAT.START_ITER
@@ -609,6 +621,11 @@ class QATHook(HookBase):
                 self.cfg, self.trainer, self.build_data_loader_func
             )
 
+        if cur_iter < cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER and cur_iter == 0:
+            logger.info("[QAT] disable static observer, iter = {}".format(cur_iter))
+            model.apply(torch.ao.quantization.disable_observer)
+            model.apply(learnable_qat.disable_lqat_static_observer)
+            self._applied["disable_observer"] = False
         if (
             not self._applied["enable_observer"]
             and cur_iter >= cfg.QUANTIZATION.QAT.ENABLE_OBSERVER_ITER
@@ -619,6 +636,13 @@ class QATHook(HookBase):
             model.apply(learnable_qat.enable_lqat_static_observer)
             self._applied["enable_observer"] = True
 
+        if (
+            cur_iter < cfg.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER
+            and cur_iter == 0
+        ):
+            logger.info(f"[QAT] disabling learnable observer, iter = {cur_iter}")
+            model.apply(learnable_qat.disable_lqat_learnable_observer)
+            self._applied["disable_learnable_observer"] = False
         if (
             not self._applied["enable_learnable_observer"]
             and cur_iter >= cfg.QUANTIZATION.QAT.ENABLE_LEARNABLE_OBSERVER_ITER
