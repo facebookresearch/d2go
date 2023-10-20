@@ -73,7 +73,6 @@ class AdhocDatasetManager:
     @atexit.register
     def _atexit():
         for ds in AdhocDatasetManager._REGISTERED.values():
-            logger.info("Remove remaining adhoc dataset: {}".format(ds.new_ds_name))
             ds.cleanup()
 
 
