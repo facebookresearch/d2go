@@ -220,12 +220,15 @@ class FSDPCheckpointer(QATCheckpointer):
         self.logger.info("Finished saving checkpoint to {}".format(filename))
 
     def _load_file(self, f: str):
-        with (
-            interleave_by_rank(concurrency_limit=self._concurrency_limit_fetcher())
-            if isinstance(self.model, FSDPWrapper)
-            and self.model.state_dict_type != StateDictType.FULL_STATE_DICT
-            else nullcontext()  # FULL_STATE_DICT doesn't need interleaving
-        ):
+        if isinstance(self.model, FSDPWrapper):
+            with (
+                interleave_by_rank(concurrency_limit=self._concurrency_limit_fetcher())
+                if self.model.state_dict_type != StateDictType.FULL_STATE_DICT
+                else nullcontext()  # FULL_STATE_DICT doesn't need interleaving
+            ):
+                # use mmap for FSDP checkpoints
+                return torch.load(f, map_location=torch.device("cpu"), mmap=True)
+        else:
             return super()._load_file(f)
 
     def _save_metadata(self, path):
