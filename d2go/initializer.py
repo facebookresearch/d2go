@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import logging
+
 from d2go.registry.bootstrap import bootstrap_registries
 from mobile_cv.common.misc.oss_utils import fb_overwritable
+
+logger = logging.getLogger(__name__)
 
 _INITIALIZED = False
 
@@ -46,9 +50,11 @@ def _register_builtin_datasets():
 
 @fb_overwritable()
 def _populate_registries():
+    logger.info("Populating registries ...")
     from d2go import optimizer  # noqa
     from d2go.data import dataset_mappers  # noqa
     from d2go.modeling.backbone import fbnet_v2  # noqa
+    logger.info(f"populated registries for following modules: {optimizer} {dataset_mappers} {fbnet_v2}")
 
 
 # fmt: on
