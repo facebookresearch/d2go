@@ -11,6 +11,7 @@ from typing import Any, List, Optional, Type, Union
 
 import detectron2.utils.comm as comm
 import torch
+from aiplatform.monitoring.unitrace.memory_snapshot import attach_oom_logger
 from d2go.checkpoint.api import is_distributed_checkpoint
 from d2go.checkpoint.fsdp_checkpoint import FSDPCheckpointer
 from d2go.config import CfgNode, CONFIG_SCALING_METHOD_REGISTRY, temp_defrost
@@ -38,11 +39,7 @@ from d2go.runner.config_defaults import (
     get_generalized_rcnn_runner_default_cfg,
 )
 
-from d2go.runner.training_hooks import (
-    D2GoGpuMemorySnapshot,
-    TRAINER_HOOKS_REGISTRY,
-    update_hooks_from_registry,
-)
+from d2go.runner.training_hooks import update_hooks_from_registry
 from d2go.trainer.fsdp import get_grad_scaler
 from d2go.trainer.helper import parse_precision_from_string
 from d2go.utils.abnormal_checker import (
@@ -51,7 +48,6 @@ from d2go.utils.abnormal_checker import (
     get_writers,
 )
 from d2go.utils.flop_calculator import attach_profilers
-from d2go.utils.gpu_memory_profiler import attach_oom_logger
 from d2go.utils.helper import D2Trainer, TensorboardXWriter
 from d2go.utils.misc import get_tensorboard_log_dir
 from d2go.utils.visualization import DataLoaderVisWrapper, VisualizationEvaluator
@@ -148,20 +144,6 @@ def default_scale_quantization_configs(cfg, new_world_size):
     cfg.QUANTIZATION.QAT.FREEZE_BN_ITER = int(
         round(cfg.QUANTIZATION.QAT.FREEZE_BN_ITER / gpu_scale)
     )
-
-
-@TRAINER_HOOKS_REGISTRY.register()
-def add_memory_profiler_hook(hooks, cfg: CfgNode):
-    # Add GPU memory snapshot profiler to diagnose GPU OOM issues and benchmark memory usage during model training
-    if cfg.get("MEMORY_PROFILER", CfgNode()).get("ENABLED", False):
-        hooks.append(
-            D2GoGpuMemorySnapshot(
-                cfg.OUTPUT_DIR,
-                log_n_steps=cfg.MEMORY_PROFILER.LOG_N_STEPS,
-                log_during_train_at=cfg.MEMORY_PROFILER.LOG_DURING_TRAIN_AT,
-                trace_max_entries=cfg.MEMORY_PROFILER.TRACE_MAX_ENTRIES,
-            )
-        )
 
 
 @fb_overwritable()
@@ -345,9 +327,7 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
     def build_model(self, cfg, eval_only=False):
         # Attach memory profiler to GPU OOM events
         if cfg.get("MEMORY_PROFILER", CfgNode()).get("ENABLED", False):
-            attach_oom_logger(
-                cfg.OUTPUT_DIR, trace_max_entries=cfg.MEMORY_PROFILER.TRACE_MAX_ENTRIES
-            )
+            attach_oom_logger(bucket="d2go_traces")
 
         model = self._build_model(cfg, eval_only)
         model = prepare_fb_model(cfg, model)

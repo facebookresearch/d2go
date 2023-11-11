@@ -3,12 +3,17 @@
 import logging
 from typing import List
 
-from d2go.config import CfgNode
+from aiplatform.monitoring.unitrace.memory_snapshot import (
+    export_memory_snapshot,
+    start_record_memory_history,
+    stop_record_memory_history,
+)
 
-from d2go.utils.gpu_memory_profiler import log_memory_snapshot, record_memory_history
+from d2go.config import CfgNode
 
 from detectron2.engine.train_loop import HookBase
 from detectron2.utils.registry import Registry
+from mobile_cv.torch.utils_pytorch import comm
 
 
 logger = logging.getLogger(__name__)
@@ -41,29 +46,34 @@ class D2GoGpuMemorySnapshot(HookBase):
 
     def __init__(
         self,
-        output_dir,
         log_n_steps: int = 3,
         log_during_train_at: int = 550,
-        trace_max_entries: int = 1000000,
+        manifold_bucket: str = "d2go_traces",
+        root_manifold_path: str = "tree/memory_snapshot",
     ) -> None:
-        self.output_dir = output_dir
-        self.step = 0
         self.log_n_steps = log_n_steps
         self.log_during_train_at = log_during_train_at
-        self.trace_max_entries = trace_max_entries
+        self.manifold_bucket = manifold_bucket
+        self.root_manifold_path = root_manifold_path
         logger.warning(
             "WARNING: Memory snapshot profiler is enabled. This may cause ranks to die and training jobs to get stuck. Please use with caution."
         )
 
     def before_step(self):
         if self.trainer.iter == self.log_during_train_at:
-            record_memory_history(self.trace_max_entries)
+            logger.info(
+                f"[itrn-{self.trainer.iter}] Starting memory snapshot recording"
+            )
+            start_record_memory_history()
 
     def after_step(self):
-        if self.step == self.log_n_steps - 1:
-            log_memory_snapshot(self.output_dir, file_prefix=f"iter{self.trainer.iter}")
-
         if self.trainer.iter == self.log_during_train_at + self.log_n_steps - 1:
-            log_memory_snapshot(self.output_dir, file_prefix=f"iter{self.trainer.iter}")
-
-        self.step += 1
+            export_memory_snapshot(
+                worker_name=f"rank-{comm.get_rank()}",
+                bucket=self.manifold_bucket,
+                root_manifold_path=self.root_manifold_path,
+            )
+            logger.info(
+                f"[itrn-{self.trainer.iter}] Stopping memory snapshot recording"
+            )
+            stop_record_memory_history()
