@@ -38,11 +38,7 @@ from d2go.runner.config_defaults import (
     get_generalized_rcnn_runner_default_cfg,
 )
 
-from d2go.runner.training_hooks import (
-    D2GoGpuMemorySnapshot,
-    TRAINER_HOOKS_REGISTRY,
-    update_hooks_from_registry,
-)
+from d2go.runner.training_hooks import update_hooks_from_registry
 from d2go.trainer.fsdp import get_grad_scaler
 from d2go.trainer.helper import parse_precision_from_string
 from d2go.utils.abnormal_checker import (
@@ -148,20 +144,6 @@ def default_scale_quantization_configs(cfg, new_world_size):
     cfg.QUANTIZATION.QAT.FREEZE_BN_ITER = int(
         round(cfg.QUANTIZATION.QAT.FREEZE_BN_ITER / gpu_scale)
     )
-
-
-@TRAINER_HOOKS_REGISTRY.register()
-def add_memory_profiler_hook(hooks, cfg: CfgNode):
-    # Add GPU memory snapshot profiler to diagnose GPU OOM issues and benchmark memory usage during model training
-    if cfg.get("MEMORY_PROFILER", CfgNode()).get("ENABLED", False):
-        hooks.append(
-            D2GoGpuMemorySnapshot(
-                cfg.OUTPUT_DIR,
-                log_n_steps=cfg.MEMORY_PROFILER.LOG_N_STEPS,
-                log_during_train_at=cfg.MEMORY_PROFILER.LOG_DURING_TRAIN_AT,
-                trace_max_entries=cfg.MEMORY_PROFILER.TRACE_MAX_ENTRIES,
-            )
-        )
 
 
 @fb_overwritable()
