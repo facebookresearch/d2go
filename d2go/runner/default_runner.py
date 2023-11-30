@@ -386,6 +386,16 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 )
         return evaluator
 
+    # experimental API
+    @classmethod
+    def _get_inference_callbacks(cls):
+        return {
+            "on_start": lambda: None,
+            "on_end": lambda: None,
+            "before_inference": lambda: None,
+            "after_inference": lambda: None,
+        }
+
     def _do_test(self, cfg, model, train_iter=None, model_tag="default"):
         """train_iter: Current iteration of the model, None means final iteration"""
         assert len(cfg.DATASETS.TEST)
@@ -430,7 +440,10 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 else model,
             )
 
-            results_per_dataset = inference_on_dataset(model, data_loader, evaluator)
+            inference_callbacks = self._get_inference_callbacks()
+            results_per_dataset = inference_on_dataset(
+                model, data_loader, evaluator, callbacks=inference_callbacks
+            )
 
             if comm.is_main_process():
                 results[model_tag][dataset_name] = results_per_dataset
