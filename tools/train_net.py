@@ -24,7 +24,6 @@ from d2go.setup import (
     setup_root_logger,
 )
 from d2go.trainer.api import TestNetOutput, TrainNetOutput
-from d2go.trainer.fsdp import is_fsdp_enabled
 from d2go.utils.mast import gather_mast_errors, mast_error_handler
 from d2go.utils.misc import (
     dump_trained_model_configs,
@@ -68,6 +67,7 @@ def main(
         model.eval()
         metrics = runner.do_test(cfg, model, train_iter=train_iter)
         print_metrics_table(metrics)
+        runner.cleanup()
         return TestNetOutput(
             accuracy=metrics,
             metrics=metrics,
@@ -98,6 +98,7 @@ def main(
 
     # dump config files for trained models
     trained_model_configs = dump_trained_model_configs(cfg.OUTPUT_DIR, trained_cfgs)
+    runner.cleanup()
     return TrainNetOutput(
         # for e2e_workflow
         accuracy=metrics,

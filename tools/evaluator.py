@@ -56,6 +56,7 @@ def main(
     predictor = create_predictor(predictor_path)
     metrics = runner.do_test(cfg, predictor)
     print_metrics_table(metrics)
+    runner.cleanup()
     return EvaluatorOutput(
         accuracy=metrics,
         metrics=metrics,

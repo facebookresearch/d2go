@@ -198,6 +198,14 @@ class BaseRunner(object):
         """
         pass
 
+    def cleanup(self) -> None:
+        """
+        Override `cleanup` to add custom clean ups such as:
+            - de-register datasets.
+            - free up global variables.
+        """
+        pass
+
     @classmethod
     def create_shared_context(cls, cfg) -> D2GoSharedContext:
         """

@@ -136,6 +136,7 @@ def main(
     metrics = {"_name_": {dataset_name: results}}
     print_metrics_table(metrics)
 
+    runner.cleanup()
     return BenchmarkDataOutput(
         accuracy=metrics,
         metrics=metrics,

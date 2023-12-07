@@ -95,6 +95,7 @@ def main(
             if not skip_if_fail:
                 raise e
 
+    runner.cleanup()
     return ExporterOutput(
         predictor_paths=predictor_paths,
         accuracy_comparison={},
