@@ -86,10 +86,12 @@ def _convert_fp_model(
     cfg: CfgNode, pytorch_model: nn.Module, data_loader: Iterable
 ) -> nn.Module:
     """Converts floating point predictor"""
-    pytorch_model = fuse_utils.fuse_model(pytorch_model)
-    logger.info(f"Fused Model:\n{pytorch_model}")
-    if fuse_utils.count_bn_exist(pytorch_model) > 0:
-        logger.warning("BN existed in pytorch model after fusing.")
+    if not isinstance(cfg, CfgNode) or (not cfg.QUANTIZATION.QAT.ENABLED):
+        # Do not fuse model again for QAT model since it will remove observer statistics (e.g. min_val, max_val)
+        pytorch_model = fuse_utils.fuse_model(pytorch_model)
+        logger.info(f"Fused Model:\n{pytorch_model}")
+        if fuse_utils.count_bn_exist(pytorch_model) > 0:
+            logger.warning("BN existed in pytorch model after fusing.")
     return pytorch_model
 
 
