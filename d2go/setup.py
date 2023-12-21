@@ -37,6 +37,12 @@ from detectron2.utils.logger import setup_logger as _setup_logger
 from detectron2.utils.serialize import PicklableWrapper
 from mobile_cv.common.misc.py import FolderLock, MultiprocessingPdb, post_mortem_if_fail
 
+# @manual=//torchtnt/utils:device
+from torchtnt.utils.device import maybe_enable_tf32
+
+# @manual=//torchtnt/utils:env
+from torchtnt.utils.env import seed
+
 logger = logging.getLogger(__name__)
 
 _RT = TypeVar("_RT")
@@ -324,13 +330,23 @@ def setup_after_launch(
     # avoid random pytorch and CUDA algorithms during the training
     if cfg.SOLVER.DETERMINISTIC:
         logging.warning("Using deterministic training for the reproducibility")
+
+        # tf32
+        maybe_enable_tf32("highest")
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+
+        # seed
+        seed(cfg.SEED, deterministic=2)
+
+        # pytorch deterministic
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         torch.use_deterministic_algorithms(True)
         # reference: https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-    if cfg.SEED > 0:
+    elif cfg.SEED > 0:
         seed_all_rng(cfg.SEED)
 
     return runner
