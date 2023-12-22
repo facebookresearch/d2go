@@ -60,8 +60,8 @@ class CfgNode(_CfgNode):
         cfg._run_custom_processing(is_dump=True)
         return super(CfgNode, cfg).dump(*args, **kwargs)
 
-    @staticmethod
-    def load_yaml_with_base(filename: str, *args, **kwargs):
+    @classmethod
+    def load_yaml_with_base(cls, filename: str, *args, **kwargs):
         filename = reroute_config_path(filename)
         with reroute_load_yaml_with_base():
             return _CfgNode.load_yaml_with_base(filename, *args, **kwargs)
