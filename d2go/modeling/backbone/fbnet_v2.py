@@ -197,12 +197,16 @@ def build_fbnet(cfg, name, in_channels):
     stages = []
     trunk_stride_per_stage = _get_stride_per_stage(arch_def_blocks)
     shape_spec_per_stage = []
+    fuse_ops = getattr(cfg.MODEL.FBNET_V2, "FUSE_OPS", False)
+    is_qat = getattr(cfg, "QAT", False)
     for i, stride_i in enumerate(trunk_stride_per_stage):
         stages.append(
             builder.build_blocks(
                 arch_def_blocks,
                 stage_indices=[i],
                 prefix_name=FBNET_BUILDER_IDENTIFIER + "_",
+                fuse_ops=fuse_ops,
+                is_qat=is_qat,
             )
         )
         shape_spec_per_stage.append(
