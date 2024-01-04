@@ -513,7 +513,7 @@ def _distributed_worker(
     main_func(*args)
 
 
-if __name__ == "__main__":
+def invoke_main() -> None:
     parser = argparse.ArgumentParser(
         "DETR training and evaluation script", parents=[get_args_parser()]
     )
@@ -529,3 +529,7 @@ if __name__ == "__main__":
         dist_url=args.dist_url,
         args=(args,),
     )
+
+
+if __name__ == "__main__":
+    invoke_main()  # pragma: no cover
