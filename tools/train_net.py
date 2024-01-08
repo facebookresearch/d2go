@@ -195,5 +195,9 @@ def build_cli_args(
     return args
 
 
-if __name__ == "__main__":
+def invoke_main() -> None:
     gather_mast_errors(cli())
+
+
+if __name__ == "__main__":
+    invoke_main()  # pragma: no cover
