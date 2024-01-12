@@ -34,6 +34,7 @@ requirements = [
     # https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
     # https://github.com/protocolbuffers/protobuf/issues/10051
     "protobuf==3.20.2",
+    "torchtnt",
 ]
 
 
