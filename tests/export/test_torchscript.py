@@ -34,24 +34,24 @@ class TestTorchscriptExportMethods(unittest.TestCase):
         export_method_string = "torchscript_mobile"
         new_export_kwargs = try_mock_export(export_method_string)
         self.assertIn("mobile_optimization", new_export_kwargs)
-        self.assertEquals(
+        self.assertEqual(
             type(new_export_kwargs["mobile_optimization"]),
             MobileOptimizationConfig,
         )
-        self.assertEquals(new_export_kwargs["mobile_optimization"].backend, "CPU")
+        self.assertEqual(new_export_kwargs["mobile_optimization"].backend, "CPU")
 
         export_method_string = "torchscript_mobile-metal"
         new_export_kwargs = try_mock_export(export_method_string)
-        self.assertEquals(new_export_kwargs["mobile_optimization"].backend, "metal")
+        self.assertEqual(new_export_kwargs["mobile_optimization"].backend, "metal")
 
         export_method_string = "torchscript_mobile-vulkan"
         new_export_kwargs = try_mock_export(export_method_string)
-        self.assertEquals(new_export_kwargs["mobile_optimization"].backend, "vulkan")
+        self.assertEqual(new_export_kwargs["mobile_optimization"].backend, "vulkan")
 
         export_method_string = "torchscript_mobile@tracing"
         new_export_kwargs = try_mock_export(export_method_string)
-        self.assertEquals(new_export_kwargs["jit_mode"], "trace")
+        self.assertEqual(new_export_kwargs["jit_mode"], "trace")
 
         export_method_string = "torchscript_mobile@scripting"
         new_export_kwargs = try_mock_export(export_method_string)
-        self.assertEquals(new_export_kwargs["jit_mode"], "script")
+        self.assertEqual(new_export_kwargs["jit_mode"], "script")
