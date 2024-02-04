@@ -168,7 +168,7 @@ class EMAUpdater(object):
                 ema_val = self.state.state[name]
                 if self.device:
                     val = val.to(self.device)
-                if val.dtype in [torch.float32, torch.float16]:
+                if val.dtype in [torch.float32, torch.float16, torch.bfloat16]:
                     ema_param_list.append(ema_val)
                     param_list.append(val)
                 else:
