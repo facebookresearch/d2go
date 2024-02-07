@@ -159,7 +159,7 @@ def build_weighted_detection_train_loader(
             )
         )
 
-    sampler = RepeatFactorTrainingSampler(repeat_factors)
+    sampler = RepeatFactorTrainingSampler(repeat_factors, seed=cfg.SEED)
 
     return build_batch_data_loader(
         dataset,
@@ -167,6 +167,7 @@ def build_weighted_detection_train_loader(
         cfg.SOLVER.IMS_PER_BATCH,
         aspect_ratio_grouping=cfg.DATALOADER.ASPECT_RATIO_GROUPING,
         num_workers=cfg.DATALOADER.NUM_WORKERS,
+        seed=cfg.SEED,
     )
 
 
