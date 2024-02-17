@@ -31,7 +31,7 @@ def add_zoomer_default_config(_C: CN):
     _C.ZOOMER.ENABLE_MEMORY_PROFILING = False
 
 
-def omm_logger_wrapper(output_dir):
+def oom_logger_wrapper(output_dir):
     def oom_logger(
         device: int, alloc: int, device_alloc: int, device_free: int
     ) -> None:
@@ -108,5 +108,5 @@ def attach_oom_logger(output_dir, trace_max_entries=1000000) -> None:
         return
 
     record_memory_history(trace_max_entries)
-    torch._C._cuda_attach_out_of_memory_observer(omm_logger_wrapper(output_dir))
+    torch._C._cuda_attach_out_of_memory_observer(oom_logger_wrapper(output_dir))
     logger.info("Attached GPU OOM logger")
