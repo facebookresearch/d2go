@@ -22,6 +22,16 @@ from mobile_cv.arch.quantization.observer import update_stat as observer_update_
 from mobile_cv.arch.utils import fuse_utils
 from mobile_cv.common.misc.iter_utils import recursive_iterate
 from torch import nn
+from torch._export import capture_pre_autograd_graph
+from torch.ao.quantization.quantize_pt2e import (
+    convert_pt2e,
+    prepare_pt2e,
+    prepare_qat_pt2e,
+)
+from torch.ao.quantization.quantizer.xnnpack_quantizer import (
+    get_symmetric_quantization_config,
+    XNNPACKQuantizer,
+)
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 if TORCH_VERSION > (1, 10):
@@ -34,6 +44,7 @@ else:
 logger = logging.getLogger(__name__)
 
 _CONVERT_FX_CALLBACK_ATTRIBUTE = "_convert_fx_callback"
+_CONVERT_PT2E_CALLBACK_ATTRIBUTE = "_convert_pt2e_callback"
 _STATE_DICT_KEY = "state_dict"
 _OLD_STATE_DICT_KEY = "model"
 _OLD_EMA_KEY = "ema_state"
@@ -184,6 +195,9 @@ def add_quantization_default_configs(_C):
     _C.QUANTIZATION.PTQ = CfgNode()
     _C.QUANTIZATION.PTQ.CALIBRATION_NUM_IMAGES = 16  # NOTE: this is actually iterations
     _C.QUANTIZATION.PTQ.CALIBRATION_FORCE_ON_GPU = False
+
+    _C.QUANTIZATION.PT2E = False
+    _C.QUANTIZATION.RECIPE = None
 
     # register deprecated and renamed keys
     _C.register_deprecated_key("QUANTIZATION.QAT.LOAD_PRETRAINED")
@@ -336,59 +350,79 @@ def default_custom_prepare_fx(cfg, model, is_qat, example_input=None):
     return model, convert_fn
 
 
+def _get_symmetric_xnnpack_quantizer() -> XNNPACKQuantizer:
+    quantizer = XNNPACKQuantizer()
+    operator_config = get_symmetric_quantization_config(is_per_channel=False)
+    quantizer.set_global(operator_config)
+    return quantizer
+
+
 def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
     """
     Centralized function to prepare fp32 model (D2Go's MetaArch) to fake quant model.
     """
-    # TODO: create a warning for the direct use of `torch.ao.quantization.get_default_qconfig`
-    # or `torch.ao.quantization.get_default_qat_qconfig` without calling D2Go's high-level
-    # `set_backend_and_create_qconfig` API.
-
-    if cfg.QUANTIZATION.EAGER_MODE:
-        if hasattr(model, "prepare_for_quant"):
-            model = model.prepare_for_quant(cfg)
+    if cfg.QUANTIZATION.PT2E:  # pt2e quantization
+        if hasattr(model, "custom_prepare_pt2e"):
+            model, convert_pt2e_callback = model.custom_prepare_pt2e(cfg)
         else:
-            logger.info(
-                "Using default implementation for prepare_for_quant (eager mode)"
-            )
-            model = default_prepare_for_quant(cfg, model)
-        # NOTE: eager model needs to call prepare after `prepare_for_quant`
-        if is_qat:
-            torch.ao.quantization.prepare_qat(model, inplace=True)
-        else:
-            torch.ao.quantization.prepare(model, inplace=True)
-
-    else:
-        # FX graph mode requires the model to be symbolically traceable, swap common
-        # modules like SyncBN to FX-friendly version.
-        if not is_qat:
-            # NOTE: we only do this for PTQ, because we want to keep using unmodified
-            # model during QAT.
-            model = fuse_utils.swap_modules(model)
-
-        if hasattr(model, "custom_prepare_fx"):
-            ret = model.custom_prepare_fx(cfg, is_qat, example_input)
-            if not (isinstance(ret, tuple) and len(ret) == 2):
-                raise ValueError(
-                    "`custom_prepare_fx` requires return model and convert_callback"
+            logger.info("Using default pt2e quantization APIs with XNNPACKQuantizer")
+            captured_model = capture_pre_autograd_graph(model, example_input)
+            quantizer = _get_symmetric_xnnpack_quantizer()
+            if is_qat:
+                model = prepare_qat_pt2e(captured_model, quantizer)
+            else:
+                model = prepare_pt2e(captured_model, quantizer)
+            convert_pt2e_callback = convert_pt2e
+        setattr(model, _CONVERT_PT2E_CALLBACK_ATTRIBUTE, convert_pt2e_callback)
+    else:  # pt1.x/legacy quantization recipe
+        # TODO: create a warning for the direct use of `torch.ao.quantization.get_default_qconfig`
+        # or `torch.ao.quantization.get_default_qat_qconfig` without calling D2Go's high-level
+        # `set_backend_and_create_qconfig` API.
+        if cfg.QUANTIZATION.EAGER_MODE:
+            if hasattr(model, "prepare_for_quant"):
+                model = model.prepare_for_quant(cfg)
+            else:
+                logger.info(
+                    "Using default implementation for prepare_for_quant (eager mode)"
                 )
-            model, convert_fx_callback = ret
-        else:
-            logger.info(
-                "Using default implementation for custom_prepare_fx (FX graph mode)"
-            )
-            model, convert_fx_callback = default_custom_prepare_fx(
-                cfg, model, is_qat, example_input
-            )
+                model = default_prepare_for_quant(cfg, model)
+            # NOTE: eager model needs to call prepare after `prepare_for_quant`
+            if is_qat:
+                torch.ao.quantization.prepare_qat(model, inplace=True)
+            else:
+                torch.ao.quantization.prepare(model, inplace=True)
 
-        # HACK: store the convert_callback function as model attribute, which can be
-        # later accessed to convert fake quant model to quantized model. We'll find a
-        # better place to store this.
-        if hasattr(model, _CONVERT_FX_CALLBACK_ATTRIBUTE):
-            raise AttributeError(
-                f"{_CONVERT_FX_CALLBACK_ATTRIBUTE} is already set in model: {model}"
-            )
-        setattr(model, _CONVERT_FX_CALLBACK_ATTRIBUTE, convert_fx_callback)
+        else:
+            # FX graph mode requires the model to be symbolically traceable, swap common
+            # modules like SyncBN to FX-friendly version.
+            if not is_qat:
+                # NOTE: we only do this for PTQ, because we want to keep using unmodified
+                # model during QAT.
+                model = fuse_utils.swap_modules(model)
+
+            if hasattr(model, "custom_prepare_fx"):
+                ret = model.custom_prepare_fx(cfg, is_qat, example_input)
+                if not (isinstance(ret, tuple) and len(ret) == 2):
+                    raise ValueError(
+                        "`custom_prepare_fx` requires return model and convert_callback"
+                    )
+                model, convert_fx_callback = ret
+            else:
+                logger.info(
+                    "Using default implementation for custom_prepare_fx (FX graph mode)"
+                )
+                model, convert_fx_callback = default_custom_prepare_fx(
+                    cfg, model, is_qat, example_input
+                )
+
+            # HACK: store the convert_callback function as model attribute, which can be
+            # later accessed to convert fake quant model to quantized model. We'll find a
+            # better place to store this.
+            if hasattr(model, _CONVERT_FX_CALLBACK_ATTRIBUTE):
+                raise AttributeError(
+                    f"{_CONVERT_FX_CALLBACK_ATTRIBUTE} is already set in model: {model}"
+                )
+            setattr(model, _CONVERT_FX_CALLBACK_ATTRIBUTE, convert_fx_callback)
 
     return model
 
@@ -398,21 +432,27 @@ def convert_to_quantized_model(cfg, fp32_model):
     Contralized function to convert fake quant model (fp32 operators) to "real"
     quantized model (int8 operators).
     """
-    if cfg.QUANTIZATION.EAGER_MODE:
-        convert_fn = get_convert_fn(cfg)
-        int8_model = convert_fn(fp32_model, inplace=False)
+    if cfg.QUANTIZATION.PT2E:  # pt2e quantization
+        logger.info("Using pt2e convert")
+        convert_pt2e_callback = getattr(fp32_model, _CONVERT_PT2E_CALLBACK_ATTRIBUTE)
+        quantized_model = convert_pt2e_callback(fp32_model)
     else:
-        # FX graph mode quantization
-        if not hasattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE):
-            raise AttributeError(
-                f"Can't find {_CONVERT_FX_CALLBACK_ATTRIBUTE} in model, please check "
-                f"`prepare_fake_quant_model` has been called: {fp32_model}"
-            )
+        if cfg.QUANTIZATION.EAGER_MODE:
+            convert_fn = get_convert_fn(cfg)
+            quantized_model = convert_fn(fp32_model, inplace=False)
+        else:
+            # FX graph mode quantization
+            if not hasattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE):
+                raise AttributeError(
+                    f"Can't find {_CONVERT_FX_CALLBACK_ATTRIBUTE} in model, please check "
+                    f"`prepare_fake_quant_model` has been called: {fp32_model}"
+                )
 
-        convert_fx_callback = getattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE)
-        int8_model = convert_fx_callback(fp32_model)
+            convert_fx_callback = getattr(fp32_model, _CONVERT_FX_CALLBACK_ATTRIBUTE)
+            quantized_model = convert_fx_callback(fp32_model)
+        logger.info(f"Quantization backend: {cfg.QUANTIZATION.BACKEND}")
 
-    return int8_model
+    return quantized_model
 
 
 @mock_quantization_type
