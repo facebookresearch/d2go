@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_predictor_quantized(predictor_type: str) -> bool:
-    return "int8" in predictor_type
+    return "int8" in predictor_type or "quant" in predictor_type
 
 
 def convert_model(
@@ -74,7 +74,7 @@ def convert_quantized_model(
         # only check bn exists in ptq as qat still has bn inside fused ops
         if fuse_utils.check_bn_exist(pytorch_model):
             logger.warn("Post training quantized model has bn inside fused ops")
-    logger.info(f"Converting quantized model {cfg.QUANTIZATION.BACKEND}...")
+    logger.info("Converting quantized model...")
 
     # convert the fake-quantized model to int8 model
     pytorch_model = convert_to_quantized_model(cfg, pytorch_model)
@@ -199,6 +199,13 @@ def default_export_predictor(
         models_info = {}
         for name, model in export_config.model.items():
             save_path = os.path.join(predictor_path, name)
+            model_export_kwargs = (
+                {}
+                if export_config.model_export_kwargs is None
+                else export_config.model_export_kwargs[name]
+            )
+            if hasattr(cfg, "QUANTIZATION") and cfg.QUANTIZATION.RECIPE is not None:
+                model_export_kwargs["recipe"] = cfg.QUANTIZATION.RECIPE
             model_info = _export_single_model(
                 predictor_path=predictor_path,
                 model=model,
@@ -209,23 +216,26 @@ def default_export_predictor(
                     if export_config.model_export_method is None
                     else export_config.model_export_method[name]
                 ),
-                model_export_kwargs=(
-                    {}
-                    if export_config.model_export_kwargs is None
-                    else export_config.model_export_kwargs[name]
-                ),
+                model_export_kwargs=model_export_kwargs,
             )
             models_info[name] = model_info
         predictor_init_kwargs["models"] = models_info
     else:
         save_path = predictor_path  # for single model exported files are put under `predictor_path` together with predictor_info.json
+        model_export_kwargs = (
+            {}
+            if export_config.model_export_kwargs is None
+            else export_config.model_export_kwargs
+        )
+        if hasattr(cfg, "QUANTIZATION") and cfg.QUANTIZATION.RECIPE is not None:
+            model_export_kwargs["recipe"] = cfg.QUANTIZATION.RECIPE
         model_info = _export_single_model(
             predictor_path=predictor_path,
             model=export_config.model,
             input_args=model_inputs,
             save_path=save_path,
             model_export_method=export_config.model_export_method or predictor_type,
-            model_export_kwargs=export_config.model_export_kwargs or {},
+            model_export_kwargs=model_export_kwargs,
         )
         predictor_init_kwargs["model"] = model_info
 
