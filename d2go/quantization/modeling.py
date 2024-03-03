@@ -282,7 +282,6 @@ def mock_quantization_type(quant_func):
 
 
 def default_prepare_for_quant(cfg, model):
-
     """
     Default implementation of preparing a model for quantization. This function will
     be called to before training if QAT is enabled, or before calibration during PTQ if

@@ -56,7 +56,7 @@ def run_once(
     `MultipleFunctionCallError`.
     """
 
-    def decorator(func: Callable[..., T]) -> (Callable[..., T]):
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
         signal: List[T] = []
 
         @wraps(func)

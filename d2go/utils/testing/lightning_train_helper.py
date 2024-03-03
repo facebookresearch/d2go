@@ -10,9 +10,9 @@ def get_lt_trainer(output_dir: str, cfg):
     return pl.Trainer(
         max_epochs=10**8,
         max_steps=cfg.SOLVER.MAX_ITER,
-        val_check_interval=cfg.TEST.EVAL_PERIOD
-        if cfg.TEST.EVAL_PERIOD > 0
-        else cfg.SOLVER.MAX_ITER,
+        val_check_interval=(
+            cfg.TEST.EVAL_PERIOD if cfg.TEST.EVAL_PERIOD > 0 else cfg.SOLVER.MAX_ITER
+        ),
         callbacks=[checkpoint_callback],
         logger=False,
     )

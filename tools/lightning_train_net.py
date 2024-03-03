@@ -67,9 +67,9 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
     params = {
         "max_epochs": -1,
         "max_steps": cfg.SOLVER.MAX_ITER,
-        "val_check_interval": cfg.TEST.EVAL_PERIOD
-        if cfg.TEST.EVAL_PERIOD > 0
-        else cfg.SOLVER.MAX_ITER,
+        "val_check_interval": (
+            cfg.TEST.EVAL_PERIOD if cfg.TEST.EVAL_PERIOD > 0 else cfg.SOLVER.MAX_ITER
+        ),
         "num_nodes": comm.get_num_nodes(),
         "devices": comm.get_local_size(),
         "strategy": strategy,
@@ -78,11 +78,11 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
         "logger": TensorBoardLogger(save_dir=cfg.OUTPUT_DIR),
         "num_sanity_val_steps": 0,
         "replace_sampler_ddp": False,
-        "precision": parse_precision_from_string(
-            cfg.SOLVER.AMP.PRECISION, lightning=True
-        )
-        if cfg.SOLVER.AMP.ENABLED
-        else 32,
+        "precision": (
+            parse_precision_from_string(cfg.SOLVER.AMP.PRECISION, lightning=True)
+            if cfg.SOLVER.AMP.ENABLED
+            else 32
+        ),
     }
     if cfg.SOLVER.CLIP_GRADIENTS.ENABLED:
         if (

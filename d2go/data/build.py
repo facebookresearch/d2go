@@ -98,12 +98,16 @@ def build_weighted_detection_train_loader(
             name: get_detection_dataset_dicts(
                 [name],
                 filter_empty=cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS,
-                min_keypoints=cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
-                if cfg.MODEL.KEYPOINT_ON
-                else 0,
-                proposal_files=cfg.DATASETS.PROPOSAL_FILES_TRAIN
-                if cfg.MODEL.LOAD_PROPOSALS
-                else None,
+                min_keypoints=(
+                    cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
+                    if cfg.MODEL.KEYPOINT_ON
+                    else 0
+                ),
+                proposal_files=(
+                    cfg.DATASETS.PROPOSAL_FILES_TRAIN
+                    if cfg.MODEL.LOAD_PROPOSALS
+                    else None
+                ),
             )
             for name in cfg.DATASETS.TRAIN
         }

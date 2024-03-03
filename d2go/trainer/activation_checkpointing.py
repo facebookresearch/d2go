@@ -35,9 +35,11 @@ class ActivationCheckpointModelingHook(mh.ModelingHook):
         logger.info("Activation Checkpointing is used")
         wrapper_fn = partial(
             checkpoint_wrapper,
-            checkpoint_impl=CheckpointImpl.NO_REENTRANT
-            if not self.cfg.ACTIVATION_CHECKPOINT.REENTRANT
-            else CheckpointImpl.REENTRANT,
+            checkpoint_impl=(
+                CheckpointImpl.NO_REENTRANT
+                if not self.cfg.ACTIVATION_CHECKPOINT.REENTRANT
+                else CheckpointImpl.REENTRANT
+            ),
         )
         policy_name = self.cfg.ACTIVATION_CHECKPOINT.AUTO_WRAP_POLICY
         assert (

@@ -67,9 +67,7 @@ class DiskCachedList(object):
         self._lst = [_serialize(x) for x in self._lst]
         total_size = sum(len(x) for x in self._lst)
         # TODO: only enabling DiskCachedDataset for large enough dataset
-        logger.info(
-            "Serialized dataset takes {:.2f} MiB".format(total_size / 1024**2)
-        )
+        logger.info("Serialized dataset takes {:.2f} MiB".format(total_size / 1024**2))
         self._initialize_diskcache()
 
     def _initialize_diskcache(self):

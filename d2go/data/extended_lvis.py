@@ -89,7 +89,7 @@ def extended_lvis_load(json_file, image_root, dataset_name=None):
     dataset_dicts = []
 
     count_ignore_image_root_warning = 0
-    for (img_dict, anno_dict_list) in imgs_anns:
+    for img_dict, anno_dict_list in imgs_anns:
         record = {}
         if "://" not in img_dict["file_name"]:
             file_name = img_dict["file_name"]

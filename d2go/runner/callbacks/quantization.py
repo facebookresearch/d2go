@@ -418,9 +418,11 @@ class QuantizationAwareTraining(Callback, QuantizationMixin):
     def from_config(cls, cfg: CfgNode):
         qat = cfg.QUANTIZATION.QAT
         callback = cls(
-            qconfig_dicts={submodule: None for submodule in cfg.QUANTIZATION.MODULES}
-            if cfg.QUANTIZATION.MODULES
-            else None,
+            qconfig_dicts=(
+                {submodule: None for submodule in cfg.QUANTIZATION.MODULES}
+                if cfg.QUANTIZATION.MODULES
+                else None
+            ),
             # We explicitly pass this to maintain properties for now.
             preserved_attrs=["model.backbone.size_divisibility"],
             start_step=qat.START_ITER,
@@ -576,9 +578,11 @@ class PostTrainingQuantization(Callback, QuantizationMixin):
     @classmethod
     def from_config(cls, cfg: CfgNode):
         return cls(
-            qconfig_dicts={submodule: None for submodule in cfg.QUANTIZATION.MODULES}
-            if cfg.QUANTIZATION.MODULES
-            else None,
+            qconfig_dicts=(
+                {submodule: None for submodule in cfg.QUANTIZATION.MODULES}
+                if cfg.QUANTIZATION.MODULES
+                else None
+            ),
             # We explicitly pass this to maintain properties for now.
             preserved_attrs=["model.backbone.size_divisibility"],
         )

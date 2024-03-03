@@ -198,7 +198,7 @@ class EMAUpdater(object):
                 averaged_model_parameters, model_parameters, 1.0 - decay
             )
             if self.debug_lerp:
-                for (orig_val, lerp_val) in zip(
+                for orig_val, lerp_val in zip(
                     orig_averaged_model_parameters, averaged_model_parameters
                 ):
                     assert torch.allclose(orig_val, lerp_val, rtol=1e-4, atol=1e-3)

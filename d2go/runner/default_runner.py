@@ -464,9 +464,11 @@ class Detectron2GoRunner(D2GoDataAPIMixIn, BaseRunner):
                 output_folder,
                 train_iter,
                 model_tag,
-                model.module
-                if isinstance(model, nn.parallel.DistributedDataParallel)
-                else model,
+                (
+                    model.module
+                    if isinstance(model, nn.parallel.DistributedDataParallel)
+                    else model
+                ),
             )
 
             inference_callbacks = self._get_inference_callbacks()

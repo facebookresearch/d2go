@@ -363,7 +363,7 @@ def convert_to_dict_list(
     default_record = {"dataset_name": dataset_name} if dataset_name else {}
 
     converted_dict_list = []
-    for (img_dict, anno_dict_list) in zip(imgs, anns):
+    for img_dict, anno_dict_list in zip(imgs, anns):
         record = copy.deepcopy(default_record)
 
         # NOTE: besides using (relative path) in the "file_name" filed to represent
