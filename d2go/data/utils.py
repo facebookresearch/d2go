@@ -11,6 +11,7 @@ import re
 import shutil
 import tempfile
 from collections import defaultdict
+from typing import Any, Dict
 from unittest import mock
 
 import numpy as np
@@ -181,14 +182,20 @@ class AdhocCOCODataset(AdhocDataset):
                 split_dict={ANN_FN: tmp_file, IM_DIR: metadata.image_root},
             )
 
-        # re-regisister MetadataCatalog
-        metadata_dict = metadata.as_dict()
-        metadata_dict["name"] = self.new_ds_name
-        if "json_file" in metadata_dict:
-            metadata_dict["json_file"] = tmp_file
+        metadata_dict = self.get_new_metadata(tmp_file)
         if MetadataCatalog.get(self.new_ds_name):
             MetadataCatalog.remove(self.new_ds_name)
         MetadataCatalog.get(self.new_ds_name).set(**metadata_dict)
+
+    def get_new_metadata(self, tmp_dataset_json_file: str) -> Dict[str, Any]:
+        # re-regisister MetadataCatalog
+        metadata = MetadataCatalog.get(self.src_ds_name)
+        metadata_dict = metadata.as_dict()
+        metadata_dict["name"] = self.new_ds_name
+        if "json_file" in metadata_dict:
+            metadata_dict["json_file"] = tmp_dataset_json_file
+
+        return metadata_dict
 
     def cleanup(self):
         # remove temporarily registered dataset and json file
@@ -278,11 +285,30 @@ class COCOWithClassesToUse(AdhocCOCODataset):
         )
         self.classes_to_use = classes_to_use
 
+    def get_new_metadata(self, tmp_dataset_json_file: str) -> Dict[str, Any]:
+        metadata_dict = super().get_new_metadata(tmp_dataset_json_file)
+        metadata_dict["thing_classes"] = self.classes_to_use
+        return metadata_dict
+
     def new_json_dict(self, json_dict):
+        # The list of categories in self.classes_to_use: List[str] can be a superset of categories in json_dict["categories"]. Thus, we add new categories from self.classes_to_use as needed. This ensure when multiple training datasets are used, their metadata.thing_classes are consistent.
         categories = json_dict["categories"]
         new_categories = [
             cat for cat in categories if cat["name"] in self.classes_to_use
         ]
+        new_category_names = [cat["name"] for cat in new_categories]
+        category_id = max(cat["id"] for cat in new_categories)
+        for class_to_use in self.classes_to_use:
+            if class_to_use not in new_category_names:
+                new_categories.append(
+                    {
+                        "supercategory": "N/A",
+                        "id": category_id + 1,
+                        "name": class_to_use,
+                    }
+                )
+                category_id += 1
+
         new_category_ids = {cat["id"] for cat in new_categories}
         new_annotations = [
             ann
