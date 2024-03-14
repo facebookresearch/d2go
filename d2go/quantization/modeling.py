@@ -362,7 +362,9 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
     """
     if cfg.QUANTIZATION.PT2E:  # pt2e quantization
         if hasattr(model, "custom_prepare_pt2e"):
-            model, convert_pt2e_callback = model.custom_prepare_pt2e(cfg)
+            model, convert_pt2e_callback = model.custom_prepare_pt2e(
+                cfg, is_qat, example_input
+            )
         else:
             logger.info("Using default pt2e quantization APIs with XNNPACKQuantizer")
             captured_model = capture_pre_autograd_graph(model, example_input)
