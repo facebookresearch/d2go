@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import logging
 from dataclasses import dataclass
 from typing import List
 
@@ -12,6 +13,8 @@ from d2go.modeling import modeling_hook as mh
 from d2go.registry.builtin import META_ARCH_REGISTRY
 from d2go.utils.misc import _log_api_usage
 from detectron2.modeling import META_ARCH_REGISTRY as D2_META_ARCH_REGISTRY
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -54,7 +57,35 @@ def build_meta_arch(cfg):
 def build_d2go_model(
     cfg: CfgNode,
 ) -> D2GoModelBuildResult:
-    model = build_meta_arch(cfg)
+    # NOTE distributed initialization path (using FSDP) for large models
+    if (
+        hasattr(cfg.MODEL, "MODELING_HOOKS")
+        and "FSDPModelingHook" in cfg.MODEL.MODELING_HOOKS
+        and hasattr(cfg, "FSDP")
+        and hasattr(cfg.FSDP, "DISTRIBUTED_INIT")
+        and cfg.FSDP.DISTRIBUTED_INIT
+    ):
+        logger.info("Using distributed initialization path.")
+        import torch.distributed as dist
+
+        if dist.is_initialized():
+            from d2go.trainer.fsdp import CpuOverrideMode
+            from torch._subclasses import FakeTensorMode
+
+            # NOTE (global) rank 0 will build the whole model on cpu
+            # other ranks will build the model on fake tensors
+            if dist.get_rank() == 0:
+                with CpuOverrideMode():
+                    model = build_meta_arch(cfg)
+            else:
+                with FakeTensorMode(allow_non_fake_inputs=True):
+                    model = build_meta_arch(cfg)
+        else:
+            raise RuntimeError(
+                "torch.distributed is not initialized. cannot process with distributed init."
+            )
+    else:
+        model = build_meta_arch(cfg)
     modeling_hooks: List[mh.ModelingHook] = []
     # apply modeling hooks
     # some custom projects bypass d2go's default config so may not have the
