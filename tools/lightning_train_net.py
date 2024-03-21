@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Type, Union
 
 import mobile_cv.torch.utils_pytorch.comm as comm
 import pytorch_lightning as pl  # type: ignore
+import torch.distributed as dist
 from d2go.config import CfgNode
 from d2go.runner.callbacks.quantization import QuantizationAwareTraining
 from d2go.runner.lightning_task import DefaultTask
@@ -20,7 +21,6 @@ from pytorch_lightning.callbacks import Callback, LearningRateMonitor, TQDMProgr
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
-from torch.distributed import get_rank
 
 
 logging.basicConfig(level=logging.INFO)
@@ -174,5 +174,5 @@ if __name__ == "__main__":
         runner_name,
         eval_only=args.eval_only,
     )
-    if get_rank() == 0:
+    if dist.get_rank() == 0:
         print(ret)
