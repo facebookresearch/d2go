@@ -160,12 +160,19 @@ def bottom_up_nested_fsdp(root_module, fsdp_kwargs: Dict[str, Any]):
                             module,
                             name,
                             torch.nn.Parameter(
-                                torch.empty_like(param, device=cuda_device)
+                                torch.empty_like(param, device=cuda_device),
+                                requires_grad=param.requires_grad,
                             ),
                         )
                     for name, buffer in module.named_buffers(recurse=False):
                         setattr(
-                            module, name, torch.empty_like(buffer, device=cuda_device)
+                            module,
+                            name,
+                            torch.empty_like(
+                                buffer,
+                                device=cuda_device,
+                                requires_grad=buffer.requires_grad,
+                            ),
                         )
             else:
                 for _, param in module.named_parameters(recurse=False):
