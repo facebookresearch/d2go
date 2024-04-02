@@ -94,7 +94,7 @@ class D2GoDatasetMapper(object):
         image, dataset_dict = self._custom_transform(image, dataset_dict)
 
         inputs = AugInput(image=image)
-        if "annotations" not in dataset_dict:
+        if "annotations" not in dataset_dict or dataset_dict["annotations"] == []:
             transforms = AugmentationList(
                 ([self.crop_gen] if self.crop_gen else []) + self.tfm_gens
             )(inputs)
