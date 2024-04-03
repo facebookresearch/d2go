@@ -546,6 +546,14 @@ MODEL_ARCH_BUILTIN = {
         "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
         "basic_args": _BASIC_ARGS,
     },
+    "FBNetV3_B_large": {
+        "trunk": FBNetV3_B_no_se[0:4],
+        "rpn": [[_repeat_last(FBNetV3_B_no_se[3])]],
+        "bbox": LARGE_BOX_HEAD_STAGES,
+        "mask": SMALL_DS_UPSAMPLE_HEAD_STAGES,
+        "kpts": LARGE_UPSAMPLE_HEAD_D21_STAGES,
+        "basic_args": _BASIC_ARGS,
+    },
     "FBNetV3_B_light_no_se_C5": {
         "trunk": FBNetV3_B_light_no_se[0:5],
         "rpn": [[_repeat_last(FBNetV3_B_light_no_se[3])]],
