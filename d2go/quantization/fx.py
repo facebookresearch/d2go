@@ -6,6 +6,7 @@ from typing import Tuple
 
 import torch
 from mobile_cv.common.misc.oss_utils import fb_overwritable
+from torch.ao.quantization.quantize import prepare, prepare_qat
 
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
@@ -28,3 +29,9 @@ def get_convert_fn(cfg, example_inputs=None, qconfig_mapping=None, backend_confi
         return convert
     else:
         return convert_fx
+
+
+@fb_overwritable()
+def get_prepare_fn(cfg, is_qat):
+    if cfg.QUANTIZATION.EAGER_MODE:
+        return prepare_qat if is_qat else prepare
