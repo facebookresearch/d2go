@@ -108,6 +108,15 @@ def get_trainer_params(cfg: CfgNode) -> Dict[str, Any]:
             }
         )
 
+    if hasattr(cfg, "SOLVER.DETERMINISTIC"):
+        params.update(
+            {
+                "sync_batchnorm": True,
+                "deterministic": True,
+                "replace_sampler_ddp": False,
+            }
+        )
+
     return params
 
 
