@@ -336,17 +336,16 @@ def setup_after_launch(
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
 
-        # seed
-        seed(cfg.SEED, deterministic=2)
-
         # pytorch deterministic
+        torch.set_deterministic_debug_mode(2)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         torch.use_deterministic_algorithms(True)
+        torch.utils.deterministic.fill_uninitialized_memory = True
         # reference: https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-    elif cfg.SEED > 0:
+    if cfg.SEED > 0:
         seed_all_rng(cfg.SEED)
 
     return runner
