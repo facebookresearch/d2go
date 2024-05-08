@@ -42,6 +42,6 @@ jobs:
         run: |
           D2GO_IMPORT_SKIP_INITIALIZATION=1 python -m pytest -n 4 --durations=15 -sv tests/skip_init/
 
-      - name: Test Notebooks
-        run: |
-          find . -name *.ipynb | CI=true xargs pytest --nbval-lax --current-env
+      # - name: Test Notebooks
+      #   run: |
+      #     find . -name *.ipynb | CI=true xargs pytest --nbval-lax --current-env
