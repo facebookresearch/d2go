@@ -26,9 +26,11 @@ def set_backend_and_create_qconfig(cfg, *, is_train):
     return QCONFIG_CREATOR_REGISTRY.get("smart")(cfg, is_train=is_train)
 
 
-def holistic_get_qconfig(backend, is_qat, use_symmetric=False):
+@fb_overwritable()
+def holistic_get_qconfig(backend, is_qat, use_symmetric=False, cfg=None):
     """
-    Config-less vanilla way to create the QConfig, suitable for explicitly creating qconfig.
+    Utility to create the QConfig based on backend, is_qat, and use_symmetric.
+    cfg (unused) is to customize QConfig based on the cfg.
     """
 
     if use_symmetric:
@@ -66,7 +68,7 @@ def _smart_set_backend_and_create_qconfig(cfg, *, is_train):
     assert qat_method in ["default", "learnable"]
 
     qconfig = holistic_get_qconfig(
-        backend=backend, is_qat=is_train, use_symmetric=is_symmetric
+        backend=backend, is_qat=is_train, use_symmetric=is_symmetric, cfg=cfg
     )
     if is_train and qat_method == "learnable":
         qconfig = convert_to_learnable_qconfig(qconfig)
