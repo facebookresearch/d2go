@@ -16,6 +16,10 @@ from detectron2.solver.build import (
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.registry import Registry
 
+# lazy import doesn't guarantee that sub-packages are implicitly imported
+# https://www.internalfb.com/intern/wiki/Python/Cinder/Onboarding/Tutorial/Lazy_Imports/Troubleshooting/
+from torch.optim import _multi_tensor
+
 
 D2GO_OPTIM_MAPPER_REGISTRY = Registry("D2GO_OPTIM_MAPPER")
 
@@ -304,7 +308,7 @@ def sgd_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.SGD)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.SGD)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
         momentum=cfg.SOLVER.MOMENTUM,
@@ -321,7 +325,7 @@ def adamw_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.AdamW)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.AdamW)(
         params=params, lr=cfg.SOLVER.BASE_LR, eps=cfg.SOLVER.EPS
     )
 
@@ -335,7 +339,7 @@ def nadam_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.NAdam)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.NAdam)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -350,7 +354,7 @@ def radam_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.RAdam)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.RAdam)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -365,7 +369,7 @@ def rmsprop_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.RMSprop)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.RMSprop)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -380,7 +384,7 @@ def rprop_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.Rprop)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.Rprop)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -395,7 +399,7 @@ def asgd_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.ASGD)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.ASGD)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -410,7 +414,7 @@ def adamax_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.Adamax)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.Adamax)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -425,7 +429,7 @@ def adadelta_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.Adadelta)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.Adadelta)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
@@ -440,7 +444,7 @@ def adagrad_mt(cfg, model: torch.nn.Module) -> torch.optim.Optimizer:
     of parameter groups needs to be reduced using `reduce_param_groups`.
     """
     params = get_optimizer_param_groups(model, cfg)
-    return maybe_add_gradient_clipping(cfg, torch.optim._multi_tensor.Adagrad)(
+    return maybe_add_gradient_clipping(cfg, _multi_tensor.Adagrad)(
         params=params,
         lr=cfg.SOLVER.BASE_LR,
     )
