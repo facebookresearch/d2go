@@ -3,6 +3,7 @@
 import logging
 import uuid
 from contextlib import ContextDecorator
+from typing import Optional
 
 from d2go.checkpoint.log_checkpoint import log_checkpoint
 
@@ -16,10 +17,11 @@ class instrument_checkpoint(ContextDecorator):
         checkpoint_type: str,
     ) -> None:
         super().__init__()
-        self.unique_id = uuid.uuid1().int >> 97
+        self.unique_id: Optional[int] = None
         self.checkpoint_type = checkpoint_type
 
     def __enter__(self) -> "instrument_checkpoint":
+        self.unique_id = uuid.uuid1().int >> 97
         log_checkpoint(
             checkpoint_type=self.checkpoint_type,
             unique_id=self.unique_id,
