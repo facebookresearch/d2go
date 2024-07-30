@@ -22,7 +22,7 @@ jobs:
 
       - name: Install PyTorch
         run: |
-          conda install pytorch torchvision -c pytorch-nightly
+          conda install pytorch torchvision -c pytorch
           wget https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py
           python collect_env.py
 
