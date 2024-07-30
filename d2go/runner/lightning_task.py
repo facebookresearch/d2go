@@ -369,6 +369,10 @@ class DefaultTask(D2GoDataAPIMixIn, pl.LightningModule):
             cfg=cfg, dataset_name=dataset_name, output_folder=output_folder
         )
 
+    @classmethod
+    def cleanup(cls) -> None:
+        pass
+
     # ---------------------------------------------------------------------------
     # Hooks
     # ---------------------------------------------------------------------------
