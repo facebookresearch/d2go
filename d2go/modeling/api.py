@@ -63,7 +63,7 @@ def build_d2go_model(
         and "FSDPModelingHook" in cfg.MODEL.MODELING_HOOKS
         and hasattr(cfg, "FSDP")
         and hasattr(cfg.FSDP, "DISTRIBUTED_INIT")
-        and cfg.FSDP.DISTRIBUTED_INIT
+        and cfg.FSDP.DISTRIBUTED_INIT.ENABLED
     ):
         logger.info("Using distributed initialization path.")
         import torch.distributed as dist
@@ -72,13 +72,18 @@ def build_d2go_model(
             from d2go.trainer.fsdp import CpuOverrideMode
             from torch._subclasses import FakeTensorMode
 
-            # NOTE (global) rank 0 will build the whole model on cpu
-            # other ranks will build the model on fake tensors
-            if dist.get_rank() == 0:
-                with CpuOverrideMode():
-                    model = build_meta_arch(cfg)
+            if cfg.FSDP.DISTRIBUTED_INIT.RANK0_BROADCAST:
+                # NOTE (global) rank 0 will build the whole model on cpu
+                # other ranks will build the model on fake tensors
+                if dist.get_rank() == 0:
+                    with CpuOverrideMode():
+                        model = build_meta_arch(cfg)
+                else:
+                    with FakeTensorMode(allow_non_fake_inputs=True):
+                        model = build_meta_arch(cfg)
             else:
-                with FakeTensorMode(allow_non_fake_inputs=True):
+                # all ranks will build the model on cpu first
+                with CpuOverrideMode():
                     model = build_meta_arch(cfg)
         else:
             raise RuntimeError(
