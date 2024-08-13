@@ -13,7 +13,7 @@
 #include "cpu/ms_deform_attn_cpu.h"
 
 #ifdef WITH_CUDA
-#include "cuda/ms_deform_attn_cuda.h"
+#include "gpu/ms_deform_attn_cuda.h"
 #endif
 
 
@@ -59,4 +59,3 @@ ms_deform_attn_backward(
     }
     AT_ERROR("Not implemented on the CPU");
 }
-
