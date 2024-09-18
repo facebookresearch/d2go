@@ -303,7 +303,6 @@ class TestD2GoDatasets(unittest.TestCase):
 
     @tempdir
     def test_coco_create_adhoc_class_to_use_dataset(self, tmp_dir):
-
         image_dir, json_file = create_test_images_and_dataset_json(
             tmp_dir, num_classes=2
         )
@@ -339,7 +338,6 @@ class TestD2GoDatasets(unittest.TestCase):
 
     @tempdir
     def test_register_coco_dataset_registry(self, tmp_dir):
-
         dummy_buffer = []
 
         @COCO_REGISTER_FUNCTION_REGISTRY.register()
@@ -370,7 +368,6 @@ class TestD2GoDatasets(unittest.TestCase):
 
     @tempdir
     def test_adhoc_register_coco_dataset_registry(self, tmp_dir):
-
         dummy_buffer = []
 
         def _dummy_load_func():
@@ -378,7 +375,6 @@ class TestD2GoDatasets(unittest.TestCase):
 
         @COCO_REGISTER_FUNCTION_REGISTRY.register()
         def _register_dummy_function_coco_adhoc(dataset_name, split_dict):
-
             json_file = split_dict[ANN_FN]
             image_root = split_dict[IM_DIR]
 

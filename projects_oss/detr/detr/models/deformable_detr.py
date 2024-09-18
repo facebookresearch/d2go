@@ -10,6 +10,7 @@
 """
 Deformable DETR model and criterion classes.
 """
+
 import copy
 import math
 

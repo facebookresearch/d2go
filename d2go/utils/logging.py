@@ -69,13 +69,11 @@ def _log_exit(category: str, name: str, unique_id: str, duration: float) -> None
 def log_interval(
     category: Optional[str] = None, name: Optional[str] = None
 ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
-
     _unique_id = uuid.uuid1().int >> 97
     _overwrite_category = category
     _overwrite_name = name
 
     def log_interval_deco(func: Callable[..., _T]) -> Callable[..., _T]:
-
         _category = _overwrite_category or func.__qualname__.split(".")[0]
         _name = _overwrite_name or func.__name__
 

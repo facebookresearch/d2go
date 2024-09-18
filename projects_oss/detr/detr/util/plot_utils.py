@@ -3,6 +3,7 @@
 """
 Plotting utilities to visualize training logs.
 """
+
 from pathlib import Path, PurePath
 
 import matplotlib.pyplot as plt

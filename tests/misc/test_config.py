@@ -258,7 +258,6 @@ class TestAutoScaleWorldSize(unittest.TestCase):
 
 class TestConfigDefaultsGen(unittest.TestCase):
     def test_case1(self):
-
         # register in local scope
         @CONFIG_UPDATER_REGISTRY.register()
         def _test1(cfg):

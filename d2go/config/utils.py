@@ -209,7 +209,6 @@ def get_diff_cfg(old_cfg, new_cfg):
                     out[key] = out.__class__()
                     out[key] = get_diff_cfg_rec(old_cfg[key], new_cfg[key], out[key])
                 else:
-
                     out[key] = new_cfg[key]
         return out
 

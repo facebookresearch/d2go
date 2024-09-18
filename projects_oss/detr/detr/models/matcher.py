@@ -4,6 +4,7 @@
 """
 Modules to compute the matching cost and solve the corresponding LSAP.
 """
+
 import torch
 from detr.util.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 from scipy.optimize import linear_sum_assignment

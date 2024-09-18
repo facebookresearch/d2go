@@ -97,7 +97,6 @@ class conv_head_pooling(nn.Module):
         self.fc = nn.Linear(in_feature, out_feature)
 
     def forward(self, x, cls_token):
-
         x = self.conv(x)
         cls_token = self.fc(cls_token)
 

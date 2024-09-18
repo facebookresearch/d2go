@@ -132,7 +132,6 @@ def default_rcnn_prepare_for_export(self, cfg, inputs, predictor_type):
 
 
 def _apply_eager_mode_quant(cfg, model):
-
     if isinstance(model, GeneralizedRCNN):
         """Wrap each quantized part of the model to insert Quant and DeQuant in-place"""
 

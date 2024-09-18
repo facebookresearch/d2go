@@ -80,7 +80,6 @@ class DiskCachedList(object):
         # self._cache.cache.clear(retry=True)  # seems faster if index exists
 
         if comm.get_local_rank() == 0:
-
             if self._diskcache_strategy == "naive":
                 for i, item in enumerate(self._lst):
                     ret = self._write_to_local_db((i, item))

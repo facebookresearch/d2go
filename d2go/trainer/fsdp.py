@@ -130,7 +130,6 @@ def bottom_up_nested_fsdp(root_module, fsdp_kwargs: Dict[str, Any]):
         parent_module: Optional[nn.Module],
         ignore_branch: bool,
     ):
-
         rank = dist.get_rank()
         # don't traverse branches of specified ignored modules
         if module in modules_not_to_fsdp:

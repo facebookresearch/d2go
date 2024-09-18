@@ -247,7 +247,6 @@ class SetCriterion(nn.Module):
         return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
 
     def _forward(self, outputs, outputs_without_aux, targets):
-
         # Retrieve the matching between the outputs of the last layer and the targets
         # A list where each item is [row_indices, col_indices]
         indices = self.matcher(outputs_without_aux, targets)
