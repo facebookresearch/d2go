@@ -66,6 +66,9 @@ def add_fbnet_v2_default_configs(_C):
     # https://github.com/rbgirshick/yacs/blob/master/yacs/config.py#L410
     _C.MODEL.FBNET_V2.NORM_ARGS = []
 
+    # Set up operators fusion option in the backbone's blocks
+    _C.MODEL.FBNET_V2.FUSE_OPS = False
+
     _C.MODEL.VT_FPN = CN()
 
     _C.MODEL.VT_FPN.IN_FEATURES = ["res2", "res3", "res4", "res5"]
