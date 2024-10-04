@@ -18,7 +18,6 @@ from torch.cuda.amp.autocast_mode import custom_bwd, custom_fwd
 
 
 class MSDeformAttnFunction(Function):
-
     # The @custom_fwd and @custom_bwd decorators are used in this case to allow enabling of
     # Automatic Mixed Precision when we do not have implementations of custom CUDA kernels for
     # all the precision types.

@@ -59,8 +59,8 @@ def _merge_fbnetv2_arch_def(cfg):
 def _parse_arch_def(cfg):
     arch = cfg.MODEL.FBNET_V2.ARCH
     arch_def = cfg.MODEL.FBNET_V2.ARCH_DEF
-    assert (arch != "" and not arch_def) ^ (
-        not arch and arch_def != []
+    assert (
+        (arch != "" and not arch_def) ^ (not arch and arch_def != [])
     ), "Only allow one unset node between MODEL.FBNET_V2.ARCH ({}) and MODEL.FBNET_V2.ARCH_DEF ({})".format(
         arch, arch_def
     )

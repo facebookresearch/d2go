@@ -87,7 +87,6 @@ def _match_any(name, module_full_names, match_submodule=False):
 
 
 def _import_mock(name, globals=None, locals=None, fromlist=(), level=0):
-
     use_orig_import = False
 
     # enable some first-party packages

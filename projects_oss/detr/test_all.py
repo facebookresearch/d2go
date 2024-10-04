@@ -195,7 +195,6 @@ class ONNXExporterTester(unittest.TestCase):
             )
 
     def ort_validate(self, onnx_io, inputs, outputs, tolerate_small_mismatch=False):
-
         inputs, _ = torch.jit._flatten(inputs)
         outputs, _ = torch.jit._flatten(outputs)
 

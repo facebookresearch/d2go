@@ -14,7 +14,6 @@ def mock_export(cls, model, input_args, save_path, export_method, **export_kwarg
 
 class TestTorchscriptExportMethods(unittest.TestCase):
     def test_update_export_kwargs_from_export_method(self):
-
         _empty_export_kwargs = {}
 
         def try_mock_export(export_method: str, export_kwargs=_empty_export_kwargs):

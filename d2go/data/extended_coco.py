@@ -69,7 +69,6 @@ COCOTEXT_DATASET_CONVERSION_STATUS = {}
 
 
 def save_converted_json(target_json, convert_coco_dict):
-
     if target_json in COCOTEXT_DATASET_CONVERSION_STATUS:
         return
 
@@ -339,7 +338,6 @@ def convert_to_dict_list(
     filter_empty_annotations: Optional[bool] = True,
     _post_process_: Optional[Callable] = None,
 ) -> List[Dict]:
-
     ann_error_report = {
         name: ErrorEntry(name, msg, 0)
         for name, msg in [

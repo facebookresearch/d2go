@@ -6,6 +6,7 @@ COCO dataset which returns image_id for evaluation.
 
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
+
 import os
 from pathlib import Path
 
@@ -126,7 +127,6 @@ class ConvertCocoPolysToMask(object):
 
 
 def make_coco_transforms(image_set):
-
     normalize = T.Compose(
         [T.ToTensor(), T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]
     )

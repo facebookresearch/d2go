@@ -4,6 +4,7 @@
 """
 This file provides the definition of the convolutional heads used to predict masks, as well as the losses
 """
+
 import io
 from collections import defaultdict
 from typing import List, Optional

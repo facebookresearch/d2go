@@ -4,6 +4,7 @@
 """
 DETR model and criterion classes.
 """
+
 import torch
 import torch.nn.functional as F
 from detectron2.config import configurable

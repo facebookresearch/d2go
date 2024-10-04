@@ -222,9 +222,13 @@ class FSDPCheckpointer(QATCheckpointer):
     def _load_file(self, f: str):
         if isinstance(self.model, FSDPWrapper):
             with (
-                interleave_by_rank(concurrency_limit=self._concurrency_limit_fetcher())
-                if self.model.state_dict_type != StateDictType.FULL_STATE_DICT
-                else nullcontext()  # FULL_STATE_DICT doesn't need interleaving
+                (
+                    interleave_by_rank(
+                        concurrency_limit=self._concurrency_limit_fetcher()
+                    )
+                    if self.model.state_dict_type != StateDictType.FULL_STATE_DICT
+                    else nullcontext()
+                )  # FULL_STATE_DICT doesn't need interleaving
             ):
                 # use mmap for FSDP checkpoints
                 return torch.load(f, map_location=torch.device("cpu"), mmap=True)
