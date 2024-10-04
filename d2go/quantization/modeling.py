@@ -31,7 +31,6 @@ from torch.ao.quantization.quantizer.xnnpack_quantizer import (
     get_symmetric_quantization_config,
     XNNPACKQuantizer,
 )
-from torch.export import export_for_training
 
 TORCH_VERSION: Tuple[int, ...] = tuple(int(x) for x in torch.__version__.split(".")[:2])
 # some tests still import prepare/convert from below. So don't remove these.
@@ -367,7 +366,14 @@ def prepare_fake_quant_model(cfg, model, is_qat, example_input=None):
             )
         else:
             logger.info("Using default pt2e quantization APIs with XNNPACKQuantizer")
-            captured_model = export_for_training(model, example_input).module()
+            if TORCH_VERSION >= (2, 5, 0):
+                captured_model = torch.export.export_for_training(
+                    model, example_input
+                ).module()
+            else:
+                captured_model = torch._export.capture_pre_autograd_graph(
+                    model, example_input
+                ).module()
             quantizer = _get_symmetric_xnnpack_quantizer()
             if is_qat:
                 model = prepare_qat_pt2e(captured_model, quantizer)
